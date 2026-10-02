@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{font-family:FR;src:url(fonts/FrankRuhlLibre-500.ttf);font-weight:500}
+@font-face{font-family:FR;src:url(fonts/FrankRuhlLibre-700.ttf);font-weight:700}
+@font-face{font-family:FR;src:url(fonts/FrankRuhlLibre-900.ttf);font-weight:900}
+@font-face{font-family:HB;src:url(fonts/Heebo-300.ttf);font-weight:300}
+@font-face{font-family:HB;src:url(fonts/Heebo-400.ttf);font-weight:400}
+@font-face{font-family:HB;src:url(fonts/Heebo-500.ttf);font-weight:500}
+@font-face{font-family:HB;src:url(fonts/Heebo-700.ttf);font-weight:700}
+:root{--ink:#f2ede2;--gold:#d6b676;--gold2:#a98446;--jade:#1d3830;--deep:#0c1311}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--deep)}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;color:var(--ink);font-family:HB,sans-serif}
+#bg,#grain,#frame,#brand,.scene{position:absolute;inset:0}
+#grain{opacity:.07;mix-blend-mode:overlay}
+#frame{inset:56px;border:2px solid rgba(214,182,118,.0)}
+#frame i{position:absolute;background:var(--gold);opacity:.55}
+#brand{top:210px;bottom:auto;height:60px;display:flex;justify-content:center;align-items:center;gap:22px;font-family:FR;font-weight:500;font-size:40px;letter-spacing:.16em;color:var(--gold)}
+#brand b{display:block;width:70px;height:2px;background:var(--gold);opacity:.7}
+.scene{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:340px 130px 470px;gap:34px}
+.it{will-change:transform,opacity;max-width:100%}
+.eyebrow{font-weight:500;font-size:40px;letter-spacing:.14em;color:var(--gold)}
+.h1{font-family:FR;font-weight:900;font-size:170px;line-height:1.05}
+.h2{font-family:FR;font-weight:700;font-size:104px;line-height:1.12}
+.h3{font-family:FR;font-weight:700;font-size:80px;line-height:1.18}
+.q{font-family:FR;font-weight:500;font-size:84px;line-height:1.25}
+.body{font-weight:300;font-size:54px;line-height:1.45;color:#e4ddcf}
+.small{font-weight:400;font-size:34px;line-height:1.5;color:#b9b3a6}
+.gold{color:var(--gold)}
+.rule{width:180px;height:3px;background:var(--gold)}
+.pill{display:inline-block;border:3px solid var(--gold);color:var(--gold);border-radius:999px;padding:10px 54px;font-weight:500;font-size:60px}
+.pills{display:flex;gap:40px;justify-content:center}
+.stamp{font-family:FR;font-weight:900;font-size:150px;color:var(--deep);background:var(--gold);padding:6px 70px 22px;border-radius:14px}
+.num{font-family:FR;font-weight:900;font-size:230px;line-height:.9;color:var(--gold)}
+.row{display:flex;align-items:center;gap:30px;justify-content:center;font-size:56px;font-weight:400}
+.row .arr{color:var(--gold);font-size:60px}
+.row .a{font-family:FR;font-weight:700;font-size:66px}
+.timer{position:relative;width:360px;height:360px}
+.timer svg{position:absolute;inset:0}
+.timer span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:FR;font-weight:900;font-size:170px;color:var(--ink);font-variant-numeric:tabular-nums}
+.cups{width:760px;height:300px}
+.phone{font-family:FR;font-weight:700;font-size:112px;color:var(--gold);direction:ltr;letter-spacing:.02em}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg"></div>
+  <canvas id="grain" width="540" height="960" style="width:1080px;height:1920px"></canvas>
+  <div id="frame"><i id="fT"></i><i id="fB"></i><i id="fR"></i><i id="fL"></i></div>
+  <div id="brand"><b></b>המגנט<b></b></div>
+  <div id="scenes"></div>
+</div>
+<script>
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const eo=x=>1-Math.pow(1-clamp(x),3);
+const eb=x=>{x=clamp(x);const c=1.70158;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+
+// grain (deterministic)
+(function(){const c=document.getElementById('grain'),g=c.getContext('2d'),d=g.createImageData(540,960);let s=7;
+for(let i=0;i<d.data.length;i+=4){s=(s*16807)%2147483647;const v=s%255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}g.putImageData(d,0,0)})();
+
+const END={dur:5.2,items:[
+  {h:'יהושע אלישע',c:'h2',at:0},
+  {h:'המגנט · קליניקה לרפואה טבעית',c:'body gold',at:.25},
+  {h:'',c:'rule',at:.5,a:'line'},
+  {h:'פתח תקווה · רמת אביב',c:'body',at:.7},
+  {h:'052-252-7090',c:'phone',at:.95,a:'scale'},
+  {h:'שלחו הודעה בוואטסאפ',c:'body',at:1.2},
+  {h:'הטיפול משלים ואינו מחליף ייעוץ רפואי',c:'small',at:1.6,a:'fade'}
+],end:true};
+
+const VIDEOS={
+ magnet:[
+  {dur:3.6,items:[{h:'למה קוראים לו',c:'h3',at:.2},{h:'״המגנט״',c:'h1 gold',at:.7,a:'scale'}]},
+  {dur:4.4,items:[{h:'מטופלים שואלים אותו',c:'eyebrow',at:0},{h:'״איך מצאת בדיוק<br>את הנקודה?״',c:'q',at:.3},{h:'״לא סיפרתי לך<br>שזה שם.״',c:'q gold',at:1.6}]},
+  {dur:4.2,items:[{h:'זה לא קסם.',c:'h2',at:.1},{h:'',c:'rule',at:.7,a:'line'},{h:'זה מעל 10 שנים<br>של הקשבה לגוף.',c:'h3 gold',at:1.1}]},
+  {dur:5,items:[{h:'כי לפעמים הכאב מתחיל<br>במקום אחר',c:'body',at:0},
+    {h:'<span class="a">כאב בברך</span><span class="arr">←</span><span>כף הרגל</span>',c:'row',at:.9,a:'right'},
+    {h:'<span class="a">כאב ראש</span><span class="arr">←</span><span>הכתפיים</span>',c:'row',at:1.6,a:'right'},
+    {h:'<span class="a">כאב גב</span><span class="arr">←</span><span>הישיבה</span>',c:'row',at:2.3,a:'right'}]},
+  END],
+ myth:[
+  {dur:3.2,items:[{h:'מיתוס או אמת',c:'eyebrow',at:0},{h:'דיקור<br>כואב?',c:'h1',at:.3,a:'scale'}]},
+  {dur:3.4,items:[{h:'מה אתם חושבים?',c:'h3',at:0},{h:'<span class="pill">מיתוס</span><span class="pill">אמת</span>',c:'pills',at:.4},{h:'כתבו בתגובות',c:'body',at:1}]},
+  {dur:4.4,items:[{h:'מיתוס',c:'stamp',at:.15,a:'stamp'},{h:'המחטים דקות<br>כמו שערה.',c:'h2',at:1}]},
+  {dur:4.4,items:[{h:'רוב המטופלים מרגישים<br>לכל היותר עקצוץ קטן.',c:'body',at:.1},{h:'',c:'rule',at:.9,a:'line'},{h:'ואחריו<br>הרבה רוגע.',c:'h2 gold',at:1.3}]},
+  END],
+ neck:[
+  {dur:3.4,items:[{h:'יושבים מול מסך?',c:'h2',at:.1},{h:'אל תקומו.<br>תעשו איתי.',c:'h3 gold',at:1}]},
+  {dur:2.6,items:[{h:'תרגיל של',c:'body',at:0},{h:'20 שניות',c:'h1 gold',at:.25,a:'scale'},{h:'לשחרור הצוואר',c:'h3',at:.6}]},
+  {dur:11.2,items:[{h:'צד ראשון',c:'eyebrow',at:0},{h:'מטים את הראש לצד',c:'h3',at:.2},{h:'היד השנייה מושכת<br>את הכתף בעדינות למטה',c:'body',at:.5},{c:'timer',at:.8,a:'scale',timer:{start:1,len:10}},{h:'נושמים עמוק',c:'body gold',at:1.4}]},
+  {dur:11.2,items:[{h:'צד שני',c:'eyebrow',at:0},{h:'עכשיו לצד השני',c:'h3',at:.2},{h:'מרגישים את המתיחה?<br>ממשיכים לנשום',c:'body',at:.5},{c:'timer',at:.8,a:'scale',timer:{start:1,len:10}},{h:'כתפיים רפויות',c:'body gold',at:1.4}]},
+  {dur:4.4,items:[{h:'שמרו את הסרטון',c:'h2 gold',at:0},{h:'לפעם הבאה שהצוואר נתפס',c:'body',at:.4},{h:'',c:'rule',at:.9,a:'line'},{h:'המתח חוזר כל יום?<br>שווה לבדוק מאיפה הוא מגיע.',c:'body',at:1.3},{h:'בצעו בעדינות. אם כואב, עצרו.',c:'small',at:1.8,a:'fade'}]},
+  END],
+ first:[
+  {dur:3.6,items:[{h:'מתלבטים לגבי<br>הטיפול הראשון?',c:'h2',at:.1},{h:'ככה הוא נראה, שלב אחרי שלב',c:'body gold',at:1}]},
+  {dur:3.6,items:[{h:'1',c:'num',at:0,a:'scale'},{h:'שיחה',c:'h2',at:.3},{h:'איפה כואב, ממתי,<br>ומה הכי מפריע ביומיום',c:'body',at:.7}]},
+  {dur:3.6,items:[{h:'2',c:'num',at:0,a:'scale'},{h:'בדיקה עדינה',c:'h2',at:.3},{h:'כדי להבין מאיפה<br>הכאב באמת מגיע',c:'body',at:.7}]},
+  {dur:3.8,items:[{h:'3',c:'num',at:0,a:'scale'},{h:'הטיפול',c:'h2',at:.3},{h:'דיקור, עיסוי רפואי, כוסות רוח<br>לפי מה שהגוף צריך',c:'body',at:.7}]},
+  {dur:3.6,items:[{h:'4',c:'num',at:0,a:'scale'},{h:'תוכנית',c:'h2',at:.3},{h:'יוצאים עם תוכנית<br>ברורה להמשך',c:'body',at:.7}]},
+  {dur:3,items:[{h:'בלי הפתעות.',c:'h2',at:0},{h:'רק שקט, הקשבה<br>וידיים מקצועיות.',c:'h3 gold',at:.6}]},
+  END],
+ cupping:[
+  {dur:3.6,items:[{c:'cups',at:0,cups:true},{h:'3 דברים שלא ידעתם<br>על כוסות רוח',c:'h2',at:.6}]},
+  {dur:3.8,items:[{h:'1',c:'num',at:0,a:'scale'},{h:'שיטה בת<br>אלפי שנים',c:'h2',at:.3},{h:'מסין העתיקה ועד הספורטאים האולימפיים',c:'body',at:.8}]},
+  {dur:4,items:[{h:'2',c:'num',at:0,a:'scale'},{h:'ואקום עדין',c:'h2',at:.3},{h:'שמושך את הרקמה למעלה<br>ומעודד זרימת דם לאזור',c:'body',at:.8}]},
+  {dur:4.2,items:[{h:'3',c:'num',at:0,a:'scale'},{h:'הסימנים העגולים<br>הם לא חבורה',c:'h2',at:.3},{h:'ובדרך כלל עוברים<br>תוך כמה ימים',c:'body',at:.9}]},
+  {dur:3,items:[{h:'כבר ניסיתם?',c:'h2',at:0},{h:'ספרו בתגובות',c:'h3 gold',at:.5}]},
+  END]
+};
+
+let V=[],TOTAL=0;
+function build(name){
+  const host=document.getElementById('scenes');host.innerHTML='';
+  let t0=0;V=VIDEOS[name].map(s=>{const el=document.createElement('div');el.className='scene';
+    const items=s.items.map(it=>{const d=document.createElement('div');d.className='it '+(it.c||'');
+      if(it.timer){d.innerHTML='<svg viewBox="0 0 360 360"><circle cx="180" cy="180" r="160" fill="none" stroke="rgba(214,182,118,.18)" stroke-width="10"/><circle class="arc" cx="180" cy="180" r="160" fill="none" stroke="#d6b676" stroke-width="10" stroke-linecap="round" transform="rotate(-90 180 180)" stroke-dasharray="1005.3" stroke-dashoffset="0"/></svg><span>10</span>'}
+      else if(it.cups){let g='';[[130,150,95],[330,120,110],[540,160,90],[660,90,60]].forEach((p,i)=>{g+=`<g class="cup" data-i="${i}"><circle cx="${p[0]}" cy="${p[1]}" r="${p[2]}" fill="rgba(170,70,60,.30)"/><circle cx="${p[0]}" cy="${p[1]}" r="${p[2]}" fill="none" stroke="#d6b676" stroke-width="4"/></g>`});d.innerHTML=`<svg viewBox="0 0 760 300" width="760" height="300">${g}</svg>`}
+      else d.innerHTML=it.h;
+      el.appendChild(d);return {...it,el:d}});
+    host.appendChild(el);const sc={...s,el,items,start:t0};t0+=s.dur;return sc});
+  TOTAL=t0;return TOTAL;
+}
+function render(t){
+  // background drift
+  const bx=50+14*Math.sin(t*.35),by=34+8*Math.cos(t*.27);
+  document.getElementById('bg').style.background=
+   `radial-gradient(70% 45% at ${bx}% ${by}%, rgba(214,182,118,.20), rgba(214,182,118,0) 70%),`+
+   `radial-gradient(120% 80% at 50% 30%, #234a3f 0%, #15291f 45%, #0b1210 100%)`;
+  // frame draw-in
+  const f=eo(t/1.4),W=968,H=1808;
+  Object.assign(fT.style,{top:'0',right:'0',height:'2px',width:W*f+'px'});
+  Object.assign(fB.style,{bottom:'0',left:'0',height:'2px',width:W*f+'px'});
+  Object.assign(fR.style,{top:'0',right:'0',width:'2px',height:H*f+'px'});
+  Object.assign(fL.style,{bottom:'0',left:'0',width:'2px',height:H*f+'px'});
+  document.getElementById('brand').style.opacity=eo((t-.3)/.8);
+  V.forEach(s=>{
+    const lt=t-s.start,vis=lt>=-0.01&&lt<s.dur+0.01;
+    s.el.style.display=vis?'flex':'none';if(!vis)return;
+    const fadeOut=s.end?1:1-clamp((lt-(s.dur-.4))/.4);
+    s.el.style.opacity=fadeOut;
+    s.items.forEach(it=>{
+      const p=(lt-it.at)/.7,e=eo(p),st=it.el.style;let tr='';
+      st.opacity=clamp(p*1.6);
+      switch(it.a){
+        case 'scale':tr=`scale(${.82+.18*eb(p)})`;break;
+        case 'line':st.opacity=1;tr=`scaleX(${e})`;break;
+        case 'fade':break;
+        case 'right':tr=`translateX(${-80*(1-e)}px)`;break;
+        case 'stamp':{const q=clamp((lt-it.at)/.35);st.opacity=q>0?1:0;tr=`rotate(-6deg) scale(${1.8-.8*eo(q)})`;break}
+        default:tr=`translateY(${50*(1-e)}px)`;
+      }
+      st.transform=tr;
+      if(it.timer){const r=clamp((lt-it.timer.start)/it.timer.len);
+        it.el.querySelector('.arc').setAttribute('stroke-dashoffset',(1005.3*r).toFixed(1));
+        it.el.querySelector('span').textContent=Math.max(0,Math.ceil(it.timer.len*(1-r)));}
+      if(it.cups){it.el.querySelectorAll('.cup').forEach(g=>{const i=+g.dataset.i,q=eo((lt-.15*i)/.5);g.style.opacity=q;g.style.transformOrigin='center';g.style.transformBox='fill-box';g.style.transform=`scale(${.6+.4*q})`})}
+    });
+  });
+}
+window.build=build;window.render=render;
+</script>
+</body>
+</html>
