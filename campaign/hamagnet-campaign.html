@@ -1,0 +1,517 @@
+<title>קמפיין המגנט</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Heebo:wght@300;400;500;700&display=swap">
+<style>
+/* Layout: one calm reading column (RTL) with full-bleed "creative" frames that preview each ad at its real ratio */
+:root{
+  --bg:#f3f2ee;          /* stone */
+  --surface:#fbfaf7;
+  --ink:#1d2a26;         /* jade ink */
+  --muted:#5c6762;
+  --line:#d9d8d0;
+  --jade:#24423a;        /* brand deep green */
+  --brass:#9a7a3e;       /* accent */
+  --brass-soft:#efe6d3;
+  --on-dark:#f1ede3;
+  --warn:#8a3b2a;
+  --warn-soft:#f6e6e1;
+  --f-display:"Frank Ruhl Libre","David","Times New Roman",serif;
+  --f-body:"Heebo","Arial Hebrew","Segoe UI",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121816;--surface:#18201d;--ink:#e8e6df;--muted:#9fa8a3;--line:#2b3531;
+  --jade:#2d5148;--brass:#cfac68;--brass-soft:#2a261b;--on-dark:#f1ede3;--warn:#e59a86;--warn-soft:#2c1c18;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121816;--surface:#18201d;--ink:#e8e6df;--muted:#9fa8a3;--line:#2b3531;
+  --jade:#2d5148;--brass:#cfac68;--brass-soft:#2a261b;--on-dark:#f1ede3;--warn:#e59a86;--warn-soft:#2c1c18;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.75;direction:rtl;padding-inline:16px;padding-block:0 80px}
+.wrap{max-width:880px;margin-inline:auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.2;margin:0}
+h2{font-size:clamp(1.7rem,4vw,2.3rem);font-weight:700}
+h3{font-size:1.3rem;font-weight:700}
+p{margin:0}
+a{color:var(--brass)}
+.eyebrow{font-size:.78rem;letter-spacing:.14em;color:var(--brass);font-weight:500}
+.muted{color:var(--muted)}
+
+/* hero */
+.hero{padding-block:56px 40px;border-bottom:1px solid var(--line);display:grid;gap:18px}
+.hero h1{font-size:clamp(2.4rem,7vw,4.2rem);font-weight:900;letter-spacing:-.01em}
+.hero h1 em{font-style:normal;color:var(--brass)}
+.hero .lede{font-size:1.15rem;max-width:62ch;color:var(--muted)}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:.9rem;color:var(--muted)}
+.facts b{color:var(--ink);font-weight:500}
+
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;padding-block:20px}
+nav.toc a{font-size:.88rem;text-decoration:none;color:var(--ink);border:1px solid var(--line);padding:4px 12px;border-radius:999px}
+nav.toc a:hover,nav.toc a:focus-visible{border-color:var(--brass);outline:none}
+
+section{padding-block:48px;border-bottom:1px solid var(--line);display:grid;gap:22px}
+.stack{display:grid;gap:14px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.two>*{min-width:0}
+
+.idea{background:var(--jade);color:var(--on-dark);padding:32px 28px;border-radius:4px;display:grid;gap:12px}
+.idea .big{font-family:var(--f-display);font-size:clamp(1.8rem,5vw,2.8rem);font-weight:700;line-height:1.2}
+.idea .eyebrow{color:#d9bd84}
+
+.panel{background:var(--surface);border:1px solid var(--line);padding:20px 22px;border-radius:4px;display:grid;gap:8px}
+.panel h3{font-size:1.1rem}
+ul.clean{margin:0;padding-inline-start:1.1em;display:grid;gap:6px}
+
+/* ad blocks */
+.ad{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:26px;align-items:start;padding-block:10px}
+@media (max-width:720px){.ad{grid-template-columns:minmax(0,1fr)}}
+.ad .meta{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.75rem;border:1px solid var(--line);padding:1px 10px;border-radius:999px;color:var(--muted)}
+.chip.gold{border-color:var(--brass);color:var(--brass)}
+
+.frame{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:6px;color:#f4efe4;display:flex;flex-direction:column;justify-content:flex-end;padding:22px;gap:8px;isolation:isolate}
+.frame.sq{aspect-ratio:1/1}
+.frame.tall{aspect-ratio:9/16;max-width:300px}
+.frame::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--g)}
+.frame::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to top,rgba(10,14,12,.82),rgba(10,14,12,0) 62%)}
+.frame .brand{position:absolute;top:16px;inset-inline-start:18px;font-family:var(--f-display);font-size:.85rem;letter-spacing:.08em;opacity:.9}
+.frame .brand::before{content:"";display:inline-block;width:18px;height:1px;background:#d9bd84;vertical-align:middle;margin-inline-end:8px}
+.frame .hl{font-family:var(--f-display);font-weight:700;font-size:1.55rem;line-height:1.2;text-wrap:balance}
+.frame .sub{font-size:.85rem;opacity:.85;line-height:1.5}
+.frame .cta{align-self:flex-start;margin-top:6px;font-size:.78rem;border:1px solid #d9bd84;color:#f1dfb5;padding:3px 12px;border-radius:999px}
+.frame .shot{position:absolute;top:44px;inset-inline:18px;font-size:.72rem;opacity:.65;line-height:1.5}
+.g1{--g:radial-gradient(120% 90% at 70% 20%,#5b4a33 0%,#2a2a22 45%,#141a17 100%)}
+.g2{--g:radial-gradient(110% 90% at 30% 15%,#3c5a50 0%,#1f302b 50%,#101614 100%)}
+.g3{--g:radial-gradient(120% 100% at 50% 0%,#7a6038 0%,#352b1c 45%,#121210 100%)}
+.g4{--g:radial-gradient(120% 90% at 80% 30%,#4c5c63 0%,#22302f 50%,#0f1514 100%)}
+.g5{--g:radial-gradient(120% 90% at 20% 25%,#5a3d2f 0%,#2a211b 50%,#121010 100%)}
+
+.copy{background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.copy header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.copy pre{margin:0;padding:14px 16px;white-space:pre-wrap;word-break:break-word;font-family:var(--f-body);font-size:.97rem;line-height:1.75;color:var(--ink)}
+button.cp{font:inherit;font-size:.78rem;background:transparent;color:var(--brass);border:1px solid var(--brass);border-radius:999px;padding:2px 12px;cursor:pointer}
+button.cp:hover{background:var(--brass-soft)}
+button.cp:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* tiktok script table */
+.script{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+.script table{border-collapse:collapse;width:100%;min-width:520px;font-size:.93rem}
+.script th,.script td{text-align:start;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+.script th{font-weight:500;color:var(--muted);font-size:.78rem;letter-spacing:.06em}
+.script td.t{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--brass);font-weight:500;direction:ltr;text-align:right}
+.script tr:last-child td{border-bottom:0}
+
+.cal{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
+.cal table{border-collapse:collapse;width:100%;min-width:640px;font-size:.88rem}
+.cal th,.cal td{padding:9px 10px;border-bottom:1px solid var(--line);border-inline-start:1px solid var(--line);text-align:start;vertical-align:top}
+.cal th{background:var(--brass-soft);font-weight:500}
+.cal td:first-child,.cal th:first-child{border-inline-start:0;font-weight:500;white-space:nowrap}
+
+.warn{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:4px;padding:20px 22px;display:grid;gap:10px}
+.warn h3{color:var(--warn);font-size:1.1rem}
+
+.palette{display:flex;flex-wrap:wrap;gap:10px}
+.sw{display:grid;gap:4px;font-size:.75rem;color:var(--muted);direction:ltr;text-align:center}
+.sw i{display:block;width:64px;height:44px;border-radius:3px;border:1px solid var(--line)}
+
+footer{padding-block:36px;font-size:.85rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){button.cp{transition:background .15s}}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">ערכת קמפיין · פייסבוק ואינסטגרם · טיקטוק · אוקטובר 2026</span>
+  <h1>יש סיבה שקוראים לו <em>המגנט</em></h1>
+  <p class="lede">קמפיין מלא לקליניקה לרפואה טבעית של יהושע אלישע: הרעיון המרכזי, הקהלים, 5 מודעות לפייסבוק, 6 תסריטים לטיקטוק, לוח תוכן לחודש והנחיות צילום. כל טקסט מוכן להעתקה ולפרסום.</p>
+  <div class="facts">
+    <span><b>פתח תקווה</b> · אימבר 14</span>
+    <span><b>רמת אביב</b> · חיים לבנון 59</span>
+    <span><b>טלפון</b> · 052-252-7090</span>
+    <span><b>ניסיון</b> · מעל 10 שנים</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="תוכן העניינים">
+  <a href="#idea">הרעיון</a><a href="#psych">הפסיכולוגיה</a><a href="#audience">קהלים</a><a href="#facebook">מודעות פייסבוק</a><a href="#tiktok">תסריטי טיקטוק</a><a href="#calendar">לוח תוכן</a><a href="#look">שפה ויזואלית</a><a href="#setup">הגדרות ותקציב</a><a href="#rules">כללים חשובים</a>
+</nav>
+
+<section id="idea">
+  <span class="eyebrow">הרעיון המרכזי</span>
+  <div class="idea">
+    <span class="eyebrow">הקונספט</span>
+    <div class="big">“הגוף שלך יודע לדבר.<br>יהושע יודע להקשיב.”</div>
+    <p>הכינוי “המגנט” הוא הנכס הכי חזק שיש לקליניקה. הוא מעורר סקרנות, קל לזכור אותו, ואף מתחרה לא יכול להעתיק אותו. כל הקמפיין בנוי סביבו: אנשים מגיעים כי הם סקרנים, ונשארים בגלל המקצועיות.</p>
+  </div>
+  <div class="two">
+    <div class="panel"><h3>שורת המותג</h3><p>יהושע אלישע · המגנט<br>קליניקה לרפואה טבעית</p></div>
+    <div class="panel"><h3>ההבטחה</h3><p>טיפול אישי ושקט, בידיים של מטפל עם מעל עשור של ניסיון, ותוכנית ברורה מהמפגש הראשון.</p></div>
+    <div class="panel"><h3>הטון</h3><p>רגוע, בטוח, חם. מדברים כמו מומחה שלא צריך לצעוק. בלי סימני קריאה, בלי “מבצע מטורף”, בלי הבטחות לנס.</p></div>
+  </div>
+</section>
+
+<section id="psych">
+  <span class="eyebrow">הפסיכולוגיה שמאחורי הקמפיין</span>
+  <h2>מה באמת מניע אדם עם כאב להרים טלפון</h2>
+  <p class="muted" style="max-width:65ch">אדם עם כאב כרוני לא קונה “עיסוי” או “דיקור”. הוא רוצה בחזרה חלק מהחיים שלו. הקמפיין מדבר אל הרצון הזה ולא אל הכאב עצמו.</p>
+  <div class="two">
+    <div class="panel"><h3>1. זהות, לא סימפטום</h3><p>“להרים את הנכד”, “לחזור לריצה של הבוקר”, “לישון לילה שלם”. כשמזכירים לאדם מי הוא היה, הוא מקשיב.</p></div>
+    <div class="panel"><h3>2. הורדת חשש</h3><p>החסם הגדול הוא הפחד מהלא נודע: מה יקרה בטיפול, האם יכאב, כמה זה יעלה. לכן שיחת היכרות קצרה בלי התחייבות, וסרטון “מה קורה בטיפול הראשון”.</p></div>
+    <div class="panel"><h3>3. סמכות שקטה</h3><p>יוקרה באה מאיפוק: צילום נקי, ידיים, אור חם, מעט טקסט. מומחה לא צריך לשכנע. מספיק שהוא מסביר.</p></div>
+    <div class="panel"><h3>4. פער סקרנות</h3><p>“למה קוראים לי המגנט?” זו שאלה שהמוח רוצה לסגור. זה הפתיח החזק ביותר לטיקטוק ולשלוש השניות הראשונות.</p></div>
+    <div class="panel"><h3>5. הוכחה חברתית אמיתית</h3><p>המלצות של מטופלים אמיתיים, בשמם ובהסכמתם, הן החומר שממיר הכי טוב. מומלץ לאסוף 5 עד 8 סרטוני המלצה קצרים.</p></div>
+    <div class="panel"><h3>6. צעד אחד קטן</h3><p>קריאה לפעולה אחת בכל מודעה: “שלחו הודעה בוואטסאפ”. לא שלוש אפשרויות. כל בחירה נוספת מורידה המרה.</p></div>
+  </div>
+</section>
+
+<section id="audience">
+  <span class="eyebrow">קהלי יעד</span>
+  <h2>שלושה קהלים, שלושה מסרים</h2>
+  <div class="two">
+    <div class="panel"><span class="chip gold">קהל ראשי</span><h3>“רוצים לחזור לזוז”</h3><p>גילאי 45–70, פתח תקווה ובני ברק, ראש העין, גבעת שמואל, קריית אונו, ברדיוס 12 ק״מ. תחומי עניין: הליכה, גינון, נכדים, בריאות טבעית.</p><p class="muted">שירותים: דיקור, עיסוי רפואי, כוסות רוח, קינזיוטייפינג.</p></div>
+    <div class="panel"><span class="chip gold">קהל משני</span><h3>“יושבים מול מסך”</h3><p>גילאי 28–45, תל אביב, רמת אביב והרצליה. עובדי הייטק ומשרדים, מתאמנים בחדר כושר, רצים.</p><p class="muted">שירותים: עיסוי רפואי, קינזיוטייפ, דיקור. סניף רמת אביב.</p></div>
+    <div class="panel"><span class="chip gold">קהל שלישי</span><h3>“מחפשים שקט”</h3><p>נשים וגברים בגילאי 30–60 שמתעניינים ביוגה, מדיטציה, רוחניות, קבלה ותזונה טבעית.</p><p class="muted">שירותים: פרחי באך, הילינג, טיפול טבעי להפגת מתח.</p></div>
+  </div>
+</section>
+
+<section id="facebook">
+  <span class="eyebrow">פייסבוק ואינסטגרם</span>
+  <h2>5 מודעות מוכנות לפרסום</h2>
+  <p class="muted">משמאל ההדמיה של הקריאייטיב והנחיית הצילום. מימין הטקסט המלא להעתקה. פורמט מומלץ: 1:1 לפיד ו-9:16 לסטורי ולרילס.</p>
+
+  <!-- AD 1 -->
+  <article class="ad">
+    <div class="frame sq g1" role="img" aria-label="הדמיית מודעה: המדרגות לא צריכות להיות אויב">
+      <span class="brand">המגנט</span>
+      <span class="shot">צילום: ידיים של יהושע על ברך, אור חלון צד, רקע כהה</span>
+      <span class="hl">המדרגות לא צריכות<br>להיות אויב.</span>
+      <span class="sub">טיפול טבעי בכאבי ברכיים · פתח תקווה</span>
+      <span class="cta">שלחו הודעה</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">מודעה 1 · כאבי ברכיים</span><span class="chip">קהל ראשי</span><span class="chip">יעד: הודעות וואטסאפ</span></div>
+      <div class="copy"><header><span>טקסט ראשי</span><button class="cp" type="button">העתק</button></header><pre>יש רגע כזה שבו מסתכלים על גרם מדרגות ומחשבים כמה זה הולך לכאוב.
+
+בקליניקה של יהושע אלישע אנחנו פוגשים את הרגע הזה כל יום, ומלווים אנשים בחזרה לתנועה. עם מעל עשר שנות ניסיון בדיקור, עיסוי רפואי וקינזיוטייפינג, כל טיפול מתחיל בהקשבה: איפה כואב, ממתי, ומה הכי חסר לכם היום.
+
+מה מקבלים:
+• אבחון ושיחה מעמיקה בפגישה הראשונה
+• תוכנית טיפול אישית וברורה
+• קליניקה שקטה ופרטית בפתח תקווה וברמת אביב
+
+שלחו לנו הודעה, ונחזור אליכם לשיחת היכרות קצרה בלי התחייבות.</pre></div>
+      <div class="copy"><header><span>כותרת · תיאור</span><button class="cp" type="button">העתק</button></header><pre>כותרת: חוזרים לזוז, צעד אחרי צעד
+תיאור: יהושע אלישע · קליניקה לרפואה טבעית
+כפתור: שליחת הודעה</pre></div>
+    </div>
+  </article>
+
+  <!-- AD 2 -->
+  <article class="ad">
+    <div class="frame sq g4" role="img" aria-label="הדמיית מודעה: שמונה שעות מול מסך">
+      <span class="brand">המגנט</span>
+      <span class="shot">צילום: כתפיים וצוואר על מיטת טיפול, אור חם מלמעלה</span>
+      <span class="hl">שמונה שעות מול מסך.<br>שעה אחת בשבילך.</span>
+      <span class="sub">עיסוי רפואי ודיקור · רמת אביב</span>
+      <span class="cta">קביעת תור</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">מודעה 2 · צוואר וגב</span><span class="chip">קהל משני</span><span class="chip">יעד: הודעות</span></div>
+      <div class="copy"><header><span>טקסט ראשי</span><button class="cp" type="button">העתק</button></header><pre>הכתפיים עולות לאוזניים, הצוואר נתפס באמצע ישיבה, והגב מזכיר לכם את עצמו בכל פעם שאתם קמים מהכיסא.
+
+הגוף עובד קשה בשבילכם. מגיע לו שעה של טיפול אמיתי.
+
+בקליניקה של יהושע אלישע ברמת אביב משלבים עיסוי רפואי, דיקור וקינזיוטייפינג, לפי מה שהגוף שלכם צריך. בלי סרט נע, בלי טיפול “אחד לכולם”.
+
+קובעים בהודעה אחת, גם לשעות אחרי העבודה.
+א׳–ה׳ 9:00–19:00 · ו׳ 9:00–14:00</pre></div>
+      <div class="copy"><header><span>כותרת · תיאור</span><button class="cp" type="button">העתק</button></header><pre>כותרת: עיסוי רפואי ברמת אביב
+תיאור: מעל 10 שנות ניסיון · טיפול אישי
+כפתור: שליחת הודעה</pre></div>
+    </div>
+  </article>
+
+  <!-- AD 3 -->
+  <article class="ad">
+    <div class="frame sq g3" role="img" aria-label="הדמיית מודעה: יש סיבה שקוראים לו המגנט">
+      <span class="brand">יהושע אלישע</span>
+      <span class="shot">צילום: פורטרט של יהושע בקליניקה, מבט למצלמה, חצי חיוך</span>
+      <span class="hl">יש סיבה שקוראים לו<br>“המגנט”.</span>
+      <span class="sub">מעל עשור של ידיים שמקשיבות</span>
+      <span class="cta">להכיר את יהושע</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">מודעה 3 · מותג וסיפור</span><span class="chip">כל הקהלים</span><span class="chip">יעד: מעורבות וצפיות</span></div>
+      <div class="copy"><header><span>טקסט ראשי</span><button class="cp" type="button">העתק</button></header><pre>“המגנט”. ככה התחילו לקרוא לי המטופלים, ולקח לי זמן להבין למה.
+
+זה לא קסם. זה עשר שנים של הקשבה לגוף: ללמוד איפה הכאב באמת מתחיל, ולא רק איפה מרגישים אותו. לפעמים כאב בברך מתחיל בכף הרגל. לפעמים כאב ראש מתחיל בכתפיים. לפעמים צריך גם להקשיב למה שהגוף סוחב מבפנים.
+
+בקליניקה אני משלב דיקור, עיסוי רפואי, כוסות רוח, פרחי באך והילינג. כל מטופל מקבל תוכנית שבנויה רק בשבילו.
+
+אשמח להכיר אתכם.
+יהושע אלישע</pre></div>
+      <div class="copy"><header><span>כותרת · תיאור</span><button class="cp" type="button">העתק</button></header><pre>כותרת: נעים להכיר, יהושע אלישע
+תיאור: קליניקה לרפואה טבעית · פתח תקווה ורמת אביב
+כפתור: מידע נוסף</pre></div>
+    </div>
+  </article>
+
+  <!-- AD 4 -->
+  <article class="ad">
+    <div class="frame sq g2" role="img" aria-label="הדמיית מודעה: רגע של שקט בתוך השבוע">
+      <span class="brand">המגנט</span>
+      <span class="shot">צילום: בקבוקוני פרחי באך על עץ כהה, אדי שמן, אור נר</span>
+      <span class="hl">רגע של שקט<br>בתוך השבוע.</span>
+      <span class="sub">פרחי באך · הילינג · טיפול טבעי להפגת מתח</span>
+      <span class="cta">לשיחת היכרות</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">מודעה 4 · רוגע ואיזון</span><span class="chip">קהל שלישי</span><span class="chip">יעד: הודעות</span></div>
+      <div class="copy"><header><span>טקסט ראשי</span><button class="cp" type="button">העתק</button></header><pre>יש תקופות שהראש לא מפסיק לרוץ, גם כשהגוף כבר עייף.
+
+בקליניקה של יהושע אלישע יש מקום לעצור. בשילוב של פרחי באך שמותאמים אישית, הילינג בהשראת תורת הקבלה ומגע מרגיע, נבנה עבורכם תהליך עדין שמחזיר קצת שקט ואיזון לשגרה.
+
+בלי לחץ ובלי שיפוטיות. רק זמן שהוא כולו שלכם.
+
+שלחו הודעה ונתאם שיחת היכרות קצרה.</pre></div>
+      <div class="copy"><header><span>כותרת · תיאור</span><button class="cp" type="button">העתק</button></header><pre>כותרת: זמן לעצור ולנשום
+תיאור: פרחי באך והילינג · יהושע אלישע
+כפתור: שליחת הודעה</pre></div>
+    </div>
+  </article>
+
+  <!-- AD 5 -->
+  <article class="ad">
+    <div class="frame sq g5" role="img" aria-label="הדמיית מודעה: המלצת מטופל">
+      <span class="brand">המגנט</span>
+      <span class="shot">וידאו: מטופל/ת אמיתי/ת מדבר/ת למצלמה, 20–30 שניות</span>
+      <span class="hl">“[ציטוט אמיתי קצר<br>מהמטופל]”</span>
+      <span class="sub">[שם פרטי], [עיר] · מטופל/ת בקליניקה</span>
+      <span class="cta">גם אני רוצה</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">מודעה 5 · רימרקטינג</span><span class="chip">מי שצפה או ביקר באתר</span><span class="chip">יעד: הודעות</span></div>
+      <div class="copy"><header><span>טקסט ראשי · תבנית</span><button class="cp" type="button">העתק</button></header><pre>“[משפט אמיתי מהמטופל, במילים שלו]”
+
+[שם פרטי] הגיע/ה אלינו אחרי [תקופה] של [מה הפריע ביומיום, במילים שלו/ה]. היום [מה השתנה עבורו/ה, במילים שלו/ה].
+
+כל גוף שונה וכל תהליך שונה. אבל כל תהליך מתחיל באותו מקום: שיחה אחת.
+
+עדיין מתלבטים? שלחו הודעה ויהושע יחזור אליכם באופן אישי.</pre></div>
+      <p class="muted" style="font-size:.88rem">חשוב: למלא רק במילים של מטופל אמיתי, עם הסכמה בכתב. לא לנסח המלצות בעצמכם.</p>
+    </div>
+  </article>
+</section>
+
+<section id="tiktok">
+  <span class="eyebrow">טיקטוק · רילס · שורטס</span>
+  <h2>6 תסריטים מוכנים לצילום</h2>
+  <p class="muted" style="max-width:65ch">בטיקטוק מנצח מי שמרגיש אמיתי. לצלם בטלפון, באור טבעי, עם יהושע מול המצלמה. כתוביות בעברית על כל סרטון, כי רוב הצפייה היא בלי קול. את 3 השניות הראשונות צריך לבנות כך שיעצרו את הגלילה.</p>
+
+  <!-- TT1 -->
+  <article class="ad">
+    <div class="frame tall g3" role="img" aria-label="הדמיית טיקטוק: למה קוראים לי המגנט">
+      <span class="brand">@hamagnet</span>
+      <span class="shot">יהושע מול המצלמה בקליניקה, תקריב בינוני</span>
+      <span class="hl">למה קוראים<br>לי “המגנט”?</span>
+      <span class="sub">25–35 שניות</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">טיקטוק 1 · פער סקרנות</span><span class="chip">הסרטון הראשון שמעלים</span></div>
+      <div class="script"><table><thead><tr><th>זמן</th><th>מה רואים</th><th>מה אומרים / כתוב</th></tr></thead><tbody>
+        <tr><td class="t">0–3</td><td>יהושע מסתכל למצלמה, מרים גבה</td><td>“המטופלים שלי קוראים לי ‘המגנט’. לקח לי שנים להבין למה.”</td></tr>
+        <tr><td class="t">3–12</td><td>מעבר לידיים שלו על גב של מטופל, איטי</td><td>“זה התחיל כשמטופלים אמרו לי: ‘איך מצאת בדיוק את הנקודה? לא סיפרתי לך שזה שם.’”</td></tr>
+        <tr><td class="t">12–24</td><td>בחזרה לפנים, חיוך קטן</td><td>“האמת? זה לא כישוף. זה עשר שנים של להקשיב לגוף. כאב בברך מתחיל לפעמים בכף הרגל, וכאב ראש מתחיל בכתפיים.”</td></tr>
+        <tr><td class="t">24–30</td><td>שוט רחב של הקליניקה</td><td>“רוצים לדעת איפה הכאב שלכם באמת מתחיל? תכתבו לי בתגובות איפה כואב.”</td></tr>
+      </tbody></table></div>
+      <div class="copy"><header><span>כיתוב לפוסט</span><button class="cp" type="button">העתק</button></header><pre>10 שנים של ידיים שמקשיבות 🤲 תכתבו בתגובות איפה כואב לכם ואענה לכל אחד
+#המגנט #רפואהטבעית #דיקורסיני #כאבגב #כאביברכיים #פתחתקווה #עיסויטיפולי #בריאות</pre></div>
+    </div>
+  </article>
+
+  <!-- TT2 -->
+  <article class="ad">
+    <div class="frame tall g5" role="img" aria-label="הדמיית טיקטוק: מה הסימנים העגולים">
+      <span class="brand">@hamagnet</span>
+      <span class="shot">תקריב: הנחת כוסות רוח על גב, סאונד ASMR טבעי</span>
+      <span class="hl">מה הסימנים העגולים<br>האלה בעצם?</span>
+      <span class="sub">20–30 שניות</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">טיקטוק 2 · כוסות רוח ASMR</span><span class="chip">פוטנציאל ויראלי גבוה</span></div>
+      <div class="script"><table><thead><tr><th>זמן</th><th>מה רואים</th><th>מה אומרים / כתוב</th></tr></thead><tbody>
+        <tr><td class="t">0–3</td><td>תקריב חד של כוס נצמדת לעור, צליל ה״פופ״</td><td>כתובית: “ראיתם את זה על ספורטאים אולימפיים. מה זה בעצם?”</td></tr>
+        <tr><td class="t">3–15</td><td>עוד כוסות בהדרגה, מצלמה איטית</td><td>קריינות: “כוסות רוח היא שיטה עתיקה שיוצרת ואקום עדין, מושכת את הרקמה למעלה ומעודדת זרימת דם לאזור.”</td></tr>
+        <tr><td class="t">15–24</td><td>הסרת כוס, הסימן העגול</td><td>“הסימנים האלה הם לא חבורה. הם עוברים בדרך כלל תוך כמה ימים.”</td></tr>
+        <tr><td class="t">24–30</td><td>יהושע מחייך למצלמה</td><td>“רוצים לנסות? פתח תקווה ורמת אביב. קישור בביו.”</td></tr>
+      </tbody></table></div>
+      <div class="copy"><header><span>כיתוב לפוסט</span><button class="cp" type="button">העתק</button></header><pre>הצליל הזה 😮‍💨 מי כבר ניסה כוסות רוח?
+#כוסותרוח #cupping #asmr #רפואהסינית #המגנט #עיסוי #טיפולטבעי</pre></div>
+    </div>
+  </article>
+
+  <!-- TT3 -->
+  <article class="ad">
+    <div class="frame tall g4" role="img" aria-label="הדמיית טיקטוק: תרגיל של 20 שניות">
+      <span class="brand">@hamagnet</span>
+      <span class="shot">יהושע יושב על כיסא משרדי ומדגים</span>
+      <span class="hl">יושבים כל היום?<br>תעשו את זה עכשיו.</span>
+      <span class="sub">20–25 שניות</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">טיקטוק 3 · תוכן ערך</span><span class="chip">שמירות ושיתופים</span></div>
+      <div class="script"><table><thead><tr><th>זמן</th><th>מה רואים</th><th>מה אומרים / כתוב</th></tr></thead><tbody>
+        <tr><td class="t">0–3</td><td>יהושע מצביע למצלמה</td><td>“אם אתם צופים בזה מהכיסא במשרד, אל תקומו. תעשו איתי.”</td></tr>
+        <tr><td class="t">3–10</td><td>הטיית ראש איטית הצידה, יד על הכתף הנגדית</td><td>“ראש לצד, יד מחזיקה את הכתף השנייה למטה. נושמים עמוק. 10 שניות.”</td></tr>
+        <tr><td class="t">10–17</td><td>אותו דבר לצד השני</td><td>“עכשיו הצד השני. מרגישים את המתיחה בצוואר?”</td></tr>
+        <tr><td class="t">17–23</td><td>יהושע מחייך</td><td>“זה עוזר לרגע. אם המתח חוזר כל יום, שווה לבדוק מאיפה הוא מגיע. שמרו את הסרטון.”</td></tr>
+      </tbody></table></div>
+      <div class="copy"><header><span>כיתוב לפוסט</span><button class="cp" type="button">העתק</button></header><pre>שמרו לפעם הבאה שהצוואר נתפס 📌 תייגו את הקולגה שצריך את זה
+#כאבצוואר #הייטק #עבודהמשרדית #מתיחות #המגנט #טיפטיפולי #בריאותבעבודה</pre></div>
+      <p class="muted" style="font-size:.88rem">אפשר להפוך לסדרה: “תרגיל של 20 שניות” לגב התחתון, לפרקי הידיים, לעיניים.</p>
+    </div>
+  </article>
+
+  <!-- TT4 -->
+  <article class="ad">
+    <div class="frame tall g2" role="img" aria-label="הדמיית טיקטוק: מה קורה בטיפול הראשון">
+      <span class="brand">@hamagnet</span>
+      <span class="shot">מצלמת גוף ראשון: הדלת נפתחת לקליניקה</span>
+      <span class="hl">מה בדיוק קורה<br>בטיפול הראשון?</span>
+      <span class="sub">30–40 שניות</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">טיקטוק 4 · הורדת חששות</span><span class="chip">ממיר הכי טוב</span></div>
+      <div class="script"><table><thead><tr><th>זמן</th><th>מה רואים</th><th>מה אומרים / כתוב</th></tr></thead><tbody>
+        <tr><td class="t">0–3</td><td>יד פותחת את דלת הקליניקה</td><td>כתובית: “מפחדים מהטיפול הראשון? בואו איתי.”</td></tr>
+        <tr><td class="t">3–12</td><td>כוס תה מוגשת, כורסה, יהושע מקשיב</td><td>“קודם כול יושבים ומדברים. איפה כואב, ממתי, מה מפריע לכם ביומיום.”</td></tr>
+        <tr><td class="t">12–22</td><td>ידיים בודקות כתף, תנועה עדינה</td><td>“אחר כך בדיקה עדינה של הגוף, כדי להבין מאיפה הכאב באמת מגיע.”</td></tr>
+        <tr><td class="t">22–32</td><td>מחטים דקות בתקריב, מטופל רגוע</td><td>“ואז הטיפול עצמו. ולגבי המחטים: הן דקות כמו שערה. רוב האנשים מופתעים כמה זה נעים.”</td></tr>
+        <tr><td class="t">32–38</td><td>יהושע למצלמה</td><td>“ויוצאים עם תוכנית ברורה. זהו. שאלות? כתבו לי.”</td></tr>
+      </tbody></table></div>
+      <div class="copy"><header><span>כיתוב לפוסט</span><button class="cp" type="button">העתק</button></header><pre>בלי הפתעות. ככה נראה הטיפול הראשון אצלי 🍵
+#דיקורסיני #acupuncture #טיפולראשון #המגנט #רפואהטבעית #פתחתקווה #רמתאביב</pre></div>
+    </div>
+  </article>
+
+  <!-- TT5 -->
+  <article class="ad">
+    <div class="frame tall g1" role="img" aria-label="הדמיית טיקטוק: מיתוס או אמת">
+      <span class="brand">@hamagnet</span>
+      <span class="shot">יהושע מחזיק שני שלטים: “מיתוס” / “אמת”</span>
+      <span class="hl">מיתוס או אמת:<br>דיקור כואב?</span>
+      <span class="sub">סדרה · 15–25 שניות לפרק</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">טיקטוק 5 · סדרת “מיתוס או אמת”</span><span class="chip">מבנה חוזר, קל לצילום</span></div>
+      <div class="script"><table><thead><tr><th>פרק</th><th>השאלה</th><th>התשובה של יהושע</th></tr></thead><tbody>
+        <tr><td class="t">1</td><td>“דיקור כואב?”</td><td>מיתוס. המחטים דקות מאוד, ורוב המטופלים מרגישים לכל היותר עקצוץ קטן.</td></tr>
+        <tr><td class="t">2</td><td>“עיסוי רפואי זה עיסוי רגיל חזק יותר”</td><td>מיתוס. עיסוי רפואי מתמקד בבעיה מסוימת ובנוי לפי מה שמצאנו בבדיקה.</td></tr>
+        <tr><td class="t">3</td><td>“הכאב לא תמיד נמצא איפה שכואב”</td><td>אמת. ולפעמים זה המפתח לכל הטיפול.</td></tr>
+        <tr><td class="t">4</td><td>“קינזיוטייפ זה רק לספורטאים”</td><td>מיתוס. הוא מתאים לכל מי שרוצה תמיכה ביומיום.</td></tr>
+      </tbody></table></div>
+      <div class="copy"><header><span>כיתוב לפוסט</span><button class="cp" type="button">העתק</button></header><pre>מיתוס או אמת? כתבו בתגובות מה הייתם עונים לפני שאני עונה 👇
+#מיתוסאואמת #דיקור #המגנט #רפואהטבעית #ידעתם #בריאות</pre></div>
+    </div>
+  </article>
+
+  <!-- TT6 -->
+  <article class="ad">
+    <div class="frame tall g5" role="img" aria-label="הדמיית טיקטוק: יום בקליניקה">
+      <span class="brand">@hamagnet</span>
+      <span class="shot">טיים-לאפס ושוטים קצרים לאורך יום עבודה</span>
+      <span class="hl">יום אחד<br>בקליניקה של המגנט</span>
+      <span class="sub">30–45 שניות · מוזיקה רגועה</span>
+    </div>
+    <div class="stack">
+      <div class="meta"><span class="chip gold">טיקטוק 6 · מאחורי הקלעים</span><span class="chip">מאמץ קטן, אמון גדול</span></div>
+      <div class="script"><table><thead><tr><th>זמן</th><th>מה רואים</th><th>כתובית על המסך</th></tr></thead><tbody>
+        <tr><td class="t">0–3</td><td>שעון 08:30, מפתח בדלת</td><td>“יום אחד בחיים של ‘המגנט’”</td></tr>
+        <tr><td class="t">3–10</td><td>הכנת החדר: מצעים, שמנים, הדלקת נר</td><td>“כל מטופל נכנס לחדר מוכן ושקט”</td></tr>
+        <tr><td class="t">10–22</td><td>שוטים קצרים: כוסות רוח, מחטים, טייפ, בקבוקוני באך (בלי פנים, אלא אם יש הסכמה)</td><td>“6 מטופלים · 6 תוכניות שונות”</td></tr>
+        <tr><td class="t">22–32</td><td>יהושע רושם הערות בכרטיס מטופל</td><td>“הכי חשוב: לזכור מה כל אחד סיפר”</td></tr>
+        <tr><td class="t">32–40</td><td>כיבוי אור, 19:00</td><td>“מחר עוד יום. נתראה?”</td></tr>
+      </tbody></table></div>
+      <div class="copy"><header><span>כיתוב לפוסט</span><button class="cp" type="button">העתק</button></header><pre>ככה נראה יום רגיל אצלי בקליניקה 🕯️
+#dayinmylife #יוםבחיים #המגנט #מטפל #רפואהטבעית #קליניקה #פתחתקווה</pre></div>
+    </div>
+  </article>
+</section>
+
+<section id="calendar">
+  <span class="eyebrow">לוח תוכן · 4 שבועות</span>
+  <h2>מה מעלים ומתי</h2>
+  <p class="muted">קצב מומלץ: 3 סרטונים בשבוע בטיקטוק ורילס, 2 פוסטים בשבוע בפייסבוק, וסטוריז יומיים. שעות שיא: 12:00–13:00 ו-20:00–22:00.</p>
+  <div class="cal"><table>
+    <thead><tr><th>שבוע</th><th>ראשון</th><th>שלישי</th><th>חמישי</th><th>מודעות ממומנות</th></tr></thead>
+    <tbody>
+      <tr><td>1 · היכרות</td><td>טיקטוק 1: למה “המגנט”</td><td>פוסט: מודעה 3 (סיפור)</td><td>טיקטוק 2: כוסות רוח</td><td>מודעה 3 לצפיות · מודעה 1</td></tr>
+      <tr><td>2 · ערך</td><td>טיקטוק 3: תרגיל 20 שניות</td><td>פוסט: מודעה 1 (ברכיים)</td><td>טיקטוק 5: מיתוס 1</td><td>מודעות 1 ו-2</td></tr>
+      <tr><td>3 · אמון</td><td>טיקטוק 4: הטיפול הראשון</td><td>פוסט: המלצה אמיתית</td><td>טיקטוק 5: מיתוס 2</td><td>מודעות 1, 2, 4 · התחלת 5</td></tr>
+      <tr><td>4 · המרה</td><td>טיקטוק 6: יום בקליניקה</td><td>פוסט: מודעה 4 (שקט)</td><td>טיקטוק 3: תרגיל לגב</td><td>מודעה 5 (רימרקטינג) · המנצחות</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="look">
+  <span class="eyebrow">שפה ויזואלית</span>
+  <h2>איך שומרים על מראה יוקרתי</h2>
+  <div class="two">
+    <div class="panel"><h3>צבעים</h3>
+      <div class="palette">
+        <span class="sw"><i style="background:#24423a"></i>#24423A</span>
+        <span class="sw"><i style="background:#9a7a3e"></i>#9A7A3E</span>
+        <span class="sw"><i style="background:#f3f2ee"></i>#F3F2EE</span>
+        <span class="sw"><i style="background:#1d2a26"></i>#1D2A26</span>
+      </div>
+      <p class="muted">ירוק עמוק לביטחון וטבע, זהב עמום ליוקרה, אבן בהירה לנשימה.</p>
+    </div>
+    <div class="panel"><h3>טיפוגרפיה</h3><p><span style="font-family:var(--f-display);font-size:1.3rem;font-weight:700">Frank Ruhl Libre</span> לכותרות</p><p><span style="font-weight:400">Heebo</span> לטקסט ולכתוביות</p><p class="muted">שני הפונטים חינמיים ב-Google Fonts וזמינים גם ב-CapCut וב-Canva.</p></div>
+    <div class="panel"><h3>צילום: כן</h3><ul class="clean"><li>ידיים, תקריבים, מרקמים: עץ, פשתן, זכוכית</li><li>אור חלון צד או נר, צללים רכים</li><li>רקע כהה ומסודר, מעט חפצים</li><li>יהושע אמיתי, רגוע, מבט ישיר</li></ul></div>
+    <div class="panel"><h3>צילום: לא</h3><ul class="clean"><li>תמונות סטוק של אנשים מחייכים</li><li>תאורת פלורסנט לבנה</li><li>יותר משבע מילים על התמונה</li><li>אדום וצהוב, “מבצע!”, סימני קריאה</li></ul></div>
+  </div>
+</section>
+
+<section id="setup">
+  <span class="eyebrow">הגדרות קמפיין ותקציב</span>
+  <h2>מה להגדיר במנהל המודעות</h2>
+  <div class="two">
+    <div class="panel"><h3>תקציב פתיחה מומלץ</h3><p><b>2,000–3,000 ₪ לחודש</b> בפייסבוק ואינסטגרם (כ-70–100 ₪ ליום), ועוד <b>500–1,000 ₪</b> לקידום הטיקטוקים שהצליחו אורגנית (Spark Ads).</p></div>
+    <div class="panel"><h3>מבנה</h3><ul class="clean"><li>קמפיין הודעות: מודעות 1, 2, 4 (קהלים נפרדים)</li><li>קמפיין מעורבות: מודעה 3 וסרטוני טיקטוק</li><li>רימרקטינג: מודעה 5 למי שצפה ב-50% מסרטון</li></ul></div>
+    <div class="panel"><h3>מדדים לבדיקה</h3><ul class="clean"><li>עלות לשיחת וואטסאפ: יעד מתחת ל-25 ₪</li><li>צפייה של 3 שניות: מעל 30%</li><li>אחוז שיחות שהופכות לתור</li></ul><p class="muted">אחרי 7 ימים: לכבות מודעה חלשה ולהעביר את התקציב למנצחת.</p></div>
+    <div class="panel"><h3>תשובה מוכנה לוואטסאפ</h3><div class="copy" style="margin-top:4px"><header><span>הודעה אוטומטית</span><button class="cp" type="button">העתק</button></header><pre>שלום, תודה שפניתם לקליניקה של יהושע אלישע 🌿
+כדי שאוכל לעזור בצורה הכי טובה, ספרו לי בכמה מילים מה מפריע לכם ובאיזה סניף נוח לכם: פתח תקווה או רמת אביב.
+אחזור אליכם באופן אישי בהקדם.</pre></div></div>
+  </div>
+</section>
+
+<section id="rules">
+  <span class="eyebrow">לפני שמפרסמים</span>
+  <div class="warn">
+    <h3>כללים חשובים: מטא, טיקטוק והחוק</h3>
+    <ul class="clean">
+      <li><b>לא לפנות למאפיין אישי.</b> מטא חוסמת מודעות כמו “סובלים מחרדה?” או “יש לך כאבי גב?”. כל הטקסטים כאן נכתבו כך שיעברו אישור.</li>
+      <li><b>לא להבטיח ריפוי.</b> בלי “מעלים כאב לתמיד” או “מרפאים חרדה”. לדבר על תהליך, ליווי והקלה.</li>
+      <li><b>המלצות אמיתיות בלבד</b>, עם הסכמה בכתב מהמטופל לשימוש בשם, בתמונה ובווידאו.</li>
+      <li><b>פרטיות.</b> לא לצלם פנים של מטופל בלי אישור, ולא להציג פרטים רפואיים מזהים.</li>
+      <li>מומלץ להוסיף בתחתית העמוד או בביו: “הטיפול משלים ואינו מחליף ייעוץ או טיפול רפואי.”</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  ערכת הקמפיין נבנתה לפי המידע הציבורי על הקליניקה: אתר yehoshuatherapy.co.il, דף הפייסבוק ואינדקסים של עסקים. לפני הפרסום כדאי לוודא ששעות הפעילות והכתובות עדיין נכונות.
+</footer>
+</div>
+
+<script>
+document.querySelectorAll('button.cp').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var pre=btn.closest('.copy').querySelector('pre');
+    var done=function(){var o=btn.textContent;btn.textContent='הועתק';setTimeout(function(){btn.textContent=o},1400)};
+    var fallback=function(){var r=document.createRange();r.selectNodeContents(pre);var s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='מסומן, העתיקו';setTimeout(function(){btn.textContent='העתק'},1800)};
+    try{navigator.clipboard.writeText(pre.innerText).then(done,fallback)}catch(e){fallback()}
+  });
+});
+</script>
