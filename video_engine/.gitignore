@@ -1,0 +1,5 @@
+build/
+cache/
+tools/
+__pycache__/
+assets/voice/
