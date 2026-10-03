@@ -4,7 +4,7 @@ import numpy as np
 from .compose import over, ease_out, back_out, hexc, blur_fast
 from .text import text_rgba
 
-W, H = 1080, 1920
+from .config import W, H
 _cache = {}
 
 
@@ -85,7 +85,9 @@ def _word_img(word, color, size=86):
     return _cache[key]
 
 
-def draw_captions(img, t, groups, y=1480, size=86, alpha=1.0):
+def draw_captions(img, t, groups, y=None, size=None, alpha=1.0):
+    y = int(H * 0.77) if y is None else y
+    size = size or int(86 * min(W, H) / 1080)
     g = None
     for gr in groups:
         if gr[0]["t"] - 0.06 <= t < gr[0]["g_end"]:

@@ -8,7 +8,7 @@ import numpy as np
 from .masks import photo_mask, video_masks
 from .compose import blur_fast
 
-W, H = 1080, 1920
+from .config import W, H
 
 
 def _cover(img, w, h, fx=0.5, fy=0.5):
@@ -40,13 +40,13 @@ class SlideshowSource:
         self.cache_dir = cache_dir
         self._base = {}
 
-    def _prep(self, path, mode, focus):
-        key = (path, mode, focus)
+    def _prep(self, path, mode, focus, model="u2net_human_seg"):
+        key = (path, mode, focus, model)
         if key in self._base:
             return self._base[key]
         bw, bh = int(W * self.OVERSCAN), int(H * self.OVERSCAN)
         img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
-        m = photo_mask(path, self.cache_dir)
+        m = photo_mask(path, self.cache_dir, model)
         if mode == "fit":
             bg = blur_fast(_cover(img, bw, bh), 40) * 0.45
             fg, (x0, y0, nw, nh) = _fit(img, bw, bh, 0.5)
@@ -76,7 +76,8 @@ class SlideshowSource:
 
     def frame(self, t):
         s = self.shot_at(t)
-        base, mm, plate = self._prep(s["photo"], s.get("mode", "cover"), tuple(s.get("focus", (0.5, 0.5))))
+        base, mm, plate = self._prep(s["photo"], s.get("mode", "cover"), tuple(s.get("focus", (0.5, 0.5))),
+                                     s.get("mask_model", "u2net_human_seg"))
         p = np.clip((t - s["src0"]) / max(s["src1"] - s["src0"], 1e-3), 0, 1)
         z0, z1 = s.get("zoom", (1.0, 1.07))
         z = (z0 + (z1 - z0) * p) / self.OVERSCAN

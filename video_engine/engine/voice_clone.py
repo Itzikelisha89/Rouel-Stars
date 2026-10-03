@@ -49,11 +49,27 @@ def _norm(w):
 
 
 # spellings the transcriber may choose for the same sound
-SAME_SOUND = {"אמיר": "עמיר", "בלשת": "ברשת", "שהכל": "שהכול", "להכל": "להכול"}
+SAME_SOUND = {"אמיר": "עמיר", "בלשת": "ברשת", "שהכל": "שהכול", "להכל": "להכול", "לאור": "לעור", "ציאה": "שיאה"}
+
+
+NUMBER_WORDS = {"120": ["מאה", "עשרים"], "129": ["מאה", "עשרים", "ותשע"], "100": ["מאה"], "10": ["עשר"]}
+
+
+def _expand_numbers(heard):
+    out = []
+    for h in heard:
+        parts = NUMBER_WORDS.get(re.sub(r"[^\d]", "", h["word"]) if re.fullmatch(r"\W*\d+\W*", h["word"]) else "")
+        if parts:
+            d = (h["end"] - h["start"]) / len(parts)
+            out += [{"word": p, "start": h["start"] + i * d, "end": h["start"] + (i + 1) * d} for i, p in enumerate(parts)]
+        else:
+            out.append(h)
+    return out
 
 
 def _align(script_words, heard, offset):
     """Assign each script word the time of the matching heard word (interpolate the rest)."""
+    heard = _expand_numbers(heard)
     sm = difflib.SequenceMatcher(a=[_norm(w) for w in script_words], b=[_norm(h["word"]) for h in heard], autojunk=False)
     times = [None] * len(script_words)
     for blk in sm.get_matching_blocks():
@@ -84,7 +100,8 @@ def build(sentences, ref_wav, wav_out, words_out, pauses, lead=0.8, takes=3, log
             if score >= 0.85:
                 best = (score, a, times); log(f"  sentence {k}: reused take (match {score:.2f})")
         for take in range(takes if best is None else 0):
-            wav = m.generate(clone_text(s), language_id="he", audio_prompt_path=ref_wav)
+            kw = {"audio_prompt_path": ref_wav} if ref_wav else {}  # no ref -> the model's built-in narrator voice
+            wav = m.generate(clone_text(s), language_id="he", **kw)
             a = _trim(resample_poly(wav.squeeze().numpy().astype(np.float32), SR, m.sr), SR)
             tmp = words_out + f".s{k}.wav"
             wavfile.write(tmp, SR, (np.clip(a, -1, 1) * 32767).astype(np.int16))

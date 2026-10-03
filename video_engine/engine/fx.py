@@ -88,7 +88,10 @@ class Ignite(FX):
         if c.t < self.tw: return
         k = c.t - self.tw
         m = c.mask[..., None]
-        bg = scale_about(c.plate(), 1.1 + .03 * k, dx=-90 * k - 40 * float(ease_out(k / .4)), border=REFLECT) * .55
+        if getattr(self, "move_bg", True):
+            bg = scale_about(c.plate(), 1.1 + .03 * k, dx=-90 * k - 40 * float(ease_out(k / .4)), border=REFLECT) * .55
+        else:
+            bg = c.img * .8
         off = int((k * 520) % H)
         bg = bg + _streaks()[H - off:2 * H - off] * .55
         c.img = bg * (1 - m) + c.img * m * 1.05 + rim_light(c.mask, GOLD, 8, 1.6)
@@ -273,7 +276,7 @@ class PopOut(FX):
             fmm = fm[..., None]
             out = out * (1 - fmm) + fi * fmm + rim_light(fm, GOLD, 7, 1.8) * min(1, pop)
         c.img = out
-        c.cap_y = 1840 if a > .5 else c.cap_y
+        c.cap_y = int(H * .955) if a > .5 else c.cap_y
     def sounds(self):
         return [(self.ts, A.whoosh(.35, 300, 2500), .5, "whoosh card"), (self.tw, A.whoosh(.4, 500, 5000, 1.5), .7, "whoosh pop"),
                 (self.tw + .3, A.impact(), .7, "impact pop"), (self.tw + .1, A.pop(), .5, "pop")]
@@ -634,15 +637,15 @@ class Cube(FX):
             self._bgc[key] = g.astype(np.float32)
         im = self._bgc[key].copy()
         num = text_rgba(f"0{i + 1}", 90, tuple(int(v * 255) for v in GOLD), "serif", 700)
-        over(im, num, self.FW - 120, 140, 1)
+        over(im, num, self.FW - 120, self.FH * .11, 1)
         a = float(ease_out(anim))
         wd = gold_fill(text_rgba(word, 200, (255, 255, 255), "serif", 900), "#FFFFFF", "#F3E3B0", "#D4AF37")
         if wd.shape[1] > self.FW - 100: wd = cv2.resize(wd, None, fx=(self.FW - 100) / wd.shape[1], fy=(self.FW - 100) / wd.shape[1])
-        over(im, wd, self.FW / 2 + (1 - a) * 160, 600, a)
+        over(im, wd, self.FW / 2 + (1 - a) * 160, self.FH * .45, a)
         lw = int((self.FW - 200) * float(ease_out(prog(anim, .3, 1))))
-        cv2.rectangle(im, (self.FW // 2 + (self.FW - 200) // 2 - lw, 740), (self.FW // 2 + (self.FW - 200) // 2, 748), tuple(float(v) for v in RED), -1)
+        ly = int(self.FH * .58); cv2.rectangle(im, (self.FW // 2 + (self.FW - 200) // 2 - lw, ly), (self.FW // 2 + (self.FW - 200) // 2, ly + 8), tuple(float(v) for v in RED), -1)
         st = text_rgba(sub, 58, (220, 220, 210), "sans", 500)
-        over(im, st, self.FW / 2, 850 + (1 - a) * 40, float(prog(anim, .4, 1)))
+        over(im, st, self.FW / 2, self.FH * .68 + (1 - a) * 40, float(prog(anim, .4, 1)))
         sweep = np.clip(1 - np.abs(np.arange(self.FW)[None, :] + np.arange(self.FH)[:, None] * .4 - (anim * 1800 - 300)) / 80, 0, 1)
         return im + sweep[..., None] * .12
     def theta(self, t):
@@ -694,12 +697,12 @@ class Cube(FX):
 
 
 # ======================================================================= E12
-@lru_cache(maxsize=8)
-def stamp_img(text, angle):
-    t = text_rgba(text, 110, (214, 40, 40), "sans", 900)
+@lru_cache(maxsize=16)
+def stamp_img(text, angle, rgb=(214, 40, 40)):
+    t = text_rgba(text, 110, rgb, "sans", 900)
     h, w = t.shape[0] + 60, t.shape[1] + 60
     im = np.zeros((h, w, 4), np.float32)
-    red = (214 / 255, 40 / 255, 40 / 255, 1)
+    red = (rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, 1)
     cv2.rectangle(im, (8, 8), (w - 9, h - 9), red, 9, cv2.LINE_AA)
     cv2.rectangle(im, (24, 24), (w - 25, h - 25), red, 3, cv2.LINE_AA)
     over(im, t, w / 2, h / 2)
@@ -726,7 +729,7 @@ class Stamps(FX):
             if t < tl - .12: continue
             q = prog(t, tl - .12, tl)
             s = 2.4 - 1.4 * float(ease_in(q))
-            im = stamp_img(txt, ang)
+            im = stamp_img(txt, ang, getattr(self, "stamp_rgb", (214, 40, 40)))
             tf = tfall0 + i * .1
             fy, fr, fa = 0, 0, 1
             if t > tf:
@@ -744,19 +747,21 @@ class Stamps(FX):
             if abs(t - tl) < .25: c.shake = max(c.shake, 20 * ex(-(t - tl) * 12) if t >= tl else 0)
         if getattr(self, "tprice", None) is not None and t >= self.tprice - .1:
             a = float(ease_out(prog(t, self.tprice - .1, self.tprice + .15)))
-            v = int(round(999 * (1 - float(ease_in(prog(t, self.tprice, self.tzero))))))
+            v0, v1 = getattr(self, "price_from", 999), getattr(self, "price_to", 0)
+            py = getattr(self, "price_y", 1380)
+            v = int(round(v0 + (v1 - v0) * float(ease_in(prog(t, self.tprice, self.tzero)))))
             zero = t >= self.tzero
-            lab = text_rgba("המחיר של תירוץ", 58, (230, 230, 230), "sans", 600)
-            over(c.img, lab, W / 2, 1230, a)
-            col = (230, 57, 70) if zero else (255, 255, 255)
+            lab = text_rgba(getattr(self, "price_label", "המחיר של תירוץ"), 58, (230, 230, 230), "sans", 600)
+            over(c.img, lab, W / 2, py - 150, a)
+            col = getattr(self, "price_hit_color", (230, 57, 70)) if zero else (255, 255, 255)
             num = text_rgba(f"₪{v:,}", 210, col, "sans", 900, 0)
             sc = 1 + .35 * ex(-(t - self.tzero) * 8) if zero else 1
-            over(c.img, card(num.shape[0] - 40, num.shape[1] + 40, (0, 0, 0), .45, 30), W / 2, 1380, a)
-            over(c.img, num, W / 2, 1380, a, sc)
+            over(c.img, card(num.shape[0] - 40, num.shape[1] + 40, (0, 0, 0), .45, 30), W / 2, py, a)
+            over(c.img, num, W / 2, py, a, sc)
             if zero:
                 c.shake = max(c.shake, 30 * ex(-(t - self.tzero) * 7))
     def pre(self, c):
-        if c.t > self.tw - .2: c.cap_y = 1700
+        if c.t > self.tw - .2: c.cap_y = getattr(self, "cap_y", 1700)
         if getattr(self, "tzero", None) is not None and c.t >= self.tzero: c.flash += max(0, .45 - (c.t - self.tzero) * 2.5); c.flash_color = (.9, .15, .15)
     def sounds(self):
         out = []
@@ -775,12 +780,13 @@ class Stamps(FX):
 class CommentDM(FX):
     """A comment box where the code word gets typed, then a private-message notification."""
     stage = 70
-    def pre(self, c): c.cap_y = 1300
+    def pre(self, c): c.cap_y = getattr(self, "cap_y", 1300)
     def apply(self, c):
         t = c.t
         a = float(ease_out(prog(t, self.tbox, self.tbox + .3)))
-        y = 2150 - (2150 - 1560) * a
-        bw, bh = 980, 136
+        by_ = getattr(self, "box_y", 1560)
+        y = (H + 230) - ((H + 230) - by_) * a
+        bw, bh = getattr(self, "box_w", 980), 136
         box = card(bh, bw, (.12, .12, .13), .96, bh // 2, border=(.3, .3, .32), bw=2)
         over(c.img, box, W / 2, y)
         # avatar (right), send (left)
@@ -820,13 +826,13 @@ class CommentDM(FX):
             cv2.rectangle(env, (25, 33), (85, 77), (.1, .1, .1, 1), 4, cv2.LINE_AA)
             cv2.polylines(env, [np.array([[25, 33], [55, 58], [85, 33]], np.int32)], False, (.1, .1, .1, 1), 4, cv2.LINE_AA)
             over(ban, env, 980 - 95, 100)
-            t1i = text_rgba("הודעה פרטית חדשה", 46, (255, 255, 255), "sans", 800)
-            t2i = text_rgba(f"היי! הנה כל מה שרצית לדעת על {self.code}", 38, (190, 190, 195), "sans", 400)
+            t1i = text_rgba(getattr(self, "dm_title", "הודעה פרטית חדשה"), 46, (255, 255, 255), "sans", 800)
+            t2i = text_rgba(getattr(self, "dm_body", f"היי! הנה כל מה שרצית לדעת על {self.code}"), 38, (190, 190, 195), "sans", 400)
             nw = text_rgba("עכשיו", 32, (150, 150, 155), "sans", 400)
             over_tl(ban, t1i, int(980 - 175 - t1i.shape[1]), 30)
             over_tl(ban, t2i, int(980 - 175 - t2i.shape[1]), 102)
             over_tl(ban, nw, 40, 34)
-            over(c.img, ban, W / 2, by)
+            over(c.img, ban, getattr(self, "dm_x", W / 2), by)
     def sounds(self):
         out = [(self.tbox, A.whoosh(.3, 400, 3000), .4, "box in")]
         for i in range(len(self.code)): out.append((self.tw + i * .09, A.key_tap(), .7, "key"))
@@ -1031,3 +1037,117 @@ class FriendTag(FX):
     def sounds(self):
         return [(self.tw, A.pop(), .7, "name tag"), (self.tw, A.blip(1400, .1), .5, ""),
                 (self.tlove, A.shimmer(1.4), .5, "hearts")]
+
+
+# ======================================================================= ad pieces
+class Badge(FX):
+    """A seal lands on the word (stamp + shimmer), stays until t1."""
+    stage = 70
+    def _img(self):
+        if not hasattr(self, "_b"):
+            R = 190; S = 2 * R + 40
+            b = np.zeros((S, S, 4), np.float32)
+            col = tuple(float(v) for v in getattr(self, "color", GOLD)) + (1,)
+            for k in range(36):  # scalloped edge
+                a = k / 36 * 2 * np.pi
+                cv2.circle(b, (int(S / 2 + np.cos(a) * (R - 6)), int(S / 2 + np.sin(a) * (R - 6))), 22, col, -1, cv2.LINE_AA)
+            cv2.circle(b, (S // 2, S // 2), R - 8, col, -1, cv2.LINE_AA)
+            b = gold_fill(b) if getattr(self, "gold", True) else b
+            b[..., 3] = (b[..., 3] > 0) * 1.0
+            cv2.circle(b, (S // 2, S // 2), R - 34, (1, 1, 1, 1), 4, cv2.LINE_AA)
+            ink = getattr(self, "ink", (40, 30, 8))
+            for txt, sz, dy in zip(self.lines, (64, 44, 40), (-60, 10, 70)):
+                ti = text_rgba(txt, sz, ink, "sans", 900)
+                if ti.shape[1] > 2 * R - 90: ti = cv2.resize(ti, None, fx=(2 * R - 90) / ti.shape[1], fy=(2 * R - 90) / ti.shape[1])
+                over(b, ti, S / 2, S / 2 + dy)
+            M = cv2.getRotationMatrix2D((S / 2, S / 2), getattr(self, "angle", -10), 1)
+            self._b = cv2.warpAffine(b, M, (S, S))
+        return self._b
+    def apply(self, c):
+        k = c.t - self.tw
+        if k < -.1: return
+        q = prog(c.t, self.tw - .1, self.tw + .02)
+        out = 1 - prog(c.t, self.t1 - .25, self.t1)
+        x, y = self.xy
+        over(c.img, self._img(), x, y, min(1, q * 2) * out, (2.3 - 1.3 * float(ease_in(q))) * getattr(self, "scale", 1.0))
+        if k >= 0:
+            c.shake = max(c.shake, 18 * ex(-k * 9))
+            sw = np.clip(1 - np.abs(np.arange(c.img.shape[1])[None, :] - (x - 300 + k * 900)) / 60, 0, 1)
+            if k < .8: c.img += (sw[..., None] * .12) * np.ones_like(c.img[..., :1])
+    def sounds(self): return [(self.tw, A.stamp(), .85, "seal"), (self.tw + .05, A.shimmer(1.4), .5, "shimmer")]
+
+
+class LowerThird(FX):
+    """TV name super: slides in on the word, optional quote card later."""
+    stage = 70
+    def apply(self, c):
+        t = c.t
+        a = float(ease_out(prog(t, self.tw, self.tw + .4))) * (1 - prog(t, self.t1 - .3, self.t1))
+        if a > 0:
+            n1 = text_rgba(self.name, 64, (255, 255, 255), "sans", 900)
+            n2 = text_rgba(self.role, 40, (220, 240, 225), "sans", 500)
+            w = max(n1.shape[1], n2.shape[1]) + 80
+            bar = card(150, w, hexc("#0E5A5A"), .92, 18)
+            cv2.rectangle(bar, (w - 14, 0), (w, 150), tuple(float(v) for v in hexc("#7AB83C")) + (1,), -1)
+            over_tl(bar, n1, w - 40 - n1.shape[1], 8); over_tl(bar, n2, w - 40 - n2.shape[1], 84)
+            x, y = self.xy
+            over(c.img, bar, x + (1 - a) * 600, y, a)
+        if getattr(self, "quote", None) and t >= self.tq:
+            q = float(back_out(prog(t, self.tq, self.tq + .35), 1.3)) * (1 - prog(t, self.t1 - .3, self.t1))
+            qi = text_rgba(self.quote, 74, (255, 255, 255), "serif", 800)
+            qa = text_rgba("— " + self.name, 40, (190, 230, 170), "sans", 600)
+            w = qi.shape[1] + 90
+            qc = card(qi.shape[0] + 110, w, (0, 0, 0), .5, 26, border=hexc("#7AB83C"), bw=3)
+            over(qc, qi, w / 2, qi.shape[0] / 2 + 18); over_tl(qc, qa, w - 45 - qa.shape[1], qi.shape[0] + 36)
+            over(c.img, qc, self.qxy[0], self.qxy[1], min(1, q * 1.5), max(.01, q))
+    def sounds(self):
+        out = [(self.tw, A.whoosh(.35, 400, 3500), .45, "super in")]
+        if getattr(self, "quote", None): out.append((self.tq, A.pop(), .5, "quote"))
+        return out
+
+
+class EndCard(FX):
+    """Brand end card: product, logo, slogan, phone, site, disclaimer."""
+    stage = 75
+    def pre(self, c):
+        if c.t >= self.tw + .3: c.cap_hide = True
+    def _static(self):
+        if hasattr(self, "_s"): return self._s
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        r = np.sqrt(((xx - W * .3) / W) ** 2 + ((yy - H * .5) / H) ** 2)
+        g = np.clip(r * 1.5, 0, 1)[..., None]
+        bg = hexc("#1F7A72") * (1 - g) + hexc("#06302F") * g
+        prod = cv2.cvtColor(cv2.imread(self.product), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
+        pm = cv2.imread(self.product_mask, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255
+        logo = cv2.cvtColor(cv2.imread(self.logo, cv2.IMREAD_UNCHANGED), cv2.COLOR_BGRA2RGBA).astype(np.float32) / 255
+        self._s = (bg.astype(np.float32), prod, pm, logo)
+        return self._s
+    def apply(self, c):
+        t = c.t; k = t - self.tw
+        a = float(ease_io(prog(t, self.tw, self.tw + .6)))
+        bg, prod, pm, logo = self._static()
+        out = c.img * (1 - a) + bg * a
+        # product (cut out with its matte) slides in from the left with a soft shadow
+        s = .62; ph, pw = int(prod.shape[0] * s), int(prod.shape[1] * s)
+        pr = cv2.resize(prod, (pw, ph), interpolation=cv2.INTER_AREA); m = cv2.resize(pm, (pw, ph))
+        rgba = np.dstack([pr, m])
+        px = int(W * .27 - (1 - float(ease_out(prog(t, self.tw + .1, self.tw + .8)))) * 500)
+        sh = rgba.copy(); sh[..., :3] = 0; sh[..., 3] = cv2.GaussianBlur(m, (0, 0), 18) * .55
+        over(out, sh, px + 25, H * .53 + 30, a); over(out, rgba, px, H * .52, a)
+        # logo (white background knocked out) and texts on the right, staggered
+        lg = logo.copy()
+        if lg.shape[2] == 4 and lg[..., 3].min() > .99:
+            lg[..., 3] = np.clip((.92 - lg[..., :3].min(2)) / .25, 0, 1)
+        lg[..., :3] = np.where(lg[..., :3].mean(2, keepdims=True) < .5, 1.0, lg[..., :3])  # dark teal text -> white on teal
+        sc = 520 / lg.shape[1]
+        def item(img, x, y, t0):
+            q = float(ease_out(prog(t, t0, t0 + .45)))
+            over(out, img, x, y + (1 - q) * 40, q * a)
+        item(cv2.resize(lg, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA), W * .72, H * .22, self.tw + .3)
+        item(gold_fill(text_rgba(self.title, 96, (255, 255, 255), "serif", 900), "#FFFFFF", "#F3E3B0", "#D4AF37"), W * .72, H * .44, self.tw + .5)
+        item(text_rgba(self.slogan, 56, (200, 235, 180), "sans", 700), W * .72, H * .56, self.tw + .7)
+        item(text_rgba(self.phone, 70, (255, 255, 255), "sans", 900), W * .72, H * .69, self.tw + .9)
+        item(text_rgba(self.site, 44, (220, 230, 230), "sans", 500), W * .72, H * .78, self.tw + 1.0)
+        item(text_rgba(self.disclaimer, 28, (170, 195, 190), "sans", 400), W * .5, H * .95, self.tw + 1.1)
+        c.img = out
+    def sounds(self): return [(self.tw, A.whoosh(.6, 200, 2500), .5, "end card"), (self.tw + .5, A.shimmer(2.0), .45, "logo shimmer")]

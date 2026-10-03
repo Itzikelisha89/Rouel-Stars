@@ -3,22 +3,21 @@ import os
 import cv2
 import numpy as np
 
-_session = None
+_sessions = {}
 
 
-def _sess():
-    global _session
-    if _session is None:
+def _sess(model="u2net_human_seg"):
+    if model not in _sessions:
         from rembg import new_session
-        _session = new_session("u2net_human_seg")
-    return _session
+        _sessions[model] = new_session(model)
+    return _sessions[model]
 
 
-def matte(bgr):
+def matte(bgr, model="u2net_human_seg"):
     from rembg import remove
     from PIL import Image
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-    m = remove(Image.fromarray(rgb), only_mask=True, session=_sess())
+    m = remove(Image.fromarray(rgb), only_mask=True, session=_sess(model))
     m = np.asarray(m).astype(np.float32) / 255.0
     # tidy: close small holes, soften the edge slightly
     m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
@@ -31,11 +30,18 @@ def matte(bgr):
     return cv2.GaussianBlur(m, (0, 0), 1.2)
 
 
-def photo_mask(path, cache_dir):
+def photo_mask(path, cache_dir, model="u2net_human_seg"):
+    """model: u2net_human_seg for people, isnet-general-use for products/objects."""
     os.makedirs(cache_dir, exist_ok=True)
-    out = os.path.join(cache_dir, os.path.splitext(os.path.basename(path))[0] + "_mask.png")
+    tag = "" if model == "u2net_human_seg" else "_" + model
+    out = os.path.join(cache_dir, os.path.splitext(os.path.basename(path))[0] + tag + "_mask.png")
     if not os.path.exists(out):
-        m = matte(cv2.imread(path))
+        m = matte(cv2.imread(path), model)
+        if model != "u2net_human_seg":  # objects: fill enclosed holes (e.g. white cream inside a jar)
+            b = (m > .5).astype(np.uint8)
+            ff = b.copy(); cv2.floodFill(ff, np.zeros((b.shape[0] + 2, b.shape[1] + 2), np.uint8), (0, 0), 2)
+            holes = (ff == 0).astype(np.float32)
+            m = np.maximum(m, cv2.GaussianBlur(holes, (0, 0), 1.5))
         cv2.imwrite(out, (m * 255).astype(np.uint8))
     return cv2.imread(out, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
 

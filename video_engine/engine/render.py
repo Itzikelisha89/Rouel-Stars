@@ -13,10 +13,13 @@ def _job(args):
     return (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes()
 
 
-def render(frame_fn, duration, out_path, fps=30, size=(1080, 1920), audio=None,
+def render(frame_fn, duration, out_path, fps=30, size=None, audio=None,
            workers=4, t0=0.0, crf=16, preset="slow"):
     global _FN
     _FN = frame_fn
+    if size is None:
+        from .config import W, H
+        size = (W, H)
     n = int(round((duration - t0) * fps))
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
            "-s", f"{size[0]}x{size[1]}", "-r", str(fps), "-i", "-"]

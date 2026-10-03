@@ -3,7 +3,7 @@ import numpy as np
 from .look import grade, raw_gray, finish, caption_groups, draw_captions
 from .compose import shake_offset, translate, scale_about
 
-W, H = 1080, 1920
+from .config import W, H
 
 
 class Ctx:
@@ -11,7 +11,7 @@ class Ctx:
         self.t, self.img, self.mask, self.src_t, self.shot, self.p = t, img, mask, src_t, shot, p
         self._plate_fn, self._plate = plate_fn, None
         self.frozen = frozen
-        self.raw = False; self.grade = 1.0; self.cap_hide = False; self.cap_y = 1480
+        self.raw = False; self.grade = 1.0; self.cap_hide = False; self.cap_y = int(H * 0.77)
         self.cap_alpha = 1.0; self.shake = 0.0; self.flash = 0.0; self.flash_color = (1, 1, 1)
         self.zoom = 1.0; self.blackout = 0.0
 

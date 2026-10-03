@@ -3,3 +3,5 @@ cache/
 tools/
 __pycache__/
 assets/voice/
+build_arnica/
+assets/arnica/
