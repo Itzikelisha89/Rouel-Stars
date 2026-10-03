@@ -1,7 +1,7 @@
 """Narration in Ido's own voice (with his consent): Chatterbox Multilingual (Hebrew),
 zero-shot from a short reference recording; word timings come from transcribing the
 result with ivrit.ai (engine/transcribe.py). Models download once from huggingface.co."""
-import difflib, json
+import difflib, json, os, re
 import numpy as np
 from scipy.signal import resample_poly
 from .audio import SR, write_wav
@@ -14,37 +14,93 @@ _model = None
 def _tts():
     global _model
     if _model is None:
+        import glob, os, torch
+        torch.set_num_threads(os.cpu_count())
         from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+        from chatterbox.models.tokenizers import tokenizer as tk
+        from dicta_onnx import Dicta
+        # Hebrew niqqud (Dicta) so names and words are pronounced correctly
+        tk._dicta = Dicta(glob.glob(os.path.join(os.path.dirname(__file__), "..", "tools", "models", "dicta*.onnx"))[0])
         _model = ChatterboxMultilingualTTS.from_pretrained(device="cpu")
     return _model
 
 
-def build(sentences, ref_wav, wav_out, words_out, pauses, lead=0.8):
+def clone_text(s):
+    """Spell non-Hebrew bits phonetically so the Hebrew voice says them right."""
+    for a, b in (("ב-AI", "בְּאֵיי-אַיי"), ("ה-AI", "הָאֵיי-אַיי"), ("AI", "אֵיי-אַיי"), ("—", ","), ("…", ".")):
+        s = s.replace(a, b)
+    return s
+
+
+def _trim(a, sr, thresh=0.02, pad=0.06):
+    idx = np.where(np.abs(a) > thresh)[0]
+    if not len(idx):
+        return a
+    return a[max(0, idx[0] - int(pad * sr)):idx[-1] + int(pad * sr)]
+
+
+def _norm(w):
+    w = re.sub(r"[\u200e\u200f\u202a-\u202e]", "", w)  # bidi marks from the transcriber
+    w = w.strip(",.?!-—…\"").replace("-", "").replace(" ", "")
+    for a in ("אייאיי", "איאיי"):
+        w = w.replace(a, "AI")
+    w = re.sub(r"A?\.?I", "AI", w)
+    return SAME_SOUND.get(w, w)
+
+
+# spellings the transcriber may choose for the same sound
+SAME_SOUND = {"אמיר": "עמיר", "בלשת": "ברשת", "שהכל": "שהכול", "להכל": "להכול"}
+
+
+def _align(script_words, heard, offset):
+    """Assign each script word the time of the matching heard word (interpolate the rest)."""
+    sm = difflib.SequenceMatcher(a=[_norm(w) for w in script_words], b=[_norm(h["word"]) for h in heard], autojunk=False)
+    times = [None] * len(script_words)
+    for blk in sm.get_matching_blocks():
+        for i in range(blk.size):
+            h = heard[blk.b + i]; times[blk.a + i] = (h["start"], h["end"])
+    # unmatched words: spread proportionally between known neighbours
+    last = heard[-1]["end"] if heard else 0.5
+    for i in range(len(times)):
+        if times[i] is None:
+            p = next((times[j][1] for j in range(i - 1, -1, -1) if times[j]), 0.0)
+            n = next((times[j][0] for j in range(i + 1, len(times)) if times[j]), last)
+            times[i] = (p, max(p + .05, p + (n - p) / 2))
+    return [(offset + s, offset + e) for s, e in times], sm.ratio()
+
+
+def build(sentences, ref_wav, wav_out, words_out, pauses, lead=0.8, takes=3, log=print):
+    from scipy.io import wavfile
     m = _tts()
-    parts, spans, t = [np.zeros(int(lead * SR), np.float32)], [], lead
+    parts, words, t = [np.zeros(int(lead * SR), np.float32)], [], lead
     for k, s in enumerate(sentences):
-        wav = m.generate(tts_text(s).replace("אייאיי", "AI"), language_id="he", audio_prompt_path=ref_wav)
-        a = resample_poly(wav.squeeze().numpy().astype(np.float32), SR, m.sr)
-        spans.append((t, t + len(a) / SR)); parts.append(a); t += len(a) / SR
+        disp = display_words(s)
+        best = None
+        tmp = words_out + f".s{k}.wav"
+        if os.path.exists(tmp) and os.path.exists(tmp + ".json"):  # resume: reuse a finished take
+            from scipy.io import wavfile as _wf
+            a = _wf.read(tmp)[1].astype(np.float32) / 32767
+            times, score = _align(disp, json.load(open(tmp + ".json")), 0.0)
+            if score >= 0.85:
+                best = (score, a, times); log(f"  sentence {k}: reused take (match {score:.2f})")
+        for take in range(takes if best is None else 0):
+            wav = m.generate(clone_text(s), language_id="he", audio_prompt_path=ref_wav)
+            a = _trim(resample_poly(wav.squeeze().numpy().astype(np.float32), SR, m.sr), SR)
+            tmp = words_out + f".s{k}.wav"
+            wavfile.write(tmp, SR, (np.clip(a, -1, 1) * 32767).astype(np.int16))
+            heard = transcribe(tmp, tmp + ".json")
+            times, score = _align(disp, heard, 0.0)
+            log(f"  sentence {k} take {take + 1}: match {score:.2f} | heard: {' '.join(h['word'] for h in heard)}")
+            if best is None or score > best[0]:
+                best = (score, a, times)
+            if score >= 0.9:
+                break
+        score, a, times = best
+        for w, (s0, s1) in zip(disp, times):
+            words.append({"word": w, "start": round(t + s0, 3), "end": round(t + s1, 3), "sentence": k})
+        parts.append(a); t += len(a) / SR
         parts.append(np.zeros(int(pauses[k] * SR), np.float32)); t += pauses[k]
     audio = np.concatenate(parts)
     write_wav(wav_out, audio * 0.95)
-    heard = transcribe(wav_out, words_out + ".asr.json")
-    # align the transcript to the script words, so captions keep the exact script spelling
-    script = [(k, w) for k, s in enumerate(sentences) for w in display_words(s)]
-    norm = lambda w: w.strip(",.?!-—…\"").replace("-", "")
-    sm = difflib.SequenceMatcher(a=[norm(w) for _, w in script], b=[norm(h["word"]) for h in heard], autojunk=False)
-    times = [None] * len(script)
-    for blk in sm.get_matching_blocks():
-        for i in range(blk.size):
-            times[blk.a + i] = (heard[blk.b + i]["start"], heard[blk.b + i]["end"])
-    # words the ASR missed: interpolate inside their sentence span
-    words = []
-    for i, (k, w) in enumerate(script):
-        if times[i] is None:
-            prev = next((times[j][1] for j in range(i - 1, -1, -1) if times[j]), spans[k][0])
-            nxt = next((times[j][0] for j in range(i + 1, len(script)) if times[j]), spans[k][1])
-            times[i] = (prev, max(prev + .05, (prev + nxt) / 2))
-        words.append({"word": w, "start": round(times[i][0], 3), "end": round(times[i][1], 3), "sentence": k})
     json.dump(words, open(words_out, "w"), ensure_ascii=False, indent=1)
     return audio, words

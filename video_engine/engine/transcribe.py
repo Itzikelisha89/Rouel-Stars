@@ -27,15 +27,27 @@ def transcribe(media, out_json, lang="he"):
     model = ensure_model()
     wav = out_json + ".16k.wav"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", media, "-ar", "16000", "-ac", "1", wav], check=True)
-    base = out_json[:-5]
-    # --max-len 1 + --split-on-word => one segment per word with its own timestamps
-    subprocess.run([WHISPER, "-m", model, "-f", wav, "-l", lang, "-ml", "1", "-sow",
-                    "-oj", "-of", base, "-t", str(os.cpu_count())], check=True)
+    base = out_json + ".whisper"
+    # full JSON with DTW token times; words are rebuilt from tokens (a leading space starts a word)
+    subprocess.run([WHISPER, "-m", model, "-f", wav, "-l", lang, "-ojf", "-of", base,
+                    "-dtw", "large.v3.turbo", "-nfa", "-t", str(os.cpu_count())], check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     j = json.load(open(base + ".json"))
     words = []
     for seg in j["transcription"]:
-        w = seg["text"].strip()
-        if w:
-            words.append({"word": w, "start": seg["offsets"]["from"] / 1000, "end": seg["offsets"]["to"] / 1000})
+        seg_end = seg["offsets"]["to"] / 1000
+        for tok in seg.get("tokens", []):
+            txt = tok["text"]
+            if txt.startswith("[_") or not txt.strip():
+                continue
+            t = tok.get("t_dtw", -1)
+            t = t / 100 if t is not None and t >= 0 else tok["offsets"]["from"] / 1000
+            if txt.startswith(" ") or not words:
+                words.append({"word": txt.strip(), "start": t, "end": seg_end})
+            else:
+                words[-1]["word"] += txt
+        # end of a word = start of the next word in the segment
+    for k in range(len(words) - 1):
+        words[k]["end"] = max(words[k]["start"] + .04, min(words[k]["end"], words[k + 1]["start"]))
     json.dump(words, open(out_json, "w"), ensure_ascii=False, indent=1)
     return words
