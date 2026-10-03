@@ -5,9 +5,11 @@ from multiprocessing import get_context
 import arnica_project as AP
 ed, tm, raw, sr = AP.build()
 Wd = ed.ws
-T = [("title", Wd(2, "הארניקה")["t"] + .7), ("comment", Wd(8, "הפלא")["t"] + 1.6), ("gift", Wd(10, "במתנה")["t"] + .5),
-     ("phone", Wd(11, "באתר")["t"] + .25), ("phone2", Wd(11, "בטלפון")["t"] + .6), ("end", ed.duration - .1),
-     ("erase", Wd(6, "מורחים")["t"] + .9), ("pain", Wd(5, "נקע")["t"] + .2)]
+T = [("gray", 1.0), ("ignite", Wd(2, "טבעית")["t"] + .2), ("shatter", Wd(2, "להקל")["t"] + .6), ("pop", Wd(3, "אלישע")["t"]),
+     ("super", Wd(3, "טבעית")["t"]), ("title", Wd(4, "הארניקה")["t"] + .8), ("cube", Wd(5, "שיאה")["t"] + .15),
+     ("stamps", Wd(6, "כאבי")["t"] + .3), ("erase", Wd(7, "פעם")["t"] + .4), ("seal", Wd(8, "רגיש")["t"]),
+     ("reviews", Wd(9, "הפלא")["t"] + .5), ("quote", Wd(10, "גדולה")["t"]), ("price", Wd(11, "עשרים")["t"] + .3),
+     ("gift", Wd(12, "במתנה")["t"] + .5), ("end1", Wd(13, "יהושע")["t"]), ("end2", ed.duration - .1)]
 def job(a):
     n, t = a
     im = (np.clip(ed.frame(t), 0, 1) * 255).astype(np.uint8)

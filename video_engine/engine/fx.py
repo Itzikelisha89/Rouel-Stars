@@ -83,7 +83,7 @@ class Ignite(FX):
     """Gray, unedited opening -> on the word: color snap, moving bg, glow, shake, flash."""
     stage = 5
     def pre(self, c):
-        if c.t < self.tw: c.raw = True; c.cap_hide = True
+        if c.t < self.tw: c.raw = True; c.cap_hide = not getattr(self, "captions", False)
     def apply(self, c):
         if c.t < self.tw: return
         k = c.t - self.tw
@@ -116,12 +116,12 @@ class Title3D(FX):
             sc = 960 / a.shape[1]
             if sc < 1:
                 a = cv2.resize(a, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA)
-            face = gold_fill(a)
+            face = gold_fill(a, *getattr(self, "fill", ("#FFF0B8", "#D4AF37", "#7A5A14")))
             hl = a.copy(); hl[..., :3] = 1; hl[..., 3] = np.clip(a[..., 3] - translate(a[..., 3], 0, 3, 0), 0, 1) * .9
             D = 22; pad = D * 2
             ext = np.zeros((a.shape[0] + pad, a.shape[1] + pad, 4), np.float32)
             for k in range(D, 0, -1):
-                col = np.array([.36, .25, .06], np.float32) * (1 - k / D * .6)
+                col = np.array(getattr(self, "ext_color", (.36, .25, .06)), np.float32) * (1 - k / D * .6)
                 lay = solid_rgba(a.shape[0], a.shape[1], col, 1); lay[..., 3] = a[..., 3]
                 over_tl(ext, lay, int(k * .6), int(k * 1.4)) if False else None
                 y0, x0 = int(k * 1.4), int(k * .6)
@@ -151,9 +151,10 @@ class Title3D(FX):
         if stripe > 0:
             fw = face.shape[1] * s * 1.04 * stripe; y = cy + face.shape[0] * s * .5 + 18 * s
             x1 = cx + face.shape[1] * s * .52
-            bar = solid_rgba(max(2, int(18 * s)), max(2, int(fw)), RED, alpha)
+            sc_ = getattr(self, "stripe_color", RED)
+            bar = solid_rgba(max(2, int(18 * s)), max(2, int(fw)), sc_, alpha)
             over_tl(img, bar, int(x1 - fw), int(y))
-            gl = solid_rgba(int(60 * s), max(2, int(fw)), RED, .0)
+            gl = solid_rgba(int(60 * s), max(2, int(fw)), sc_, .0)
             gl[..., 3] = cv2.GaussianBlur(np.pad(np.ones((max(2, int(18 * s)), max(2, int(fw))), np.float32), ((21, 21), (0, 0)))[:gl.shape[0], :gl.shape[1]], (0, 0), 9) * .5 * alpha
             over_tl(img, gl, int(x1 - fw), int(y - 21 * s), add=True)
 
@@ -629,7 +630,7 @@ class Cube(FX):
         key = ("bg", i)
         if not hasattr(self, "_bgc"): self._bgc = {}
         if key not in self._bgc:
-            g = _grad("#14160f", "#2e3320", h=self.FH, w=self.FW, gamma=1.2)
+            g = _grad(*getattr(self, "card_grad", ("#14160f", "#2e3320")), h=self.FH, w=self.FW, gamma=1.2)
             yy, xx = np.mgrid[0:self.FH, 0:self.FW]
             g += np.exp(-np.sqrt((xx - self.FW * .7) ** 2 + (yy - 300.) ** 2) / 420)[..., None] * GOLD * .25
             cv2.rectangle(g, (24, 24), (self.FW - 25, self.FH - 25), tuple(float(v) for v in GOLD), 4, cv2.LINE_AA)
@@ -1087,8 +1088,8 @@ class LowerThird(FX):
             n1 = text_rgba(self.name, 64, (255, 255, 255), "sans", 900)
             n2 = text_rgba(self.role, 40, (220, 240, 225), "sans", 500)
             w = max(n1.shape[1], n2.shape[1]) + 80
-            bar = card(150, w, hexc("#0E5A5A"), .92, 18)
-            cv2.rectangle(bar, (w - 14, 0), (w, 150), tuple(float(v) for v in hexc("#7AB83C")) + (1,), -1)
+            bar = card(150, w, hexc(getattr(self, "bar_color", "#0E5A5A")), .92, 18)
+            cv2.rectangle(bar, (w - 14, 0), (w, 150), tuple(float(v) for v in hexc(getattr(self, "accent", "#7AB83C"))) + (1,), -1)
             over_tl(bar, n1, w - 40 - n1.shape[1], 8); over_tl(bar, n2, w - 40 - n2.shape[1], 84)
             x, y = self.xy
             over(c.img, bar, x + (1 - a) * 600, y, a)
@@ -1097,7 +1098,7 @@ class LowerThird(FX):
             qi = text_rgba(self.quote, 74, (255, 255, 255), "serif", 800)
             qa = text_rgba("— " + self.name, 40, (190, 230, 170), "sans", 600)
             w = qi.shape[1] + 90
-            qc = card(qi.shape[0] + 110, w, (0, 0, 0), .5, 26, border=hexc("#7AB83C"), bw=3)
+            qc = card(qi.shape[0] + 110, w, (0, 0, 0), .5, 26, border=hexc(getattr(self, "accent", "#7AB83C")), bw=3)
             over(qc, qi, w / 2, qi.shape[0] / 2 + 18); over_tl(qc, qa, w - 45 - qa.shape[1], qi.shape[0] + 36)
             over(c.img, qc, self.qxy[0], self.qxy[1], min(1, q * 1.5), max(.01, q))
     def sounds(self):
@@ -1116,7 +1117,8 @@ class EndCard(FX):
         yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
         r = np.sqrt(((xx - W * .3) / W) ** 2 + ((yy - H * .5) / H) ** 2)
         g = np.clip(r * 1.5, 0, 1)[..., None]
-        bg = hexc("#1F7A72") * (1 - g) + hexc("#06302F") * g
+        c0, c1 = getattr(self, "bg_colors", ("#1F7A72", "#06302F"))
+        bg = hexc(c0) * (1 - g) + hexc(c1) * g
         prod = cv2.cvtColor(cv2.imread(self.product), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
         pm = cv2.imread(self.product_mask, cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255
         logo = cv2.cvtColor(cv2.imread(self.logo, cv2.IMREAD_UNCHANGED), cv2.COLOR_BGRA2RGBA).astype(np.float32) / 255
@@ -1151,3 +1153,51 @@ class EndCard(FX):
         item(text_rgba(self.disclaimer, 28, (170, 195, 190), "sans", 400), W * .5, H * .95, self.tw + 1.1)
         c.img = out
     def sounds(self): return [(self.tw, A.whoosh(.6, 200, 2500), .5, "end card"), (self.tw + .5, A.shimmer(2.0), .45, "logo shimmer")]
+
+
+
+class LightSweep(FX):
+    """Specular light band that glides across the product (only on its matte) — the classic pack-shot shine."""
+    stage = 10
+    def apply(self, c):
+        k = prog(c.t, self.tw, self.tw + getattr(self, "dur", .9))
+        if k <= 0 or k >= 1: return
+        yy, xx = np.mgrid[0:H:4, 0:W:4].astype(np.float32)
+        pos = -400 + (W + 800) * float(ease_io(k))
+        band = np.exp(-((xx + yy * .45 - pos) / 70) ** 2)
+        band = cv2.resize(band, (W, H))
+        m = c.mask if getattr(self, "on_mask", True) else 1.0
+        c.img = c.img + (band * m)[..., None] * getattr(self, "strength", .55)
+    def sounds(self): return [(self.tw, A.zing(.7) * .6, .35, "shine")]
+
+
+def stars(img, x, y, r, n=5, color=(1.0, .78, .2), gap=None):
+    gap = gap or r * 2.4
+    for i in range(n):
+        cx = x - i * gap
+        pts = []
+        for j in range(10):
+            a = -np.pi / 2 + j * np.pi / 5; rr = r if j % 2 == 0 else r * .45
+            pts.append([cx + np.cos(a) * rr, y + np.sin(a) * rr])
+        cv2.fillPoly(img, [np.array(pts, np.int32)], tuple(float(v) for v in color) + ((1.0,) if img.shape[2] == 4 else ()), cv2.LINE_AA)
+
+
+class Testimonials(FX):
+    """Real customer quotes as clean review cards that cascade in, 5 drawn stars each."""
+    stage = 70
+    def apply(self, c):
+        for i, (txt, who) in enumerate(self.quotes):
+            t0 = self.tw + i * getattr(self, "stagger", .45)
+            q = float(back_out(prog(c.t, t0, t0 + .4), 1.2)) * (1 - prog(c.t, self.t1 - .3, self.t1))
+            if q <= 0: continue
+            ti = text_rgba(txt, 50, (25, 35, 55), "sans", 700)
+            wi = text_rgba(who, 34, (90, 105, 125), "sans", 500)
+            w = max(ti.shape[1], 520) + 80; h = ti.shape[0] + 150
+            cd = card(h, w, (1, 1, 1), .97, 24)
+            stars(cd, w - 50, 42, 17, color=hexc("#F2B705"))
+            over_tl(cd, ti, w - 40 - ti.shape[1], 66); over_tl(cd, wi, w - 40 - wi.shape[1], h - 50)
+            sh = cd.copy(); sh[..., :3] = 0; sh[..., 3] = cv2.GaussianBlur(cd[..., 3], (0, 0), 14) * .35
+            x, y = self.slots[i]
+            over(c.img, sh, x + 10, y + 16, min(1, q * 1.5), max(.01, q))
+            over(c.img, cd, x, y + (1 - min(1, q)) * 60, min(1, q * 1.5), max(.01, q))
+    def sounds(self): return [(self.tw + i * getattr(self, "stagger", .45), A.pop(), .45, "review") for i in range(len(self.quotes))]

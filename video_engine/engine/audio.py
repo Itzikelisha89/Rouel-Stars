@@ -174,12 +174,16 @@ def digital_dive(d=0.45):
 
 
 # ------------------------------------------------------------------ music
-def music_bed(duration, bpm=84, seed=3):
-    """Quiet cinematic pad: Am-F-C-G with detuned saws, sub pulse, soft hats."""
+MAJOR_WARM = [[48, 52, 55], [43, 50, 55], [45, 48, 52], [41, 45, 48]]  # C G Am F
+
+
+def music_bed(duration, bpm=84, seed=3, chords=None, cutoff=1400, piano=False):
+    """Quiet pad with detuned saws, sub pulse, soft hats. Default Am-F-C-G (cinematic);
+    pass chords=MAJOR_WARM, piano=True for a warm, trustworthy commercial bed."""
     rs = np.random.RandomState(seed)
     n = int(duration * SR); t = np.arange(n) / SR
     beat = 60 / bpm; bar = beat * 4
-    chords = [[57, 60, 64], [53, 57, 60], [48, 55, 64], [55, 59, 62]]  # Am F C G (midi)
+    chords = chords or [[57, 60, 64], [53, 57, 60], [48, 55, 64], [55, 59, 62]]  # Am F C G (midi)
     out = np.zeros(n, np.float32)
     mf = lambda m: 440 * 2 ** ((m - 69) / 12)
     for bi in range(int(duration / bar) + 1):
@@ -191,7 +195,16 @@ def music_bed(duration, bpm=84, seed=3):
             for det in (-0.07, 0.07):
                 f = mf(m + det)
                 out[s0:s1] += (signal.sawtooth(2 * np.pi * f * tt + rs.rand() * 6) * env * .05).astype(np.float32)
-    out = _lp(out, 1400).astype(np.float32)
+    out = _lp(out, cutoff).astype(np.float32)
+    if piano:  # soft broken-chord piano: decaying sines with a little hammer noise
+        for bi in range(int(duration / bar) + 1):
+            ch = chords[bi % len(chords)]
+            for j, m in enumerate([ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[1] + 24, ch[2] + 12, ch[1] + 12, ch[0] + 24, ch[2] + 12]):
+                i = int((bi * bar + j * beat / 2) * SR)
+                if i >= n: break
+                tt = np.arange(int(1.6 * SR)) / SR; f0 = mf(m)
+                note = (np.sin(2 * np.pi * f0 * tt) + .35 * np.sin(4 * np.pi * f0 * tt) + .12 * np.sin(6 * np.pi * f0 * tt)) * np.exp(-tt * 2.8) * .06
+                out[i:i + len(note)] += note[:max(0, n - i)].astype(np.float32)
     # sub pulse on beats
     for k in range(int(duration / beat)):
         i = int(k * beat * SR); tt = np.arange(int(.5 * SR)) / SR

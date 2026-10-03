@@ -44,6 +44,7 @@ class Edit:
         self.rewind = None  # (t_start, dur)
         self.duration = timemap.duration
         self.music_start = 0.0
+        self.grade_strength = 1.0
 
     # word lookup in output time
     def word(self, text, n=1):
@@ -91,13 +92,13 @@ class Edit:
             while i < len(stages) and stages[i].stage < stage:
                 stages[i].apply(c); i += 1
         run_until(20)
-        c.img = raw_gray(c.img) if c.raw else grade(c.img, c.grade)
+        c.img = raw_gray(c.img) if c.raw else grade(c.img, c.grade * self.grade_strength)
         run_until(55)
         if c.shake > 0.5:
             dx, dy = shake_offset(t, c.shake, seed=int(t * 7))
             c.img = scale_about(c.img, 1 + c.shake / 900, dx=dx, dy=dy, border=1)
         run_until(60)
-        if self.captions and not c.cap_hide and not c.raw:
+        if self.captions and not c.cap_hide:
             draw_captions(c.img, t, self.groups, y=c.cap_y, alpha=c.cap_alpha)
         run_until(85)
         if c.flash > 0:

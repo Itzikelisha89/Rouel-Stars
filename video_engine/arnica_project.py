@@ -16,29 +16,39 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 B = os.path.join(ROOT, "build_arnica")
 P = lambda n: os.path.join(ROOT, "assets", "arnica", n)
 GEN = "isnet-general-use"
+# trustworthy palette: deep navy, white, calm teal-blue accent; the clinic's green; gold only on seals
+NAVY, NAVY2, ACCENT, GREEN = "#0B2545", "#13315C", "#4FB6C9", "#7AB83C"
+PAIN, PROD, YEH, LEAF = P("plate_pain_v2.jpg"), P("plate_product.jpg"), P("plate_yehoshua_v2.jpg"), P("plate_leaves_v2.jpg")
 SHOTS = [
-    dict(photo=P("plate_pain.jpg"), zoom=(1.0, 1.05)),                          # 0 כואב לכם...
-    dict(photo=P("plate_pain.jpg"), zoom=(1.05, 1.1)),                          # 1 יש דרך טבעית להקל (ניפוץ)
-    dict(photo=P("plate_product.jpg"), zoom=(1.0, 1.06), mask_model=GEN),       # 2 קרם ארניקה (כותרת)
-    dict(photo=P("plate_yehoshua.jpg"), zoom=(1.0, 1.03)),                      # 3 יהושע (יוצא מהמסגרת)
-    dict(photo=P("plate_leaves.jpg"), zoom=(1.0, 1.04), mask_model=GEN),        # 4 רכיבים (קובייה)
-    dict(photo=P("plate_pain.jpg"), zoom=(1.1, 1.16)),                          # 5 מכה? נקע? (חותמות)
-    dict(photo=P("plate_product.jpg"), zoom=(1.12, 1.2), mask_model=GEN),       # 6 מורחים (נמחקות)
-    dict(photo=P("plate_product.jpg"), zoom=(1.0, 1.05), mask_model=GEN),       # 7 נבדק דרמטולוגית (חותם)
-    dict(photo=P("plate_yehoshua.jpg"), zoom=(1.04, 1.08)),                     # 8 משחת הפלא (תגובה)
-    dict(photo=P("plate_product.jpg"), zoom=(1.05, 1.1), mask_model=GEN),       # 9 מחיר
-    dict(photo=P("plate_product.jpg"), zoom=(1.08, 1.14), mask_model=GEN),      # 10 מבצע 2+1 (חותם מתנה)
-    dict(photo=P("plate_yehoshua.jpg"), zoom=(1.0, 1.04)),                      # 11 הזמינו (זום לטלפון)
-    dict(photo=P("plate_product.jpg"), zoom=(1.0, 1.04), mask_model=GEN),       # 12 סיום
+    dict(photo=PAIN, zoom=(1.0, 1.04)),                       # 0 כאב בגב... גוזל את היום
+    dict(photo=PAIN, zoom=(1.04, 1.08)),                      # 1 קשה לקום, קשה להירדם
+    dict(photo=PAIN, zoom=(1.08, 1.12)),                      # 2 אבל יש דרך טבעית להקל (הצתה + ניפוץ)
+    dict(photo=YEH, zoom=(1.0, 1.03)),                        # 3 שלום, אני יהושע אלישע (יוצא מהמסגרת + כותרת שם)
+    dict(photo=PROD, zoom=(1.0, 1.06), mask_model=GEN),       # 4 פיתחתי את קרם הארניקה (כותרת 3D + ברק)
+    dict(photo=LEAF, zoom=(1.0, 1.04), mask_model=GEN),       # 5 רכיבים (קובייה)
+    dict(photo=PAIN, zoom=(1.1, 1.16)),                       # 6 מכה? נקע? (חותמות)
+    dict(photo=PROD, zoom=(1.12, 1.2), mask_model=GEN),       # 7 מורחים (החותמות נמחקות)
+    dict(photo=PROD, zoom=(1.0, 1.05), mask_model=GEN),       # 8 נבדק דרמטולוגית (חותם)
+    dict(photo=LEAF, zoom=(1.04, 1.08), mask_model=GEN),      # 9 הלקוחות (כרטיסי ביקורות)
+    dict(photo=YEH, zoom=(1.04, 1.08)),                       # 10 מריחה קטנה, הקלה גדולה (ציטוט של יהושע)
+    dict(photo=PROD, zoom=(1.05, 1.1), mask_model=GEN),       # 11 מחיר
+    dict(photo=PROD, zoom=(1.08, 1.14), mask_model=GEN),      # 12 מבצע 2+1
+    dict(photo=PROD, zoom=(1.0, 1.04), mask_model=GEN),       # 13 סיום
 ]
-HOLDS = [(0, "מפרקים", .45), (1, "להקל", 1.5), (3, "מטופלים", .7), (4, "וקמפור", .8), (6, "הכואב", .6),
-         (7, "רגיש", .8), (8, "הפלא", 2.0), (9, "בלבד", .9), (10, "במתנה", 1.1),
-         (11, "בטלפון", .6), (12, "גדולה", 3.6)]
+HOLDS = [(2, "להקל", 1.35), (3, "טבעית", .4), (4, "הטיפולי", .5), (5, "וקמפור", .6), (7, "הכואב", .5),
+         (8, "רגיש", .6), (9, "הפלא", 1.15), (10, "גדולה", .5), (11, "בלבד", .7), (12, "במתנה", .8), (13, "בטלפון", 2.3)]
+SPEED = 1.1  # commercial pace; time-stretched without changing pitch, word times scaled to match
 
 
 def load():
     words = json.load(open(os.path.join(B, "words.json")))
-    sr, raw = wavfile.read(os.path.join(B, "raw_narration.wav")); raw = raw.astype(np.float32) / 32768
+    src, fast = os.path.join(B, "raw_narration.wav"), os.path.join(B, f"raw_narration_x{SPEED}.wav")
+    if not os.path.exists(fast) or os.path.getmtime(fast) < os.path.getmtime(src):
+        import subprocess
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-af", f"atempo={SPEED}", "-ar", "48000", fast], check=True)
+    for w in words:
+        w["start"] = round(w["start"] / SPEED, 3); w["end"] = round(w["end"] / SPEED, 3)
+    sr, raw = wavfile.read(fast); raw = raw.astype(np.float32) / 32768
     n = max(w["sentence"] for w in words) + 1
     st = [min(w["start"] for w in words if w["sentence"] == k) for k in range(n)]
     en = [max(w["end"] for w in words if w["sentence"] == k) for k in range(n)]
@@ -60,52 +70,68 @@ def build():
     return ed, tm, raw, sr
 
 
+def style(ed):
+    from engine import audio as A, look
+    F.GOLD, F.RED = F.hexc(ACCENT), F.hexc(GREEN)        # UI accents: borders, rim light, underlines
+    look.CAPTION_ACTIVE = (79, 182, 201)                 # spoken word in the calm accent
+    ed.grade_strength = .45                              # clean, honest grade (not moody)
+    ed.music_fn = lambda d: A.music_bed(d, bpm=76, chords=A.MAJOR_WARM, cutoff=2200, piano=True)
+    return dict(fill=("#FFFFFF", "#E6EEF6", "#9FB3C8"), ext_color=(.04, .1, .22), stripe_color=F.hexc(ACCENT))
+
+
 def add_effects(ed):
+    T = style(ed)
     Wd = ed.ws
     ss = lambda k: min(w["t"] for w in ed.words if w["sentence"] == k)
     nxt = lambda k: ss(k + 1) - .06
-    # 1 gray, unedited opening that ignites into color on "מפרקים"
-    tw = Wd(0, "מפרקים")["t"]; ed.music_start = tw
-    ed.add(F.Ignite(0, nxt(0), tw=tw, move_bg=False))
-    # 3 the pain shatters on "להקל" and heals
-    tw = Wd(1, "להקל")["t"]; ed.add(F.Shatter(tw, tw + 1.6, tw=tw, impact=(1300, 540)))
-    # 2 huge 3D title flies in on "הארניקה"
-    tw = Wd(2, "הארניקה")["t"]
-    ed.add(F.Title3D(tw, nxt(2), tw=tw, text="קרם ארניקה", cx=W * .42, cy=H * .36))
-    # 4 Yehoshua breaks out of the frame over his name; his own slogan as a quote
-    name = F.Title3D(0, 0, tw=0, text="יהושע אלישע")
-    ed.add(F.PopOut(ss(3) - .05, nxt(3), ts=ss(3) - .05, tw=Wd(3, "מטפל")["t"], title=name))
-    ed.add(F.LowerThird(Wd(3, "מטפל")["t"], nxt(3), tw=Wd(3, "שנים")["t"], name="יהושע אלישע", role="מטפל ברפואה טבעית",
-                        xy=(W * .2, H * .8), quote="״מריחה קטנה – הקלה גדולה״", tq=Wd(3, "מטופלים")["t"], qxy=(W * .24, H * .42)))
-    # 11 ingredient cube: one card per ingredient
-    tws = [Wd(4, x)["t"] for x in ("הארניקה", "שיאה", "מנטה", "וקמפור")]
-    t0 = ss(4) - .04; tws[0] = max(tws[0], t0 + .5)
-    ed.add(F.Cube(t0, nxt(4), tws=tws, FW=1280, FH=720,
+    # PROBLEM: gray, unedited opening; HOPE ignites into color on "טבעית"
+    tw = Wd(2, "טבעית")["t"]; ed.music_start = tw
+    ed.add(F.Ignite(0, nxt(2), tw=tw, move_bg=False, captions=True))
+    # the pain shatters on "להקל" and heals
+    tw = Wd(2, "להקל")["t"]; ed.add(F.Shatter(tw, tw + 1.6, tw=tw, impact=(1300, 540)))
+    # AUTHORITY: Yehoshua breaks out of the frame over his name; TV name super
+    name = F.Title3D(0, 0, tw=0, text="יהושע אלישע", **T)
+    ed.add(F.PopOut(ss(3) - .05, nxt(3), ts=ss(3) - .05, tw=Wd(3, "יהושע")["t"], title=name))
+    ed.add(F.LowerThird(ss(3), nxt(3), tw=Wd(3, "מטפל")["t"], name="יהושע אלישע", role="מטפל ברפואה טבעית",
+                        xy=(W * .2, H * .8), bar_color=NAVY2, accent=ACCENT))
+    # PRODUCT: 3D title + pack-shot shine
+    tw = Wd(4, "הארניקה")["t"]
+    ed.add(F.Title3D(tw, nxt(4), tw=tw, text="קרם ארניקה", cx=W * .42, cy=H * .36, **T))
+    ed.add(F.LightSweep(tw + .45, tw + 1.5, tw=tw + .45, dur=1.0))
+    # HOW IT WORKS: ingredient cube, one card per ingredient
+    tws = [Wd(5, x)["t"] for x in ("ארניקה", "שיאה", "מנטה", "וקמפור")]
+    t0 = ss(5) - .04; tws[0] = max(tws[0], t0 + .5)
+    ed.add(F.Cube(t0, nxt(5), tws=tws, FW=1280, FH=720, card_grad=(NAVY2, NAVY),
                   cards=[("ארניקה", "צמח המרפא המוכר"), ("חמאת שיאה", "מזינה ומגינה על העור"),
                          ("מנטה", "תחושת רעננות"), ("קמפור", "תחושת חימום")]))
-    # 12 red stamps land on each pain word, the cream strikes them out and they fall
-    lands = [Wd(5, "מכה")["t"], Wd(5, "נקע")["t"], Wd(5, "כאבי")["t"]]
-    ed.add(F.Stamps(lands[0] - .15, nxt(6), tw=lands[0], lands=lands, terase=Wd(6, "מורחים")["t"],
+    # PAIN WORDS land as red stamps; the cream strikes them out and they fall
+    lands = [Wd(6, "מכה")["t"], Wd(6, "נקע")["t"], Wd(6, "כאבי")["t"]]
+    ed.add(F.Stamps(lands[0] - .15, nxt(7), tw=lands[0], lands=lands, terase=Wd(7, "מורחים")["t"],
                     stamps=[("מכה", (560, 330), 10), ("נקע", (1360, 420), -8), ("כאבי שרירים", (860, 660), 5)], cap_y=int(H * .9)))
-    # seal on "דרמטולוגית"
-    tw = Wd(7, "דרמטולוגית")["t"]
-    ed.add(F.Badge(tw - .1, nxt(7), tw=tw, xy=(W * .2, H * .38), lines=["נבדק", "דרמטולוגית", "לעור רגיש"]))
-    # 13 a customer types "משחת הפלא", then a real customer quote pops in
-    ed.add(F.CommentDM(ss(8), nxt(8), tbox=ss(8), tw=Wd(8, "משחת")["t"], code="משחת הפלא", box_w=1100, box_y=int(H * .84),
-                       cap_y=int(H * .64), dm_title="ביקורת חדשה – 5 כוכבים", dm_body="״המשחה שלך פלאים!!! מומלצת בחום״"))
-    # price drops 129 -> 120 on "עשרים"
-    ed.add(F.Stamps(Wd(9, "במבצע")["t"] - .15, nxt(9), tw=Wd(9, "במבצע")["t"], stamps=[], lands=[1e9], terase=None,
-                    tprice=Wd(9, "במבצע")["t"], tzero=Wd(9, "עשרים")["t"], price_from=129, price_to=120,
-                    price_label="מחיר מבצע", price_y=int(H * .5), price_hit_color=(212, 175, 55), flash_color=(.95, .9, .6),
+    ed.add(F.LightSweep(Wd(7, "פעם")["t"], Wd(7, "פעם")["t"] + 1.2, tw=Wd(7, "פעם")["t"], dur=1.1, strength=.4))
+    # SAFETY: gold seal on "דרמטולוגית"
+    tw = Wd(8, "דרמטולוגית")["t"]
+    ed.add(F.Badge(tw - .1, nxt(8), tw=tw, xy=(W * .2, H * .38), lines=["נבדק", "דרמטולוגית", "לעור רגיש"]))
+    # SOCIAL PROOF: real customer quotes from the site
+    tw = Wd(9, "והלקוחות")["t"]
+    ed.add(F.Testimonials(tw, nxt(9), tw=tw, stagger=.55, slots=[(W * .66, H * .2), (W * .4, H * .45), (W * .62, H * .68)],
+                          quotes=[("״משחת הארניקה הצילה אותי הלילה״", "לקוחה ממליצה"),
+                                  ("״המשחה שלך פלאים!!! מומלצת בחום״", "מטפלת ממליצה"),
+                                  ("״מרגישים שהכל איכותי״", "לקוחה ממליצה")]))
+    # Yehoshua's own tagline, in his voice
+    ed.add(F.LowerThird(ss(10), nxt(10), tw=1e9, name="יהושע אלישע", role="", xy=(0, 0), bar_color=NAVY2, accent=ACCENT,
+                        quote="״מריחה קטנה – הקלה גדולה״", tq=ss(10), qxy=(W * .3, H * .45)))
+    # OFFER: price 129 -> 120 on "עשרים", then the real 2+1 gift
+    ed.add(F.Stamps(Wd(11, "במבצע")["t"] - .15, nxt(11), tw=Wd(11, "במבצע")["t"], stamps=[], lands=[1e9], terase=None,
+                    tprice=Wd(11, "במבצע")["t"], tzero=Wd(11, "עשרים")["t"], price_from=129, price_to=120,
+                    price_label="מחיר מבצע", price_y=int(H * .5), price_hit_color=(79, 182, 201), flash_color=(.85, .95, 1),
                     cap_y=int(H * .85)))
-    # the real 2+1 offer: gift seal on "במתנה"
-    tw = Wd(10, "במתנה")["t"]
-    ed.add(F.Badge(tw - .1, nxt(10), tw=tw, xy=(W * .8, H * .38), lines=["2+1", "קרם ארניקה", "במתנה"], angle=8))
-    # 10 infinite zoom into a phone that plays this very ad: one dive per channel
-    ed.add(F.PhoneZoom(ss(11), nxt(11), ts=ss(11), dives=[Wd(11, "באתר")["t"], Wd(11, "בטלפון")["t"]]))
-    # end card with the real logo, phone and site
-    tw = Wd(12, "קרם")["t"]
-    ed.add(F.EndCard(tw, ed.duration + 1, tw=tw, product=P("plate_product.jpg"),
+    ed.add(F.LightSweep(Wd(11, "עשרים")["t"], Wd(11, "עשרים")["t"] + 1, tw=Wd(11, "עשרים")["t"], dur=.9, strength=.35))
+    tw = Wd(12, "במתנה")["t"]
+    ed.add(F.Badge(tw - .1, nxt(12), tw=tw, xy=(W * .8, H * .38), lines=["2+1", "קרם ארניקה", "במתנה"], angle=8))
+    # CALL TO ACTION: brand end card with the real logo, phone and site
+    tw = Wd(13, "קרם")["t"]
+    ed.add(F.EndCard(tw, ed.duration + 1, tw=tw, product=PROD, bg_colors=("#1C3F6E", "#0A1F3D"),
                      product_mask=os.path.join(ROOT, "cache", "masks", f"plate_product_{GEN}_mask.png"), logo=P("img14.png"),
                      title="קרם ארניקה טיפולי", slogan="מריחה קטנה – הקלה גדולה", phone="052-252-7090",
                      site="yehoshuatherapy.co.il", disclaimer="לשימוש חיצוני בלבד. אין באמור תחליף לייעוץ רפואי."))

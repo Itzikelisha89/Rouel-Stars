@@ -49,7 +49,7 @@ def _norm(w):
 
 
 # spellings the transcriber may choose for the same sound
-SAME_SOUND = {"אמיר": "עמיר", "בלשת": "ברשת", "שהכל": "שהכול", "להכל": "להכול", "לאור": "לעור", "ציאה": "שיאה"}
+SAME_SOUND = {"אמיר": "עמיר", "בלשת": "ברשת", "שהכל": "שהכול", "להכל": "להכול", "לאור": "לעור", "ציאה": "שיאה", "צייה": "שיאה", "כרמי": "קרמי"}
 
 
 NUMBER_WORDS = {"120": ["מאה", "עשרים"], "129": ["מאה", "עשרים", "ותשע"], "100": ["מאה"], "10": ["עשר"]}
@@ -100,7 +100,8 @@ def build(sentences, ref_wav, wav_out, words_out, pauses, lead=0.8, takes=3, log
             if score >= 0.85:
                 best = (score, a, times); log(f"  sentence {k}: reused take (match {score:.2f})")
         for take in range(takes if best is None else 0):
-            kw = {"audio_prompt_path": ref_wav} if ref_wav else {}  # no ref -> the model's built-in narrator voice
+            ref = ref_wav[k] if isinstance(ref_wav, (list, tuple)) else ref_wav  # per-sentence voice
+            kw = {"audio_prompt_path": ref} if ref else {}  # no ref -> the model's built-in narrator voice
             wav = m.generate(clone_text(s), language_id="he", **kw)
             a = _trim(resample_poly(wav.squeeze().numpy().astype(np.float32), SR, m.sr), SR)
             tmp = words_out + f".s{k}.wav"

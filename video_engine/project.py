@@ -86,7 +86,7 @@ def mix(ed, tm, raw, sr, out_wav, with_fx):
     m.add(tm.apply_audio(raw, sr), 0, 1.0, "voice")
     for t, clip, g, name in ed.sounds():
         m.add(clip, t, g, "sfx", name)
-    m.add(A.music_bed(total + 1), 0, 1.0, "music")
+    m.add(getattr(ed, "music_fn", A.music_bed)(total + 1), 0, 1.0, "music")
     start = ed.music_start if with_fx else 0.0
     m.music_env(ed.music_kills() + ([(ed.duration, total + 1)] if ed.rewind else []), start=start)
     x = m.mixdown()

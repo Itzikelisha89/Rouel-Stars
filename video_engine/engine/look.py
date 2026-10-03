@@ -57,6 +57,7 @@ def cold(img, amount=1.0):
 
 # ------------------------------------------------------------------ captions
 GOLD = tuple(int(v * 255) for v in hexc("#D4AF37"))
+CAPTION_ACTIVE = None  # project can set an (r,g,b) for the spoken word
 
 
 def caption_groups(words, max_words=3, max_chars=15):
@@ -109,7 +110,7 @@ def draw_captions(img, t, groups, y=None, size=None, alpha=1.0):
         s = 0.72 + 0.28 * float(back_out(min(p, 1)))
         a = min(1, p * 2.5) * fade_out * alpha
         active = w["t"] <= t < w["t_end"] + 0.05
-        col = GOLD if active else (255, 255, 255)
+        col = (CAPTION_ACTIVE or GOLD) if active else (255, 255, 255)
         im, sh = _word_img(w["word"], col, size)
         dy = (1 - float(ease_out(min(p, 1)))) * 26
         over(img, sh, cx + 4, y + dy + 6, a, s)
