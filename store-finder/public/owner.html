@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ניהול חנות — מוצא המוצרים</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" id="store-name">…</div>
+    <div class="row">
+      <a class="btn" id="customer-link" target="_blank">תצוגת לקוח ↗</a>
+      <button id="logout">יציאה</button>
+    </div>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="map" class="active">1. מפת החנות</button>
+    <button data-tab="photo">2. צילום מדף</button>
+    <button data-tab="products">3. מוצרים</button>
+    <button data-tab="share">4. QR ונתונים</button>
+  </nav>
+
+  <main class="wrap">
+    <!-- MAP -->
+    <section id="tab-map">
+      <div class="card">
+        <h2>מפת החנות</h2>
+        <p class="muted">כל משבצת ≈ מטר. גרור על המפה כדי לצייר מדף או מעבר, ותן לו שם (למשל "מעבר 4 – כלי בישול").</p>
+        <div class="row no-print" style="margin-bottom:10px">
+          <button data-mode="draw" class="active">✏️ מדף חדש</button>
+          <button data-mode="rename">🏷️ שינוי שם</button>
+          <button data-mode="delete">🗑️ מחיקה</button>
+          <button data-mode="entrance">🚪 מיקום כניסה</button>
+          <span class="grow"></span>
+          <label class="row" style="margin:0;font-weight:400">רוחב <input id="cols" type="number" min="5" max="120" style="width:72px"></label>
+          <label class="row" style="margin:0;font-weight:400">אורך <input id="rows" type="number" min="5" max="120" style="width:72px"></label>
+        </div>
+        <div class="map-box"><svg id="map-editor"></svg></div>
+        <div class="row" style="margin-top:12px">
+          <button class="primary" id="save-map">שמירת מפה</button>
+          <span id="map-status" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PHOTO -->
+    <section id="tab-photo" class="hidden">
+      <div class="card">
+        <h2>צילום מדף</h2>
+        <p class="muted">בחר את המדף שאתה עומד מולו (מהרשימה או בלחיצה על המפה), ואז צלם אותו. המערכת תזהה את המוצרים ותשמור אותם עם המיקום.</p>
+        <label for="photo-shelf">מדף</label>
+        <select id="photo-shelf"></select>
+        <div class="map-box" style="margin-top:10px"><svg id="map-picker"></svg></div>
+        <label class="btn primary" style="margin-top:12px;width:100%">
+          📷 צילום / בחירת תמונה
+          <input id="photo-input" type="file" accept="image/*" capture="environment" class="hidden">
+        </label>
+        <p id="photo-status" class="muted" style="margin-top:10px"></p>
+      </div>
+      <div class="card hidden" id="photo-result">
+        <h3>מה זוהה בתמונה</h3>
+        <div class="photo-wrap" id="photo-preview"></div>
+        <div class="product-list" id="detected" style="margin-top:12px"></div>
+        <form id="manual-add" style="margin-top:12px">
+          <h3>הוספת מוצר ידנית מהתמונה הזו</h3>
+          <div class="row">
+            <input class="grow" id="m-name" placeholder="שם המוצר, למשל: סיר נירוסטה 16 ס״מ" required>
+            <input class="grow" id="m-keywords" placeholder="מילות חיפוש: סיר קטן, כלי בישול, pot">
+            <input class="grow" id="m-level" placeholder="מדף עליון / שני מלמטה">
+            <button class="primary" type="submit">הוספה</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section id="tab-products" class="hidden">
+      <div class="card">
+        <div class="row" style="margin-bottom:12px">
+          <h2 class="grow" style="margin:0">מוצרים <span class="badge" id="product-count">0</span></h2>
+          <input class="grow" id="product-filter" placeholder="סינון…">
+        </div>
+        <div class="product-list" id="product-list"></div>
+      </div>
+    </section>
+
+    <!-- SHARE -->
+    <section id="tab-share" class="hidden">
+      <div class="grid2">
+        <div class="card qr" style="text-align:center">
+          <h2 id="qr-title">סרקו ומצאו כל מוצר</h2>
+          <img id="qr-img" alt="QR לחיפוש מוצרים בחנות">
+          <p dir="ltr" id="qr-url" class="muted" style="word-break:break-all"></p>
+          <button class="no-print" onclick="window.print()">🖨️ הדפסת שלט לכניסה</button>
+        </div>
+        <div class="card no-print">
+          <h2>מה הלקוחות מחפשים</h2>
+          <p class="muted" id="insights-total"></p>
+          <h3>חיפשו ולא מצאו</h3>
+          <p class="muted" style="font-size:.9rem">אולי חסר במלאי, או שצריך להוסיף מילות חיפוש למוצר.</p>
+          <ul id="insights-missing"></ul>
+          <h3>החיפושים הנפוצים</h3>
+          <ul id="insights-top"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/js/owner.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "store-finder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "פלטפורמה לחנויות: בעל החנות מצלם מדפים, לקוח מחפש מוצר ורואה איפה הוא נמצא",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "qrcode": "^1.5.4"
+  }
+}

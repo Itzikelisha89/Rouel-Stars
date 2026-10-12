@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>איפה זה בחנות?</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1 id="store-name">…</h1>
+      <p class="muted">מה אתה מחפש? נראה לך בדיוק איפה זה נמצא.</p>
+    </div>
+    <form class="search-bar" id="search-form">
+      <input id="q" type="search" placeholder="למשל: סיר קטן" autocomplete="off" enterkeyhint="search" aria-label="חיפוש מוצר">
+      <button type="button" id="mic" class="hidden" aria-label="חיפוש קולי">🎤</button>
+      <button class="primary" type="submit">חיפוש</button>
+    </form>
+    <p id="status" class="muted" style="margin-top:12px"></p>
+
+    <div id="results" class="product-list"></div>
+
+    <div id="detail" class="hidden">
+      <button id="back" style="margin-bottom:12px">→ חזרה לתוצאות</button>
+      <div class="card">
+        <canvas id="detail-crop" class="detail-img"></canvas>
+        <h2 id="detail-name" style="margin-top:12px"></h2>
+        <p id="detail-desc" class="muted"></p>
+        <p class="directions" id="detail-where"></p>
+        <p id="detail-how"></p>
+        <div class="map-box"><svg id="detail-map"></svg></div>
+        <details style="margin-top:12px">
+          <summary>הצג את תמונת המדף המלאה</summary>
+          <img id="detail-photo" alt="תמונת המדף" style="width:100%;border-radius:12px;margin-top:8px">
+        </details>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/js/customer.js"></script>
+</body>
+</html>
