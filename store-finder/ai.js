@@ -1,11 +1,47 @@
-// Claude vision: turn a shelf photo into a list of products with bounding boxes.
+// AI vision: turn a shelf photo into a list of products with bounding boxes.
+// Two providers: Claude (ANTHROPIC_API_KEY, paid) or Google Gemini (GEMINI_API_KEY, has a free tier).
+// Everything else in the app works without either: manual entry, catalog import, Hebrew search.
 const Anthropic = require('@anthropic-ai/sdk');
 
 const MODEL = process.env.CLAUDE_MODEL || 'claude-opus-5-5';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 let client = null;
 
+function provider() {
+  if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) return 'claude';
+  if (process.env.GEMINI_API_KEY) return 'gemini';
+  return null;
+}
 function aiEnabled() {
-  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+  return provider() !== null;
+}
+
+// Gemini's REST API with a JSON response schema (OpenAPI subset: upper-case types, no additionalProperties).
+function toGeminiSchema(schema) {
+  const out = { type: schema.type.toUpperCase() };
+  if (schema.description) out.description = schema.description;
+  if (schema.properties) out.properties = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, toGeminiSchema(v)]));
+  if (schema.required) out.required = schema.required;
+  if (schema.items) out.items = toGeminiSchema(schema.items);
+  return out;
+}
+async function gemini({ system, parts, schema }) {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      ...(system && { systemInstruction: { parts: [{ text: system }] } }),
+      contents: [{ role: 'user', parts }],
+      generationConfig: { responseMimeType: 'application/json', responseSchema: toGeminiSchema(schema) },
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 429) throw new Error('נגמרה המכסה החינמית של Gemini לעכשיו. נסו שוב בעוד דקה (או מחר)');
+  if (!res.ok) throw new Error(data.error?.message || `Gemini ${res.status}`);
+  const cand = data.candidates?.[0];
+  if (!cand || cand.finishReason === 'SAFETY') throw new Error('המודל לא החזיר תשובה לתמונה הזו');
+  if (cand.finishReason === 'MAX_TOKENS') throw new Error('התשובה נקטעה — נסה לצלם חלק קטן יותר מהמדף');
+  return JSON.parse(cand.content.parts.map((p) => p.text || '').join(''));
 }
 
 function getClient() {
@@ -64,6 +100,17 @@ function clampBox(box) {
 }
 
 async function detectProducts(imageBuffer, mediaType, shelfName) {
+  if (provider() === 'gemini') {
+    const parsed = await gemini({
+      system: SYSTEM,
+      schema: PRODUCTS_SCHEMA,
+      parts: [
+        { inline_data: { mime_type: mediaType, data: imageBuffer.toString('base64') } },
+        { text: `התמונה צולמה ב: ${shelfName}. החזר את רשימת המוצרים.` },
+      ],
+    });
+    return (parsed.products || []).filter((p) => p.box).map((p) => ({ ...p, box: clampBox(p.box) }));
+  }
   const response = await getClient().beta.messages.create({
     model: MODEL,
     max_tokens: 16000,
@@ -92,6 +139,14 @@ const expansionCache = new Map();
 async function expandQuery(query) {
   const key = query.trim().toLowerCase();
   if (expansionCache.has(key)) return expansionCache.get(key);
+  const prompt = `לקוח בחנות חיפש: "${query}". החזר עד 8 מונחי חיפוש חלופיים קצרים (מילה או שתיים) — מילים נרדפות, שם הקטגוריה, ושם באנגלית — שיעזרו למצוא את המוצר בקטלוג.`;
+  if (provider() === 'gemini') {
+    const { terms = [] } = await gemini({ parts: [{ text: prompt }], schema: { type: 'object', properties: { terms: { type: 'array', items: { type: 'string' } } }, required: ['terms'] } });
+    const clean = terms.filter((t) => typeof t === 'string').slice(0, 8);
+    if (expansionCache.size > 500) expansionCache.clear();
+    expansionCache.set(key, clean);
+    return clean;
+  }
   const response = await getClient().beta.messages.create({
     model: MODEL,
     max_tokens: 2000,
@@ -111,7 +166,7 @@ async function expandQuery(query) {
     },
     messages: [{
       role: 'user',
-      content: `לקוח בחנות חיפש: "${query}". החזר עד 8 מונחי חיפוש חלופיים קצרים (מילה או שתיים) — מילים נרדפות, שם הקטגוריה, ושם באנגלית — שיעזרו למצוא את המוצר בקטלוג.`,
+      content: prompt,
     }],
   });
   if (response.stop_reason === 'refusal') return [];
@@ -122,4 +177,4 @@ async function expandQuery(query) {
   return terms;
 }
 
-module.exports = { aiEnabled, detectProducts, expandQuery };
+module.exports = { aiEnabled, provider, detectProducts, expandQuery, toGeminiSchema };

@@ -71,6 +71,9 @@ db.exec(`
 if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'price')) {
   db.exec("ALTER TABLE products ADD COLUMN price TEXT NOT NULL DEFAULT ''");
 }
+const productCols = db.prepare('PRAGMA table_info(products)').all().map((c) => c.name);
+if (!productCols.includes('image')) db.exec('ALTER TABLE products ADD COLUMN image TEXT'); // the product's own photo, uploaded by the manager
+if (!productCols.includes('active')) db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1'); // 0 = hidden from shoppers
 if (!db.prepare('PRAGMA table_info(searches)').all().some((c) => c.name === 'visitor')) {
   db.exec("ALTER TABLE searches ADD COLUMN visitor TEXT NOT NULL DEFAULT ''");
 }

@@ -85,7 +85,10 @@
         <div class="row" style="margin-bottom:12px">
           <h2 class="grow" style="margin:0">מוצרים <span class="badge" id="product-count">0</span></h2>
           <input class="grow" id="product-filter" placeholder="סינון…">
+          <button type="button" class="primary" id="new-product-btn">➕ מוצר חדש</button>
         </div>
+        <div id="new-product" class="hidden"></div>
+        <datalist id="levels"><option value="מדף עליון"><option value="מדף אמצעי"><option value="מדף תחתון"><option value="מדף שני מלמעלה"><option value="מדף שני מלמטה"><option value="בקצה המעבר"><option value="על הרצפה"></datalist>
         <details class="import-box">
           <summary>📥 ייבוא קטלוג מקובץ (Excel / CSV)</summary>
           <p class="muted" style="margin-top:8px">שומרים את קובץ האקסל בפורמט CSV ובוחרים אותו כאן. עמודות: <b>שם</b>, <b>מעבר</b> (שם המדף כמו במפה, או רק המספר שלו), ואם יש: <b>מילות חיפוש</b>, <b>מדף</b>, <b>מחיר</b>, <b>תיאור</b>.</p>

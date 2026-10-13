@@ -55,6 +55,8 @@ function productRow(p) {
     box: p.box_json ? JSON.parse(p.box_json) : null,
     photo: p.file ? `/uploads/${p.file}` : null,
     photoId: p.photo_id,
+    image: p.image ? `/uploads/${p.image}` : null,
+    active: p.active !== 0,
   };
 }
 const PRODUCTS_QUERY = `SELECT products.*, photos.file FROM products
@@ -155,7 +157,7 @@ app.post('/api/photos', requireOwner, upload.single('photo'), async (req, res) =
     .run(req.store.id, shelfId, file).lastInsertRowid);
 
   if (!ai.aiEnabled()) {
-    return res.json({ photo: { id: photoId, url: `/uploads/${file}` }, products: [], aiError: 'זיהוי אוטומטי כבוי (חסר ANTHROPIC_API_KEY) — הוסף מוצרים ידנית' });
+    return res.json({ photo: { id: photoId, url: `/uploads/${file}` }, products: [], aiError: 'זיהוי אוטומטי כבוי (אין מפתח GEMINI_API_KEY או ANTHROPIC_API_KEY) — הוסף מוצרים ידנית' });
   }
   try {
     const detected = await ai.detectProducts(req.file.buffer, req.file.mimetype, shelf.name);
@@ -182,8 +184,8 @@ app.post('/api/products', requireOwner, (req, res) => {
   if (!p.name) return res.status(400).json({ error: 'צריך שם מוצר' });
   if (!shelfExists(req.store, req.body.shelfId)) return res.status(400).json({ error: 'בחר מדף' });
   const photoId = req.body.photoId && db.prepare('SELECT id FROM photos WHERE id = ? AND store_id = ?').get(req.body.photoId, req.store.id)?.id;
-  const { lastInsertRowid } = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(req.store.id, req.body.shelfId, photoId || null, p.name, p.description, p.keywords, p.level, p.price);
+  const { lastInsertRowid } = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.store.id, req.body.shelfId, photoId || null, p.name, p.description, p.keywords, p.level, p.price, req.body.active === false ? 0 : 1);
   res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, lastInsertRowid)));
 });
 
@@ -220,14 +222,38 @@ app.put('/api/products/:id', requireOwner, (req, res) => {
   if (!p.name) return res.status(400).json({ error: 'צריך שם מוצר' });
   const shelfId = req.body.shelfId ?? existing.shelf_id;
   if (!shelfExists(req.store, shelfId)) return res.status(400).json({ error: 'בחר מדף' });
-  db.prepare('UPDATE products SET name = ?, description = ?, keywords = ?, level = ?, price = ?, shelf_id = ? WHERE id = ?')
-    .run(p.name, p.description, p.keywords, p.level, p.price, shelfId, existing.id);
+  const active = req.body.active === undefined ? existing.active : (req.body.active === false || req.body.active === 'false' ? 0 : 1);
+  db.prepare('UPDATE products SET name = ?, description = ?, keywords = ?, level = ?, price = ?, shelf_id = ?, active = ? WHERE id = ?')
+    .run(p.name, p.description, p.keywords, p.level, p.price, shelfId, active, existing.id);
   res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, existing.id)));
 });
 
 app.delete('/api/products/:id', requireOwner, (req, res) => {
+  const existing = db.prepare('SELECT image FROM products WHERE id = ? AND store_id = ?').get(req.params.id, req.store.id);
   db.prepare('DELETE FROM products WHERE id = ? AND store_id = ?').run(req.params.id, req.store.id);
+  if (existing?.image) fs.rm(path.join(UPLOAD_DIR, existing.image), { force: true }, () => {});
   res.json({ ok: true });
+});
+
+// The product's own photo (as opposed to the shelf photo it was found in), chosen by the manager.
+app.post('/api/products/:id/image', requireOwner, upload.single('image'), (req, res) => {
+  const existing = db.prepare('SELECT * FROM products WHERE id = ? AND store_id = ?').get(req.params.id, req.store.id);
+  if (!existing) return res.status(404).json({ error: 'מוצר לא נמצא' });
+  if (!req.file) return res.status(400).json({ error: 'צריך תמונה (JPG/PNG/WEBP עד 8MB)' });
+  const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[req.file.mimetype];
+  const file = `${req.store.id}-p${existing.id}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+  fs.writeFileSync(path.join(UPLOAD_DIR, file), req.file.buffer);
+  db.prepare('UPDATE products SET image = ? WHERE id = ?').run(file, existing.id);
+  if (existing.image) fs.rm(path.join(UPLOAD_DIR, existing.image), { force: true }, () => {});
+  res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, existing.id)));
+});
+
+app.delete('/api/products/:id/image', requireOwner, (req, res) => {
+  const existing = db.prepare('SELECT * FROM products WHERE id = ? AND store_id = ?').get(req.params.id, req.store.id);
+  if (!existing) return res.status(404).json({ error: 'מוצר לא נמצא' });
+  db.prepare('UPDATE products SET image = NULL WHERE id = ?').run(existing.id);
+  if (existing.image) fs.rm(path.join(UPLOAD_DIR, existing.image), { force: true }, () => {});
+  res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, existing.id)));
 });
 
 app.get('/api/insights', requireOwner, (req, res) => {
@@ -322,7 +348,7 @@ app.get('/api/public/:slug/search', async (req, res) => {
   const q = String(req.query.q || '').trim().slice(0, 100);
   if (!q) return res.json({ results: [] });
 
-  const products = db.prepare(PRODUCTS_QUERY).all(store.id);
+  const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1`).all(store.id);
   let results = search(q, products);
   let expanded = false;
   if (!results.length && products.length && ai.aiEnabled()) {
@@ -346,7 +372,7 @@ app.get('/api/public/:slug/search', async (req, res) => {
 
 app.get('/api/public/:slug/products/:id', (req, res) => {
   const store = getStoreBySlug(req.params.slug);
-  const p = store && db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(store.id, req.params.id);
+  const p = store && db.prepare(`${PRODUCTS_QUERY} AND products.id = ? AND products.active = 1`).get(store.id, req.params.id);
   if (!p) return res.status(404).json({ error: 'המוצר לא נמצא' });
   res.json(productRow(p));
 });
@@ -372,7 +398,8 @@ if (require.main === module) {
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => {
     console.log(`Store Finder running on http://localhost:${port}`);
-    if (!ai.aiEnabled()) console.log('ANTHROPIC_API_KEY not set — AI product detection is disabled (manual entry still works).');
+    if (!ai.aiEnabled()) console.log('No GEMINI_API_KEY / ANTHROPIC_API_KEY — AI product detection is disabled (manual entry still works).');
+    else console.log(`AI product detection: ${ai.provider()}`);
   });
 }
 

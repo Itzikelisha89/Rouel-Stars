@@ -50,6 +50,7 @@ test('pilot report: shoppers, success rate, time to find, saved staff time', () 
 test('shopper events, live alerts and the pilot report over the API', async () => {
   process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'store-finder-pilot-'));
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   const app = require('../server');
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;

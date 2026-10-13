@@ -180,45 +180,123 @@ $('manual-add').addEventListener('submit', async (e) => {
   } catch (err) { alert(err.message); }
 });
 
-// ---------- products ----------
+// ---------- products: the manager controls every detail ----------
+function thumbFor(p, size = 168) {
+  if (p.image) {
+    const img = document.createElement('img');
+    img.className = 'thumb'; img.src = p.image; img.alt = '';
+    return img;
+  }
+  const canvas = document.createElement('canvas');
+  drawCrop(canvas, p.photo, p.box, size);
+  return canvas;
+}
+
+// One form for "new product" and "edit product": name, free text, aisle, shelf level, price,
+// search words, the product's own photo, and whether shoppers can see it.
+function productForm(container, p, { onSaved, onCancel }) {
+  const isNew = !p.id;
+  let pendingImage = null;
+  let removeImage = false;
+  const shelves = store.map.shelves;
+  container.innerHTML = `
+    <form class="product-form">
+      <div class="pf-image">
+        <div class="pf-preview">${p.image ? `<img src="${escapeHtml(p.image)}" alt="">` : '<span class="muted">אין תמונה</span>'}</div>
+        <div class="row">
+          <label class="btn" style="margin:0">📷 ${p.image ? 'החלפת תמונה' : 'הוספת תמונה'}<input type="file" accept="image/*" data-img class="hidden"></label>
+          <button type="button" data-a="rmimg" class="danger${p.image ? '' : ' hidden'}">הסרה</button>
+        </div>
+      </div>
+      <div class="pf-fields">
+        <label>שם המוצר *</label>
+        <input data-f="name" value="${escapeHtml(p.name || '')}" placeholder="למשל: סיר ORIENT 20 ס״מ" required maxlength="120">
+        <label>תיאור (מלל חופשי ללקוח)</label>
+        <textarea data-f="description" maxlength="500" placeholder="חומר, מידות, צבעים, מבצע, הערה ללקוח…">${escapeHtml(p.description || '')}</textarea>
+        <div class="pf-row">
+          <div><label>מעבר *</label><select data-f="shelfId" required>${shelves.length ? shelves.map((s) => `<option value="${escapeHtml(s.id)}"${s.id === p.shelfId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('') : '<option value="">קודם צייר מעברים במפה</option>'}</select></div>
+          <div><label>מיקום במדף</label><input data-f="level" list="levels" value="${escapeHtml(p.level || '')}" placeholder="מדף תחתון"></div>
+          <div><label>מחיר</label><input data-f="price" value="${escapeHtml(p.price || '')}" placeholder="99.90" inputmode="decimal"></div>
+        </div>
+        <label>מילות חיפוש</label>
+        <input data-f="keywords" value="${escapeHtml(p.keywords || '')}" placeholder="סיר קטן, סיר בישול, pot — מילים שלקוחות עשויים לחפש">
+        <label class="pf-check"><input type="checkbox" data-f="active"${p.active === false ? '' : ' checked'}> מוצג ללקוחות (בטלו כשהמוצר אזל או הוצא מהמבצע)</label>
+        <div class="row" style="margin-top:12px">
+          <button type="submit" class="primary">${isNew ? 'הוספת המוצר' : 'שמירה'}</button>
+          <button type="button" data-a="cancel">ביטול</button>
+          <span class="muted" data-status></span>
+        </div>
+      </div>
+    </form>`;
+  const form = container.querySelector('form');
+  const preview = form.querySelector('.pf-preview');
+  form.querySelector('[data-img]').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    pendingImage = file; removeImage = false;
+    preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="">`;
+    form.querySelector('[data-a=rmimg]').classList.remove('hidden');
+  });
+  form.addEventListener('click', (e) => {
+    if (e.target.dataset.a === 'cancel') onCancel();
+    if (e.target.dataset.a === 'rmimg') {
+      pendingImage = null; removeImage = true;
+      preview.innerHTML = '<span class="muted">אין תמונה</span>';
+      e.target.classList.add('hidden');
+    }
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = form.querySelector('[data-status]');
+    const data = Object.fromEntries([...form.querySelectorAll('[data-f]')].map((f) => [f.dataset.f, f.type === 'checkbox' ? f.checked : f.value]));
+    form.querySelector('[type=submit]').disabled = true;
+    status.textContent = 'שומר…';
+    try {
+      let saved = await api(isNew ? '/api/products' : `/api/products/${p.id}`, { method: isNew ? 'POST' : 'PUT', body: data });
+      if (pendingImage) {
+        const f = new FormData();
+        f.append('image', await resizeImage(pendingImage, 1200), 'product.jpg');
+        saved = await api(`/api/products/${saved.id}/image`, { method: 'POST', form: f });
+      } else if (removeImage && p.image) {
+        saved = await api(`/api/products/${saved.id}/image`, { method: 'DELETE' });
+      }
+      onSaved(saved);
+    } catch (err) {
+      status.textContent = err.message;
+      form.querySelector('[type=submit]').disabled = false;
+    }
+  });
+  form.querySelector('[data-f=name]').focus();
+}
+
 function productItem(p) {
   const item = document.createElement('div');
-  item.className = 'product-item';
-  const canvas = document.createElement('canvas');
-  drawCrop(canvas, p.photo, p.box, 168);
-  const body = document.createElement('div');
-  item.append(canvas, body);
-
+  const replace = (np) => {
+    Object.assign(p, np);
+    const i = products.findIndex((x) => x.id === p.id);
+    if (i >= 0) products[i] = p;
+  };
   const view = () => {
+    item.className = `product-item${p.active === false ? ' inactive' : ''}`;
+    item.innerHTML = '';
+    const body = document.createElement('div');
     body.innerHTML = `
-      <div class="name">${escapeHtml(p.name)}</div>
+      <div class="name">${escapeHtml(p.name)}${p.active === false ? ' <span class="badge">🙈 מוסתר מלקוחות</span>' : ''}</div>
       <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}${p.price ? ` · ${escapeHtml(formatPrice(p.price))}` : ''}</div>
+      ${p.description ? `<div class="meta pf-desc">${escapeHtml(p.description)}</div>` : ''}
       <div class="meta">${escapeHtml(p.keywords)}</div>
-      <div class="row" style="margin-top:6px"><button data-a="edit">עריכה</button><button data-a="del" class="danger">מחיקה</button></div>`;
+      <div class="row" style="margin-top:6px"><button data-a="edit">✏️ עריכה</button><button data-a="toggle">${p.active === false ? '👁️ הצגה' : '🙈 הסתרה'}</button><button data-a="del" class="danger">מחיקה</button></div>`;
+    item.append(thumbFor(p), body);
   };
-  const edit = () => {
-    body.innerHTML = `
-      <input data-f="name" value="${escapeHtml(p.name)}" placeholder="שם">
-      <input data-f="keywords" value="${escapeHtml(p.keywords)}" placeholder="מילות חיפוש, מופרדות בפסיק" style="margin-top:6px">
-      <div class="row" style="margin-top:6px">
-        <select data-f="shelfId" class="grow">${store.map.shelves.map((s) => `<option value="${escapeHtml(s.id)}"${s.id === p.shelfId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}</select>
-        <input data-f="level" value="${escapeHtml(p.level)}" placeholder="קומת מדף" class="grow">
-        <input data-f="price" value="${escapeHtml(p.price || '')}" placeholder="מחיר" class="grow">
-      </div>
-      <div class="row" style="margin-top:6px"><button data-a="save" class="primary">שמירה</button><button data-a="cancel">ביטול</button></div>`;
-  };
-  body.addEventListener('click', async (e) => {
+  item.addEventListener('click', async (e) => {
     const a = e.target.dataset.a;
-    if (a === 'edit') edit();
-    if (a === 'cancel') view();
-    if (a === 'save') {
-      const data = Object.fromEntries([...body.querySelectorAll('[data-f]')].map((f) => [f.dataset.f, f.value]));
-      try {
-        Object.assign(p, await api(`/api/products/${p.id}`, { method: 'PUT', body: data }));
-        const i = products.findIndex((x) => x.id === p.id);
-        if (i >= 0) products[i] = p;
-        view();
-      } catch (err) { alert(err.message); }
+    if (a === 'edit') {
+      item.className = 'product-item editing';
+      productForm(item, p, { onSaved: (np) => { replace(np); view(); }, onCancel: view });
+    }
+    if (a === 'toggle') {
+      replace(await api(`/api/products/${p.id}`, { method: 'PUT', body: { active: p.active === false } }));
+      view();
     }
     if (a === 'del' && confirm(`למחוק את "${p.name}"?`)) {
       await api(`/api/products/${p.id}`, { method: 'DELETE' });
@@ -230,6 +308,17 @@ function productItem(p) {
   view();
   return item;
 }
+
+$('new-product-btn').addEventListener('click', () => {
+  const box = $('new-product');
+  box.classList.remove('hidden');
+  $('new-product-btn').classList.add('hidden');
+  const close = () => { box.classList.add('hidden'); box.innerHTML = ''; $('new-product-btn').classList.remove('hidden'); };
+  productForm(box, { active: true }, {
+    onSaved: (p) => { products.unshift(p); renderProducts(); close(); },
+    onCancel: close,
+  });
+});
 
 async function loadProducts() {
   products = await api('/api/products');
@@ -482,5 +571,5 @@ $('r-days').addEventListener('change', loadReport);
   products = await api('/api/products');
   loadAlerts();
   setInterval(loadAlerts, 15000);
-  if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי בשרת (חסר ANTHROPIC_API_KEY) — אפשר עדיין לצלם ולהוסיף מוצרים ידנית.';
+  if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי — אפשר לצלם את המדף ולהוסיף מוצרים ידנית, או להוסיף מוצרים בלשונית "מוצרים".';
 })();

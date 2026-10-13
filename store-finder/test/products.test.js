@@ -1,0 +1,97 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'store-finder-products-'));
+delete process.env.ANTHROPIC_API_KEY;
+delete process.env.ANTHROPIC_AUTH_TOKEN;
+delete process.env.GEMINI_API_KEY;
+const app = require('../server');
+const ai = require('../ai');
+
+const JPEG = Buffer.from('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=', 'base64');
+
+test('manager adds products by hand: free text, own photo, hide from shoppers', async () => {
+  const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = async (method, url, { token, body, form } = {}) => {
+    const headers = body ? { 'Content-Type': 'application/json' } : {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(base + url, { method, headers, body: form || (body && JSON.stringify(body)) });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  try {
+    const { data: { token } } = await call('POST', '/api/stores', { body: { name: 'ידני', slug: 'manual-store', password: 'secret1' } });
+    await call('PUT', '/api/store/map', { token, body: { cols: 10, rows: 8, entrance: { x: 5, y: 7 }, shelves: [{ id: 'a1', name: 'מעבר 1', x: 1, y: 1, w: 1, h: 5 }] } });
+
+    let r = await call('POST', '/api/products', { token, body: { name: 'מחבת 28', description: 'ציפוי קרמי\nמתאים לאינדוקציה', price: '89.90', level: 'מדף תחתון', keywords: 'מחבת, טיגון', shelfId: 'a1' } });
+    assert.equal(r.status, 200);
+    const pan = r.data;
+    assert.equal(pan.description, 'ציפוי קרמי\nמתאים לאינדוקציה');
+    assert.equal(pan.active, true);
+    assert.equal(pan.image, null);
+
+    const form = new FormData();
+    form.append('image', new Blob([JPEG], { type: 'image/jpeg' }), 'pan.jpg');
+    r = await call('POST', `/api/products/${pan.id}/image`, { token, form });
+    assert.equal(r.status, 200);
+    assert.match(r.data.image, /^\/uploads\/.+\.jpg$/);
+    assert.equal((await fetch(base + r.data.image)).status, 200);
+    const firstImage = r.data.image;
+
+    r = await call('GET', `/api/public/manual-store/search?q=${encodeURIComponent('מחבת')}`);
+    assert.equal(r.data.results.length, 1);
+    assert.equal(r.data.results[0].image, firstImage);
+
+    // Hidden products disappear for shoppers but stay in the manager's list.
+    r = await call('PUT', `/api/products/${pan.id}`, { token, body: { active: false } });
+    assert.equal(r.data.active, false);
+    assert.equal(r.data.price, '89.90');
+    r = await call('GET', `/api/public/manual-store/search?q=${encodeURIComponent('מחבת')}`);
+    assert.equal(r.data.results.length, 0);
+    assert.equal((await call('GET', `/api/public/manual-store/products/${pan.id}`)).status, 404);
+    r = await call('GET', '/api/products', { token });
+    assert.equal(r.data.length, 1);
+    await call('PUT', `/api/products/${pan.id}`, { token, body: { active: true } });
+
+    r = await call('DELETE', `/api/products/${pan.id}/image`, { token });
+    assert.equal(r.data.image, null);
+    await new Promise((res) => setTimeout(res, 50));
+    assert.equal((await fetch(base + firstImage)).status, 404);
+    assert.equal((await call('POST', `/api/products/99999/image`, { token, form })).status, 404);
+  } finally {
+    server.close();
+  }
+});
+
+test('Gemini (free tier) is used when only GEMINI_API_KEY is set', async () => {
+  assert.equal(ai.provider(), null);
+  process.env.GEMINI_API_KEY = 'test-key';
+  const realFetch = global.fetch;
+  let sent;
+  global.fetch = async (url, opts) => {
+    sent = { url, opts, body: JSON.parse(opts.body) };
+    return new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ products: [
+      { name: 'סיר קטן', description: 'נירוסטה', keywords: ['סיר'], level: 'מדף עליון', box: { x0: 900, y0: 10, x1: 100, y1: 1200 } },
+    ] }) }] } }] }), { status: 200 });
+  };
+  try {
+    assert.equal(ai.provider(), 'gemini');
+    const products = await ai.detectProducts(JPEG, 'image/jpeg', 'מעבר 4');
+    assert.match(sent.url, /generativelanguage\.googleapis\.com\/v1beta\/models\/.+:generateContent$/);
+    assert.equal(sent.opts.headers['x-goog-api-key'], 'test-key');
+    assert.equal(sent.body.generationConfig.responseSchema.type, 'OBJECT');
+    assert.equal(sent.body.generationConfig.responseSchema.properties.products.items.properties.box.type, 'OBJECT');
+    assert.ok(!JSON.stringify(sent.body.generationConfig.responseSchema).includes('additionalProperties'));
+    assert.equal(sent.body.contents[0].parts[0].inline_data.mime_type, 'image/jpeg');
+    assert.deepEqual(products[0].box, { x0: 100, y0: 10, x1: 900, y1: 1000 });
+
+    global.fetch = async () => new Response('{}', { status: 429 });
+    await assert.rejects(ai.detectProducts(JPEG, 'image/jpeg', 'x'), /המכסה החינמית/);
+  } finally {
+    global.fetch = realFetch;
+    delete process.env.GEMINI_API_KEY;
+  }
+});

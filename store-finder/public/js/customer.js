@@ -79,7 +79,7 @@ async function runSearch(q) {
       const item = document.createElement('div');
       item.className = 'product-item result';
       const canvas = document.createElement('canvas');
-      drawCrop(canvas, p.photo, p.box, 168);
+      drawCrop(canvas, p.image || p.photo, p.image ? null : p.box, 168);
       const shelf = shelfOf(p);
       const info = document.createElement('div');
       info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
@@ -112,7 +112,7 @@ function showDetail(p) {
   $('results').classList.add('hidden');
   $('status').classList.add('hidden');
   $('detail').classList.remove('hidden');
-  drawCrop($('detail-crop'), p.photo, p.box, 480);
+  drawCrop($('detail-crop'), p.image || p.photo, p.image ? null : p.box, 480);
   $('detail-name').textContent = p.name;
   $('detail-desc').textContent = p.description;
   $('detail-chips').innerHTML = [shelf && chip(`📍 ${shelf.name}`, 'o'), p.level && chip(p.level)].filter(Boolean).join('');
@@ -225,7 +225,7 @@ $('list-toggle').addEventListener('click', () => {
   const list = loadList();
   const i = list.findIndex((x) => x.id === current.id);
   if (i >= 0) list.splice(i, 1);
-  else list.push({ id: current.id, name: current.name, shelfId: current.shelfId, level: current.level, price: current.price, photo: current.photo, box: current.box, picked: false });
+  else list.push({ id: current.id, name: current.name, shelfId: current.shelfId, level: current.level, price: current.price, photo: current.photo, image: current.image, box: current.box, picked: false });
   saveList(list);
   updateListToggle();
 });

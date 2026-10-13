@@ -202,6 +202,23 @@ body.searching .search-bar { margin-top: 14px; }
 .import-box { margin-bottom: 14px; padding: 12px; border: 1px dashed var(--border); border-radius: 12px; }
 .import-box summary { cursor: pointer; font-weight: 700; }
 .price { color: var(--accent); font-weight: 800; }
+/* owner: product form */
+.product-item.editing { grid-template-columns: 1fr; }
+.product-item.inactive { opacity: .6; }
+.product-item img.thumb { width: 92px; height: 92px; }
+.pf-desc { white-space: pre-line; color: #c3cdf0; }
+#new-product { margin-bottom: 14px; padding: 14px; border: 1px solid rgba(255, 138, 42, .45); border-radius: 18px; background: rgba(255, 138, 42, .05); }
+.product-form { display: grid; grid-template-columns: 200px 1fr; gap: 18px; width: 100%; }
+@media (max-width: 720px) { .product-form { grid-template-columns: 1fr; } }
+.pf-image { display: grid; gap: 10px; align-content: start; }
+.pf-preview { aspect-ratio: 1; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px dashed var(--border); display: grid; place-items: center; overflow: hidden; }
+.pf-preview img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.pf-fields label:first-child { margin-top: 0; }
+.pf-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr; gap: 8px; }
+@media (max-width: 720px) { .pf-row { grid-template-columns: 1fr; } }
+.pf-check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin-top: 12px; }
+.pf-check input { width: auto; }
+
 /* customer: shopping list, feedback, help */
 .help-btn { padding: 8px 14px; border-radius: 999px; font-size: .92rem; }
 .list-toggle { width: 100%; margin-top: 12px; }
@@ -265,3 +282,4 @@ body:has(.list-bar:not(.hidden)) .wrap { padding-bottom: 96px; }
 }
 /* the editor needs room for precise dragging on phones */
 #map-editor, #map-picker { min-width: 640px; }
+#detail-desc { white-space: pre-line; }

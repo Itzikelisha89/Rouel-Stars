@@ -7,6 +7,7 @@ const path = require('node:path');
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'store-finder-test-'));
 delete process.env.ANTHROPIC_API_KEY;
 delete process.env.ANTHROPIC_AUTH_TOKEN;
+delete process.env.GEMINI_API_KEY;
 const app = require('../server');
 
 let base, server;
