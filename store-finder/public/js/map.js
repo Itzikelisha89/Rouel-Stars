@@ -9,7 +9,7 @@ function el(tag, attrs = {}, parent) {
   return node;
 }
 
-export function renderMap(svg, map, { targetShelfId = null, path = null, onShelfClick = null, here = null } = {}) {
+export function renderMap(svg, map, { targetShelfId = null, targetShelfIds = null, path = null, onShelfClick = null, here = null, stops = null } = {}) {
   svg.innerHTML = '';
   svg.setAttribute('viewBox', `0 0 ${map.cols * CELL} ${map.rows * CELL}`);
   const grid = el('g', { class: 'map-grid' }, svg);
@@ -17,7 +17,8 @@ export function renderMap(svg, map, { targetShelfId = null, path = null, onShelf
   for (let y = 0; y <= map.rows; y++) el('line', { x1: 0, y1: y * CELL, x2: map.cols * CELL, y2: y * CELL }, grid);
 
   for (const s of map.shelves) {
-    const g = el('g', { class: `map-shelf${s.id === targetShelfId ? ' target' : ''}${onShelfClick ? ' selectable' : ''}`, 'data-id': s.id }, svg);
+    const isTarget = s.id === targetShelfId || targetShelfIds?.includes(s.id);
+    const g = el('g', { class: `map-shelf${isTarget ? ' target' : ''}${onShelfClick ? ' selectable' : ''}`, 'data-id': s.id }, svg);
     el('rect', { x: s.x * CELL + 1, y: s.y * CELL + 1, width: s.w * CELL - 2, height: s.h * CELL - 2 }, g);
     const t = el('text', { x: (s.x + s.w / 2) * CELL, y: (s.y + s.h / 2) * CELL + 4, 'text-anchor': 'middle' }, g);
     t.textContent = s.name;
@@ -27,6 +28,13 @@ export function renderMap(svg, map, { targetShelfId = null, path = null, onShelf
 
   if (path && path.length > 1) {
     el('polyline', { class: 'map-path', points: path.map((p) => `${p.x * CELL + CELL / 2},${p.y * CELL + CELL / 2}`).join(' ') }, svg);
+  }
+
+  // Numbered stops of a shopping-list route.
+  for (const stop of stops || []) {
+    const g2 = el('g', { class: 'map-stop' }, svg);
+    el('circle', { cx: stop.x * CELL + CELL / 2, cy: stop.y * CELL + CELL / 2, r: CELL * 0.8 }, g2);
+    el('text', { x: stop.x * CELL + CELL / 2, y: stop.y * CELL + CELL / 2 + 5, 'text-anchor': 'middle' }, g2).textContent = stop.n;
   }
 
   if (here) {
@@ -93,6 +101,28 @@ export function findPath(map, shelf, start = map.entrance) {
     }
   }
   return null;
+}
+
+// Order a shopping list by walking distance: from where the shopper stands, always go to the
+// nearest remaining aisle next (nearest neighbour; for a handful of aisles it matches the optimum
+// closely and is instant on a phone). Items on the same aisle are picked up in one stop.
+export function planRoute(map, shelves, start = map.entrance) {
+  const remaining = [...new Map(shelves.map((s) => [s.id, s])).values()];
+  const legs = [];
+  let at = start;
+  while (remaining.length) {
+    let best = null;
+    for (const s of remaining) {
+      const p = findPath(map, s, at);
+      if (p && (!best || p.length < best.path.length)) best = { shelf: s, path: p };
+    }
+    if (!best) break; // the rest are unreachable on this map
+    legs.push(best);
+    remaining.splice(remaining.indexOf(best.shelf), 1);
+    at = best.path[best.path.length - 1];
+  }
+  const path = legs.flatMap((l, i) => (i ? l.path.slice(1) : l.path));
+  return { legs, path, meters: Math.max(0, path.length - 1), unreachable: remaining };
 }
 
 // The aisle-end spot a shopper stands on when scanning that aisle's QR sticker:

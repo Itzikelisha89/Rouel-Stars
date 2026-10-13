@@ -1,5 +1,5 @@
 import { api, escapeHtml, formatPrice } from '/js/api.js';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot } from '/js/map.js';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute } from '/js/map.js';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -25,6 +25,21 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 const LAST_KEY = `storeFinder:last:${slug}`;
+const LIST_KEY = `storeFinder:list:${slug}`;
+let lastQuery = '';
+let current = null; // product on the detail page
+
+// Anonymous random id per phone, so the pilot report counts shoppers and not only searches.
+const visitor = (() => {
+  try {
+    let v = localStorage.getItem('storeFinder:visitor');
+    if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 20); localStorage.setItem('storeFinder:visitor', v); }
+    return v;
+  } catch { return ''; }
+})();
+function track(type, extra = {}) {
+  return api(`/api/public/${encodeURIComponent(slug)}/events`, { method: 'POST', body: { type, visitor, ...extra } });
+}
 function rememberProduct(p) {
   try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: p.id, ts: Date.now() })); } catch { /* private mode */ }
 }
@@ -43,15 +58,20 @@ function chip(text, cls = '') { return `<span class="chip ${cls}">${escapeHtml(t
 async function runSearch(q) {
   q = q.trim();
   if (!q) return;
+  lastQuery = q;
   showList();
   document.body.classList.add('searching');
   $('status').innerHTML = '<span class="row"><span class="spinner"></span> מחפש…</span>';
   $('results').innerHTML = '';
   try {
-    const data = await api(`/api/public/${encodeURIComponent(slug)}/search?q=${encodeURIComponent(q)}`);
+    const data = await api(`/api/public/${encodeURIComponent(slug)}/search?q=${encodeURIComponent(q)}&v=${visitor}`);
     results = data.results;
     if (!results.length) {
-      $('status').textContent = `לא מצאנו "${q}". נסה מילה אחרת, או שאל את אחד העובדים 🙂`;
+      $('status').textContent = `לא מצאנו "${q}". אפשר לנסות מילה אחרת 🙂`;
+      $('request-done').classList.add('hidden');
+      $('request-form').classList.remove('hidden');
+      $('no-results').classList.remove('hidden');
+      if (voiceMode) speak(`לא מצאנו ${q} בחנות. אפשר לבקש שנביא את זה.`);
       return;
     }
     $('status').textContent = data.expanded ? `לא מצאנו בדיוק "${q}", אבל אולי התכוונת לזה:` : `נמצאו ${results.length} תוצאות`;
@@ -76,13 +96,19 @@ async function runSearch(q) {
 
 function showList() {
   $('detail').classList.add('hidden');
+  $('list-view').classList.add('hidden');
+  $('no-results').classList.add('hidden');
+  renderListBar();
   $('results').classList.remove('hidden');
   $('status').classList.remove('hidden');
 }
 
 function showDetail(p) {
+  current = p;
   document.body.classList.add('searching');
   const shelf = shelfOf(p);
+  $('list-view').classList.add('hidden');
+  $('no-results').classList.add('hidden');
   $('results').classList.add('hidden');
   $('status').classList.add('hidden');
   $('detail').classList.remove('hidden');
@@ -105,6 +131,10 @@ function showDetail(p) {
     renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here });
   }
   rememberProduct(p);
+  track('view', { productId: p.id }).catch(() => {});
+  resetFeedback();
+  updateListToggle();
+  renderListBar();
   $('speak').classList.toggle('hidden', !canSpeak);
   if (voiceMode) speak(spokenAnswer);
   // The shelf photo with the product outlined, so the shopper recognises the spot when they get there.
@@ -126,6 +156,160 @@ $('search-form').addEventListener('submit', (e) => {
   $('q').blur();
   history.replaceState(null, '', `?q=${encodeURIComponent($('q').value.trim())}`);
   runSearch($('q').value);
+});
+
+// ---------- "found it?" feedback: every answer is a shelf check done by a shopper ----------
+function resetFeedback() {
+  $('fb-ask').classList.remove('hidden');
+  $('fb-reasons').classList.add('hidden');
+  $('fb-done').classList.add('hidden');
+}
+$('feedback').addEventListener('click', async (e) => {
+  const fb = e.target.closest('[data-fb]')?.dataset.fb;
+  if (!fb || !current) return;
+  if (fb === 'no') {
+    $('fb-ask').classList.add('hidden');
+    $('fb-reasons').classList.remove('hidden');
+    return;
+  }
+  const thanks = { found: 'איזה כיף! תודה שעזרת לנו לדעת 🙌', empty: 'תודה! הצוות קיבל התראה למלא את המדף.', not_there: 'תודה! הצוות קיבל התראה, ועובד יכול לעזור לך למצוא אותו.' };
+  try {
+    await track(fb, { productId: current.id });
+    $('fb-done').textContent = thanks[fb];
+  } catch (err) { $('fb-done').textContent = err.message; }
+  $('fb-ask').classList.add('hidden');
+  $('fb-reasons').classList.add('hidden');
+  $('fb-done').classList.remove('hidden');
+  if (fb === 'found') markPicked(current.id);
+});
+
+// ---------- request a product the store doesn't carry ----------
+$('request-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await track('request', { query: lastQuery, phone: $('request-phone').value });
+    $('request-done').textContent = $('request-phone').value.trim()
+      ? `קיבלנו! נעדכן אותך כש"${lastQuery}" יגיע לסניף.`
+      : `קיבלנו! מנהל הסניף יראה שחיפשת "${lastQuery}".`;
+    $('request-form').classList.add('hidden');
+    $('request-done').classList.remove('hidden');
+  } catch (err) { $('request-done').textContent = err.message; $('request-done').classList.remove('hidden'); }
+});
+
+// ---------- shopping list with the shortest route through the store ----------
+function loadList() {
+  try { return JSON.parse(localStorage.getItem(LIST_KEY) || '[]'); } catch { return []; }
+}
+function saveList(list) {
+  try { localStorage.setItem(LIST_KEY, JSON.stringify(list)); } catch { /* private mode */ }
+  renderListBar();
+}
+function inList(id) { return loadList().some((i) => i.id === id); }
+function updateListToggle() {
+  const on = current && inList(current.id);
+  $('list-toggle').textContent = on ? '✓ ברשימת הקניות' : '➕ הוספה לרשימת הקניות';
+  $('list-toggle').classList.toggle('on', Boolean(on));
+}
+function renderListBar() {
+  const n = loadList().filter((i) => !i.picked).length;
+  $('list-count').textContent = n;
+  $('list-bar').classList.toggle('hidden', !n || !$('list-view').classList.contains('hidden'));
+}
+function markPicked(id) {
+  const list = loadList();
+  const item = list.find((i) => i.id === id);
+  if (item) { item.picked = true; saveList(list); }
+}
+$('list-toggle').addEventListener('click', () => {
+  if (!current) return;
+  const list = loadList();
+  const i = list.findIndex((x) => x.id === current.id);
+  if (i >= 0) list.splice(i, 1);
+  else list.push({ id: current.id, name: current.name, shelfId: current.shelfId, level: current.level, price: current.price, photo: current.photo, box: current.box, picked: false });
+  saveList(list);
+  updateListToggle();
+});
+
+let routeSpeech = '';
+function showListView() {
+  document.body.classList.add('searching');
+  for (const id of ['detail', 'results', 'status', 'no-results']) $(id).classList.add('hidden');
+  $('list-view').classList.remove('hidden');
+  $('list-bar').classList.add('hidden');
+  renderListView();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function renderListView() {
+  const list = loadList();
+  const todo = list.filter((i) => !i.picked);
+  const shelves = todo.map((i) => store.map.shelves.find((s) => s.id === i.shelfId)).filter(Boolean);
+  const here = hereShelf && aisleSpot(store.map, hereShelf);
+  const route = planRoute(store.map, shelves, here || store.map.entrance);
+  const order = new Map(route.legs.map((l, n) => [l.shelf.id, n + 1]));
+  const sorted = [...list].sort((a, b) => (a.picked - b.picked) || ((order.get(a.shelfId) ?? 99) - (order.get(b.shelfId) ?? 99)));
+  $('list-meters').textContent = route.legs.length ? `🚶 ${route.meters} מ׳ · ${route.legs.length} עצירות` : '';
+  $('list-hint').textContent = todo.length ? 'המסלול הקצר ביותר בחנות, לפי הסדר. סמנו כל מוצר שלקחתם.' : (list.length ? 'לקחת הכל! 🎉' : 'הרשימה ריקה. מוסיפים מוצרים מדף המוצר.');
+  $('list-items').innerHTML = sorted.map((i) => {
+    const shelf = store.map.shelves.find((s) => s.id === i.shelfId);
+    const n = order.get(i.shelfId);
+    return `<li class="list-item${i.picked ? ' picked' : ''}" data-id="${i.id}">
+      <span class="stop-n">${i.picked ? '✓' : (n ?? '?')}</span>
+      <span class="li-main"><span class="name">${escapeHtml(i.name)}</span><span class="meta">${escapeHtml(shortShelf(shelf))}${i.level ? ` · ${escapeHtml(i.level)}` : ''}${i.price ? ` · ${escapeHtml(formatPrice(i.price))}` : ''}</span></span>
+      <button type="button" class="li-check" aria-label="${i.picked ? 'החזרה לרשימה' : 'לקחתי'}">${i.picked ? '↩︎' : 'לקחתי'}</button>
+    </li>`;
+  }).join('');
+  const stops = route.legs.map((l, n) => ({ ...l.path[l.path.length - 1], n: n + 1 }));
+  renderMap($('list-map'), store.map, { targetShelfIds: shelves.map((s) => s.id), path: route.path, here, stops });
+  routeSpeech = route.legs.map((l, n) => `${n + 1}. ${shortShelf(l.shelf)}: ${todo.filter((i) => i.shelfId === l.shelf.id).map((i) => i.name).join(', ')}`).join('. ');
+  $('list-speak').classList.toggle('hidden', !canSpeak || !route.legs.length);
+}
+$('list-items').addEventListener('click', (e) => {
+  const li = e.target.closest('.list-item');
+  if (!li) return;
+  const id = Number(li.dataset.id);
+  const list = loadList();
+  const item = list.find((i) => i.id === id);
+  if (!item) return;
+  if (e.target.closest('.li-check')) {
+    item.picked = !item.picked;
+    if (item.picked) track('found', { productId: id }).catch(() => {});
+    saveList(list);
+    renderListView();
+  } else {
+    showDetail(item);
+  }
+});
+$('list-bar').addEventListener('click', showListView);
+$('list-back').addEventListener('click', () => { showList(); renderListBar(); });
+$('list-clear').addEventListener('click', () => { saveList([]); renderListView(); });
+$('list-speak').addEventListener('click', () => speak(routeSpeech));
+
+// ---------- call a staff member to where the shopper stands ----------
+function openHelp() {
+  const guess = hereShelf || (current && !$('detail').classList.contains('hidden') ? shelfOf(current) : null);
+  $('help-shelf').innerHTML = `<option value="">ליד הכניסה / לא בטוח</option>` +
+    store.map.shelves.map((s) => `<option value="${escapeHtml(s.id)}"${guess?.id === s.id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+  $('help-where').textContent = 'עובד יקבל התראה בטלפון ויגיע אליכם.';
+  $('help-done').classList.add('hidden');
+  $('help-send').disabled = false;
+  $('help-sheet').classList.remove('hidden');
+}
+$('help-btn').addEventListener('click', openHelp);
+$('help-cancel').addEventListener('click', () => $('help-sheet').classList.add('hidden'));
+$('help-sheet').addEventListener('click', (e) => { if (e.target === $('help-sheet')) $('help-sheet').classList.add('hidden'); });
+$('help-send').addEventListener('click', async () => {
+  $('help-send').disabled = true;
+  try {
+    await track('help', { shelfId: $('help-shelf').value || null, productId: current?.id ?? null, query: lastQuery });
+    const s = store.map.shelves.find((x) => x.id === $('help-shelf').value);
+    $('help-done').textContent = `✅ הקריאה נשלחה. עובד בדרך אליכם${s ? ` ל${shortShelf(s)}` : ''}.`;
+    $('help-done').classList.remove('hidden');
+    setTimeout(() => $('help-sheet').classList.add('hidden'), 3500);
+  } catch (err) {
+    $('help-done').textContent = err.message;
+    $('help-done').classList.remove('hidden');
+    $('help-send').disabled = false;
+  }
 });
 
 // Voice search where the browser supports it.
@@ -157,6 +341,7 @@ if (Recognition) {
       $('here-banner').textContent = `📍 אתה ליד: ${hereShelf.name}`;
       $('here-banner').classList.remove('hidden');
     }
+    renderListBar();
     const q = params.get('q');
     const lastId = hereShelf && !q ? recentProductId() : null;
     if (q) { $('q').value = q; runSearch(q); }

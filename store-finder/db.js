@@ -49,13 +49,30 @@ db.exec(`
     result_count INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  -- What shoppers do after a search: opened a product, found it, reported a problem, asked for help.
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY,
+    store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+    visitor TEXT NOT NULL DEFAULT '',
+    type TEXT NOT NULL,
+    product_id INTEGER,
+    shelf_id TEXT,
+    query TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    resolved_at TEXT
+  );
   CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
+  CREATE INDEX IF NOT EXISTS idx_events_store ON events(store_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_searches_store ON searches(store_id);
 `);
 
 // Migrations for databases created by earlier versions.
 if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'price')) {
   db.exec("ALTER TABLE products ADD COLUMN price TEXT NOT NULL DEFAULT ''");
+}
+if (!db.prepare('PRAGMA table_info(searches)').all().some((c) => c.name === 'visitor')) {
+  db.exec("ALTER TABLE searches ADD COLUMN visitor TEXT NOT NULL DEFAULT ''");
 }
 
 // Each grid cell is roughly 1m x 1m, so 40x25 fits a ~1000m² store.

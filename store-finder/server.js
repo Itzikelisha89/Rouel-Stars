@@ -8,6 +8,7 @@ const { db, UPLOAD_DIR, DEFAULT_MAP } = require('./db');
 const { search } = require('./search');
 const ai = require('./ai');
 const insights = require('./insights');
+const pilot = require('./pilot');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -235,7 +236,75 @@ app.get('/api/insights', requireOwner, (req, res) => {
   res.json(insights.analyze(rows));
 });
 
+// Things that need a staff member now: a shopper asking for help, a product that was not on its shelf,
+// and requests for products the store does not carry.
+const ALERT_TYPES = ['help', 'not_there', 'empty', 'request'];
+app.get('/api/alerts', requireOwner, (req, res) => {
+  const rows = db.prepare(`SELECT events.*, products.name AS product_name FROM events
+    LEFT JOIN products ON products.id = events.product_id
+    WHERE events.store_id = ? AND events.type IN (SELECT value FROM json_each(?))
+      AND (events.resolved_at IS NULL OR events.resolved_at >= datetime('now', '-1 day'))
+    ORDER BY events.resolved_at IS NOT NULL, events.id DESC LIMIT 200`).all(req.store.id, JSON.stringify(ALERT_TYPES));
+  res.json(rows.map((e) => ({
+    id: e.id, type: e.type, productId: e.product_id, productName: e.product_name, shelfId: e.shelf_id,
+    query: e.query, phone: e.note, createdAt: e.created_at, resolvedAt: e.resolved_at,
+  })));
+});
+
+app.post('/api/alerts/:id/resolve', requireOwner, (req, res) => {
+  const changes = db.prepare("UPDATE events SET resolved_at = datetime('now') WHERE id = ? AND store_id = ? AND resolved_at IS NULL")
+    .run(req.params.id, req.store.id).changes;
+  res.json({ ok: true, changes });
+});
+
+app.get('/api/pilot-report', requireOwner, (req, res) => {
+  const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
+  const since = `-${days + 1} days`;
+  const searches = db.prepare(`SELECT query, result_count, visitor, created_at FROM searches
+    WHERE store_id = ? AND created_at >= datetime('now', ?)`).all(req.store.id, since);
+  const events = db.prepare(`SELECT type, visitor, product_id, query, note, created_at, resolved_at FROM events
+    WHERE store_id = ? AND created_at >= datetime('now', ?)`).all(req.store.id, since);
+  const productNames = new Map(db.prepare('SELECT id, name FROM products WHERE store_id = ?').all(req.store.id).map((p) => [p.id, p.name]));
+  res.json({ store: req.store.name, products: productNames.size, ...pilot.report(searches, events, { days, productNames }) });
+});
+
 // ---------- public (customers) ----------
+// Anonymous per-phone id (random, kept in the browser) so the pilot can count shoppers, not just searches.
+function cleanVisitor(v) {
+  return /^[a-z0-9]{8,32}$/i.test(String(v || '')) ? String(v) : '';
+}
+
+// Simple per-IP limit so a public form cannot flood the staff alert screen.
+const eventHits = new Map();
+function rateLimited(ip, max = 30, windowMs = 60000) {
+  const now = Date.now();
+  const hits = (eventHits.get(ip) || []).filter((t) => now - t < windowMs);
+  hits.push(now);
+  eventHits.set(ip, hits);
+  if (eventHits.size > 5000) for (const [k, v] of eventHits) if (now - v[v.length - 1] > windowMs) eventHits.delete(k);
+  return hits.length > max;
+}
+
+const EVENT_TYPES = ['view', 'found', ...ALERT_TYPES];
+app.post('/api/public/:slug/events', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (rateLimited(req.ip)) return res.status(429).json({ error: 'יותר מדי פניות, נסו שוב בעוד דקה' });
+  const { type } = req.body;
+  if (!EVENT_TYPES.includes(type)) return res.status(400).json({ error: 'סוג פנייה לא מוכר' });
+  const product = req.body.productId != null
+    ? db.prepare('SELECT id, shelf_id FROM products WHERE id = ? AND store_id = ?').get(req.body.productId, store.id) : null;
+  if (['view', 'found', 'not_there', 'empty'].includes(type) && !product) return res.status(400).json({ error: 'המוצר לא נמצא' });
+  const shelfId = product?.shelf_id || (shelfExists(store, req.body.shelfId) ? req.body.shelfId : null);
+  const query = String(req.body.query || '').trim().slice(0, 100);
+  if (type === 'request' && !query) return res.status(400).json({ error: 'מה חיפשתם?' });
+  const phone = String(req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15);
+  if (phone && !/^\+?\d{9,14}$/.test(phone)) return res.status(400).json({ error: 'מספר טלפון לא תקין' });
+  db.prepare('INSERT INTO events (store_id, visitor, type, product_id, shelf_id, query, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(store.id, cleanVisitor(req.body.visitor), type, product?.id ?? null, shelfId, query, phone);
+  res.json({ ok: true });
+});
+
 function storeUrl(req, slug) {
   const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
   return `${base.replace(/\/$/, '')}/s/${slug}`;
@@ -270,7 +339,8 @@ app.get('/api/public/:slug/search', async (req, res) => {
       console.error('expandQuery failed:', err.message);
     }
   }
-  db.prepare('INSERT INTO searches (store_id, query, result_count) VALUES (?, ?, ?)').run(store.id, q, results.length);
+  db.prepare('INSERT INTO searches (store_id, query, result_count, visitor) VALUES (?, ?, ?, ?)')
+    .run(store.id, q, results.length, cleanVisitor(req.query.v));
   res.json({ expanded, results: results.map((r) => productRow(r.product)) });
 });
 

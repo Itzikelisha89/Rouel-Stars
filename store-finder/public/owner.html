@@ -22,6 +22,8 @@
     <button data-tab="products">3. מוצרים</button>
     <button data-tab="share">4. שלטי QR</button>
     <button data-tab="demand">5. ביקושים</button>
+    <button data-tab="alerts">🔔 התראות<span class="count hidden" id="alert-count"></span></button>
+    <button data-tab="report">📊 דוח פיילוט</button>
   </nav>
 
   <main class="wrap">
@@ -136,6 +138,46 @@
           <div id="popular" class="demand-list"></div>
         </div>
       </div>
+    </section>
+    <!-- ALERTS -->
+    <section id="tab-alerts" class="hidden">
+      <div class="card">
+        <div class="report-head">
+          <div>
+            <h2>🔔 התראות מהלקוחות</h2>
+            <p class="muted">מתעדכן לבד. לקוח שקרא לעובד, מוצר שלא היה במקום או מדף ריק, ומוצרים שלקוחות ביקשו שנביא.</p>
+          </div>
+          <button type="button" id="notify-btn" class="no-print">🔊 התראה קולית במסך הזה</button>
+        </div>
+        <div id="alert-list" class="alert-list"></div>
+      </div>
+    </section>
+
+    <!-- PILOT REPORT -->
+    <section id="tab-report" class="hidden">
+      <div class="card">
+        <div class="report-head">
+          <div>
+            <h2 id="r-title">דוח פיילוט</h2>
+            <p class="muted" id="r-period"></p>
+          </div>
+          <div class="row no-print">
+            <select id="r-days" style="width:auto"><option value="7">7 ימים</option><option value="30" selected>30 ימים</option><option value="90">90 ימים</option></select>
+            <button type="button" onclick="window.print()">🖨️ הדפסה / PDF</button>
+          </div>
+        </div>
+      </div>
+      <div class="kpis k4" id="r-kpis"></div>
+      <div class="grid2">
+        <div class="card"><h2>⏱️ שעות העומס</h2><p class="muted">חיפושים לפי שעה ביום: מתי כדאי לתגבר עובדים על הרצפה.</p><div id="r-hours"></div></div>
+        <div class="card"><h2>📈 שימוש יומי</h2><p class="muted">מבקרים שהשתמשו במערכת בכל יום.</p><div id="r-daily"></div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h2>🔎 מה הכי מחפשים</h2><div id="r-top" class="rank"></div></div>
+        <div class="card"><h2>📭 מוצרים שלא היו במקום</h2><p class="muted">דיווחים של לקוחות: מדף ריק או מוצר שזז. לבדוק מלאי וסידור.</p><div id="r-problems" class="rank"></div></div>
+      </div>
+      <div class="card"><h2>📣 מוצרים שלקוחות ביקשו שנביא</h2><div id="r-requests" class="rank"></div></div>
+      <p class="muted" style="font-size:.85rem">* זמן עבודה שנחסך: הערכה של 2 דקות לכל לקוח שמצא מוצר לבד, בלי לשאול עובד.</p>
     </section>
   </main>
   <script type="module" src="/js/owner.js"></script>

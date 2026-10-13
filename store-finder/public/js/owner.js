@@ -13,13 +13,15 @@ let mode = 'draw';
 // ---------- tabs ----------
 function showTab(name) {
   for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === name);
-  for (const t of ['map', 'photo', 'products', 'share', 'demand']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
+  for (const t of ['map', 'photo', 'products', 'share', 'demand', 'alerts', 'report']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
   if (name === 'photo') renderPicker();
   if (name === 'products') loadProducts();
   if (name === 'share') loadShare();
   if (name === 'demand') loadDemand();
+  if (name === 'alerts') loadAlerts();
+  if (name === 'report') loadReport();
 }
-$('tabs').addEventListener('click', (e) => { if (e.target.dataset.tab) showTab(e.target.dataset.tab); });
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
 
 $('logout').addEventListener('click', async () => {
   await api('/api/logout', { method: 'POST' }).catch(() => {});
@@ -231,6 +233,8 @@ function productItem(p) {
 
 async function loadProducts() {
   products = await api('/api/products');
+  loadAlerts();
+  setInterval(loadAlerts, 15000);
   renderProducts();
 }
 function renderProducts() {
@@ -358,6 +362,113 @@ async function loadDemand() {
     </div>`).join('')}</div>`;
 }
 
+// ---------- live alerts from shoppers ----------
+const shelfLabel = (id) => (id ? shelfName(id) : 'ליד הכניסה');
+const ago = (iso) => {
+  const mins = Math.round((Date.now() - new Date(`${iso.replace(' ', 'T')}Z`)) / 60000);
+  return mins < 1 ? 'עכשיו' : mins < 60 ? `לפני ${mins} דק׳` : `לפני ${Math.round(mins / 60)} שע׳`;
+};
+const ALERT_VIEW = {
+  help: (a) => ['🙋', 'לקוח מבקש עזרה', [shelfLabel(a.shelfId), a.productName && `מחפש: ${a.productName}`, !a.productName && a.query && `חיפש: "${a.query}"`]],
+  not_there: (a) => ['🔀', `לא במקום: ${a.productName || 'מוצר'}`, [`אמור להיות ב${shelfLabel(a.shelfId)}`]],
+  empty: (a) => ['📭', `מדף ריק: ${a.productName || 'מוצר'}`, [shelfLabel(a.shelfId), 'צריך למלא מלאי']],
+  request: (a) => ['📣', `לקוח ביקש שנביא: "${a.query}"`, [a.phone ? `<a href="tel:${escapeHtml(a.phone)}" dir="ltr">${escapeHtml(a.phone)}</a>` : 'בלי טלפון']],
+};
+let soundOn = false;
+let seenAlerts = null;
+function beep() {
+  try {
+    const ctx = new AudioContext();
+    for (const [i, f] of [880, 1320].entries()) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.16);
+      o.start(ctx.currentTime + i * 0.18); o.stop(ctx.currentTime + i * 0.18 + 0.17);
+    }
+  } catch { /* no audio */ }
+}
+$('notify-btn').addEventListener('click', () => {
+  soundOn = !soundOn;
+  $('notify-btn').textContent = soundOn ? '🔔 התראה קולית פעילה' : '🔊 התראה קולית במסך הזה';
+  $('notify-btn').classList.toggle('active', soundOn);
+  if (soundOn) beep();
+});
+
+async function loadAlerts() {
+  let alerts;
+  try { alerts = await api('/api/alerts'); } catch { return; }
+  // Only help calls and shelf problems need someone now; product requests are counted but don't nag.
+  const open = alerts.filter((a) => !a.resolvedAt);
+  const urgent = open.filter((a) => a.type !== 'request');
+  $('alert-count').textContent = urgent.length;
+  $('alert-count').classList.toggle('hidden', !urgent.length);
+  document.title = `${urgent.length ? `(${urgent.length}) ` : ''}${store.name} — ניהול`;
+  const ids = new Set(urgent.map((a) => a.id));
+  if (seenAlerts && soundOn && [...ids].some((id) => !seenAlerts.has(id))) beep();
+  seenAlerts = ids;
+  $('alert-list').innerHTML = alerts.map((a) => {
+    const [ico, title, meta] = ALERT_VIEW[a.type](a);
+    return `<div class="alert t-${a.type} ${a.resolvedAt ? 'done' : 'open'}">
+      <div class="a-ico">${ico}</div>
+      <div class="a-main"><div class="a-title">${escapeHtml(title)}</div>
+        <div class="a-meta">${meta.filter(Boolean).map((m) => (m.startsWith('<a ') ? m : escapeHtml(m))).join(' · ')} · ${ago(a.createdAt)}</div></div>
+      ${a.resolvedAt ? '<span class="muted">✓ טופל</span>' : `<button type="button" class="primary" data-resolve="${a.id}">טופל ✓</button>`}
+    </div>`;
+  }).join('') || '<p class="muted">אין התראות פתוחות 👌</p>';
+}
+$('alert-list').addEventListener('click', async (e) => {
+  const id = e.target.dataset.resolve;
+  if (!id) return;
+  e.target.disabled = true;
+  await api(`/api/alerts/${id}/resolve`, { method: 'POST' }).catch(() => {});
+  loadAlerts();
+});
+
+// ---------- pilot report ----------
+const fmtSecs = (s) => (s == null ? '—' : s < 60 ? `${s} שנ׳` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} דק׳`);
+const num = (n) => (n ?? 0).toLocaleString('he-IL');
+function barChart(values, labels, { cls = '', every = 1 } = {}) {
+  const max = Math.max(1, ...values);
+  return `<div class="bars ${cls}">${values.map((v, i) => `
+    <div class="bar-col" title="${escapeHtml(labels[i])}: ${v}">
+      <div class="bar-v">${values.length <= 18 && v ? v : ''}</div>
+      <div class="bar ${cls === 'daily' ? 'alt' : ''}" style="height:${(v / max) * 100}%"></div>
+      <div class="bar-l">${i % every === 0 ? escapeHtml(labels[i]) : '&nbsp;'}</div>
+    </div>`).join('')}</div>`;
+}
+function rankList(rows, label, value, { miss = () => false, sub = () => '' } = {}) {
+  if (!rows.length) return '<p class="muted">אין עדיין נתונים</p>';
+  const max = Math.max(1, ...rows.map(value));
+  return rows.map((r) => `<div><div class="rank-row"><span><b>${escapeHtml(label(r))}</b> <span class="muted" style="font-size:.85rem">${sub(r)}</span></span><span class="badge">${value(r)}</span></div>
+    <div class="rank-bar${miss(r) ? ' miss' : ''}" style="width:${(value(r) / max) * 100}%"></div></div>`).join('');
+}
+async function loadReport() {
+  const r = await api(`/api/pilot-report?days=${$('r-days').value}`);
+  $('r-title').textContent = `דוח פיילוט · ${r.store}`;
+  $('r-period').textContent = `${dateHe(r.from)} – ${dateHe(r.to)} · ${r.days} ימים · ${num(r.products)} מוצרים במערכת`;
+  if (store.slug === 'demo') $('r-period').textContent += ' · ⚠️ חנות הדגמה: הנתונים הם סימולציה, לא תוצאות אמיתיות';
+  const kpi = (v, k, sub = '', hero = false) => `<div class="card kpi${hero ? ' hero-kpi' : ''}"><div class="kpi-v">${v}</div><div>${k}</div><div class="kpi-sub">${sub}</div></div>`;
+  $('r-kpis').innerHTML = [
+    kpi(num(r.visitors), 'לקוחות השתמשו', `${num(r.returning)} חזרו שוב`, true),
+    kpi(r.successRate == null ? '—' : `${r.successRate}%`, 'מצאו את המוצר', `${num(r.found)} מצאו · ${num(r.problems)} דיווחו בעיה`, true),
+    kpi(fmtSecs(r.medianSecondsToFind), 'זמן עד המוצר', 'חציון, מפתיחת המוצר ועד "מצאתי"', true),
+    kpi(num(r.staffHoursSaved), 'שעות עבודה נחסכו*', `${num(r.questionsSaved)} שאלות שלא הגיעו לעובד`, true),
+    kpi(num(r.searches), 'חיפושים', r.searchFoundRate == null ? '' : `${r.searchFoundRate}% מצאו תוצאה`),
+    kpi(num(r.help), 'קריאות לעובד', r.medianHelpResponseSeconds == null ? '' : `זמן תגובה: ${fmtSecs(r.medianHelpResponseSeconds)}`),
+    kpi(num(r.problems), 'דיווחי מדף', 'מדף ריק / מוצר לא במקום'),
+    kpi(num(r.requests), 'בקשות למוצרים חדשים', `${num(r.requestsWithPhone)} השאירו טלפון`),
+  ].join('');
+  const first = r.hours.findIndex((v) => v > 0), last = 23 - [...r.hours].reverse().findIndex((v) => v > 0);
+  const hrs = first < 0 ? [] : r.hours.slice(first, last + 1).map((v, i) => [v, `${first + i}:00`]);
+  $('r-hours').innerHTML = hrs.length ? barChart(hrs.map((h) => h[0]), hrs.map((h) => h[1]), { cls: 'hours', every: hrs.length > 12 ? 2 : 1 }) : '<p class="muted">אין עדיין נתונים</p>';
+  $('r-daily').innerHTML = barChart(r.daily.map((d) => d.visitors), r.daily.map((d) => dateHe(d.date).slice(0, -5)), { cls: 'daily', every: Math.ceil(r.daily.length / 8) });
+  $('r-top').innerHTML = rankList(r.topSearches, (q) => q.query, (q) => q.count, { miss: (q) => !q.found, sub: (q) => (q.found ? '' : 'לא נמצא בחנות') });
+  $('r-problems').innerHTML = rankList(r.problemProducts, (p) => p.name, (p) => p.count, { miss: () => true, sub: (p) => (p.empty ? `${p.empty} מדף ריק` : '') });
+  $('r-requests').innerHTML = rankList(r.topRequests, (q) => q.query, (q) => q.count, { sub: (q) => (q.withPhone ? `${q.withPhone} השאירו טלפון` : '') });
+}
+$('r-days').addEventListener('change', loadReport);
+
 // ---------- init ----------
 (async () => {
   store = await api('/api/me');
@@ -369,5 +480,7 @@ async function loadDemand() {
   $('rows').value = map.rows;
   drawEditor();
   products = await api('/api/products');
+  loadAlerts();
+  setInterval(loadAlerts, 15000);
   if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי בשרת (חסר ANTHROPIC_API_KEY) — אפשר עדיין לצלם ולהוסיף מוצרים ידנית.';
 })();

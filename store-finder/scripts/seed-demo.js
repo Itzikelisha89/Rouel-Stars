@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { db, UPLOAD_DIR } = require('../db');
 const { holidayDates } = require('../insights');
+const { search } = require('../search');
 
 const SLUG = 'demo';
 const DAY = 24 * 60 * 60 * 1000;
@@ -75,10 +76,77 @@ for (let t = start.getTime(); t <= now.getTime(); t += DAY) {
   for (const [queries, found, base, boost] of DEMAND) {
     const k = poisson(base * boost(d));
     for (let i = 0; i < k; i++) {
-      const at = new Date(t + Math.floor(rnd() * 12 + 8) * 3600 * 1000);
+      // opening hours 9:00-21:00 Israel time (UTC+3)
+      const at = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 6) + rnd() * 12 * 3600 * 1000);
+      if (at > now) continue;
       insert.run(storeId, queries[Math.floor(rnd() * queries.length)], found ? 1 + Math.floor(rnd() * 3) : 0, at.toISOString().slice(0, 19).replace('T', ' '));
       n++;
     }
   }
 }
+// ---------- a simulated 30-day pilot: shoppers, "found it" taps, shelf reports, help calls ----------
+const sqlTime = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
+const rows = db.prepare('SELECT * FROM products WHERE store_id = ?').all(storeId);
+const visitorId = () => Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(rnd() * 36)]).join('');
+const ev = db.prepare('INSERT INTO events (store_id, visitor, type, product_id, shelf_id, query, note, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+const srch = db.prepare('INSERT INTO searches (store_id, query, result_count, visitor, created_at) VALUES (?, ?, ?, ?, ?)');
+const HOURS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 7, 8, 6, 4, 4, 5, 8, 9, 8, 5, 2, 0, 0]; // store opens 9:00, evening rush
+const pickHour = () => { let r = rnd() * HOURS.reduce((a, b) => a + b); for (let h = 0; h < 24; h++) { r -= HOURS[h]; if (r < 0) return h; } return 18; };
+const foundQueries = DEMAND.filter((d) => d[1]).flatMap((d) => d[0]);
+const missingQueries = DEMAND.filter((d) => !d[1]).flatMap((d) => d[0]);
+const regulars = [];
+const pilot = { visitors: 0, found: 0, problems: 0, help: 0, requests: 0 };
+for (let day = 30; day >= 1; day--) {
+  const date = new Date(now.getTime() - day * DAY);
+  const weekday = date.getUTCDay(); // Saturday is quiet, Thursday-Friday are busy
+  const ramp = Math.min(1, 0.45 + (30 - day) / 30); // word spreads during the pilot
+  const shoppers = poisson((weekday === 6 ? 14 : weekday >= 4 ? 52 : 38) * ramp);
+  for (let k = 0; k < shoppers; k++) {
+    const returning = regulars.length > 20 && rnd() < 0.22;
+    const v = returning ? regulars[Math.floor(rnd() * regulars.length)] : visitorId();
+    if (!returning) { regulars.push(v); pilot.visitors++; }
+    let t = new Date(date); t.setUTCHours(pickHour() - 3, Math.floor(rnd() * 60), Math.floor(rnd() * 60)); // Israel is UTC+3
+    for (let s = 1 + (rnd() < 0.35) + (rnd() < 0.1); s > 0; s--) {
+      t = new Date(t.getTime() + (20 + rnd() * 200) * 1000);
+      if (rnd() < 0.12) { // looking for something the store doesn't carry
+        const q = missingQueries[Math.floor(rnd() * missingQueries.length)];
+        srch.run(storeId, q, 0, v, sqlTime(t));
+        if (rnd() < 0.3) {
+          ev.run(storeId, v, 'request', null, null, q, rnd() < 0.45 ? `05${Math.floor(rnd() * 9)}${String(Math.floor(rnd() * 1e7)).padStart(7, '0')}` : '', sqlTime(new Date(t.getTime() + 15000)), sqlTime(new Date(t.getTime() + DAY)));
+          pilot.requests++;
+        }
+        continue;
+      }
+      const q = foundQueries[Math.floor(rnd() * foundQueries.length)];
+      const hits = search(q, rows);
+      srch.run(storeId, q, hits.length, v, sqlTime(t));
+      if (!hits.length) continue;
+      const p = hits[Math.floor(rnd() * Math.min(3, hits.length))].product;
+      t = new Date(t.getTime() + (5 + rnd() * 20) * 1000);
+      ev.run(storeId, v, 'view', p.id, p.shelf_id, '', '', sqlTime(t), null);
+      const r = rnd();
+      const walk = (25 + rnd() * 70 + (rnd() < 0.15 ? rnd() * 120 : 0)) * 1000;
+      if (r < 0.74) { ev.run(storeId, v, 'found', p.id, p.shelf_id, '', '', sqlTime(new Date(t.getTime() + walk)), null); pilot.found++; }
+      else if (r < 0.8) {
+        const at = new Date(t.getTime() + walk);
+        ev.run(storeId, v, rnd() < 0.55 ? 'empty' : 'not_there', p.id, p.shelf_id, '', '', sqlTime(at), sqlTime(new Date(at.getTime() + (8 + rnd() * 50) * 60000)));
+        pilot.problems++;
+      }
+      t = new Date(t.getTime() + walk);
+    }
+    if (rnd() < 0.05) {
+      const shelf = map.shelves[Math.floor(rnd() * map.shelves.length)];
+      ev.run(storeId, v, 'help', null, shelf.id, '', '', sqlTime(t), sqlTime(new Date(t.getTime() + (45 + rnd() * 150) * 1000)));
+      pilot.help++;
+    }
+  }
+}
+// A few open alerts from the last minutes, so the live alert screen has something on it.
+const orient = rows.find((p) => p.name.includes('ORIENT'));
+const ago = (m) => sqlTime(new Date(now.getTime() - m * 60000));
+ev.run(storeId, visitorId(), 'request', null, null, 'סיר לחץ חשמלי', '0541234567', ago(26), null);
+ev.run(storeId, visitorId(), 'empty', orient.id, orient.shelf_id, '', '', ago(9), null);
+ev.run(storeId, visitorId(), 'help', null, 'a2', 'מצעים לילדים', '', ago(2), null);
+
 console.log(`demo store "${SLUG}" (password demo1234): ${products.length} products, ${n} searches`);
+console.log(`pilot simulation (30 days): ${pilot.visitors} shoppers, ${pilot.found} found, ${pilot.problems} shelf reports, ${pilot.help} help calls, ${pilot.requests} requests`);

@@ -16,6 +16,7 @@
         <svg class="brand-pin" viewBox="0 0 160 200" aria-hidden="true"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/><circle cx="80" cy="72" r="26" fill="#0b1224"/></svg>
         <span id="store-name">…</span>
       </div>
+      <button type="button" id="help-btn" class="help-btn">🙋 קריאה לעובד</button>
     </div>
 
     <div class="hero">
@@ -36,6 +37,16 @@
 
     <div id="results" class="product-list"></div>
 
+    <div id="no-results" class="card hidden">
+      <h3>לא מצאנו את זה בחנות 😕</h3>
+      <p class="muted">רוצים שנביא? נעביר את הבקשה למנהל הסניף. אם תשאירו טלפון, נעדכן אתכם כשזה מגיע.</p>
+      <form id="request-form" class="row">
+        <input class="grow" id="request-phone" type="tel" inputmode="tel" placeholder="טלפון (לא חובה)" autocomplete="tel">
+        <button class="primary" type="submit">📣 בקשו שנביא</button>
+      </form>
+      <p id="request-done" class="ok hidden"></p>
+    </div>
+
     <div id="detail" class="hidden">
       <button id="back">→ חזרה לתוצאות</button>
       <div class="card">
@@ -44,6 +55,7 @@
         <p id="detail-desc" class="muted" style="margin:0"></p>
         <div class="d-chips" id="detail-chips"></div>
         <div class="row" style="justify-content:space-between;margin-top:6px"><div class="d-price" id="detail-price"></div><button type="button" id="speak" class="hidden" aria-label="השמע את המיקום">🔊 השמע</button></div>
+        <button type="button" id="list-toggle" class="list-toggle">➕ הוספה לרשימת הקניות</button>
         <div class="route-card" id="shelf-card">
           <div class="route-head"><span>📷 כך נראה המדף</span><span class="chip" id="shelf-level"></span></div>
           <div class="shelf-shot">
@@ -57,7 +69,54 @@
           <div class="map-box"><svg id="detail-map"></svg></div>
           <p class="muted" style="font-size:.85rem;margin:10px 0 0">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
         </div>
+        <div class="route-card feedback" id="feedback">
+          <div id="fb-ask">
+            <div class="route-head"><span>הגעת למדף?</span></div>
+            <div class="fb-buttons">
+              <button type="button" class="fb-yes" data-fb="found">✅ מצאתי</button>
+              <button type="button" class="fb-no" data-fb="no">❌ לא מצאתי</button>
+            </div>
+          </div>
+          <div id="fb-reasons" class="hidden">
+            <div class="route-head"><span>מה קרה?</span></div>
+            <div class="fb-buttons">
+              <button type="button" data-fb="empty">📭 המדף ריק</button>
+              <button type="button" data-fb="not_there">🔀 המוצר לא במקום</button>
+            </div>
+          </div>
+          <p id="fb-done" class="ok hidden" style="margin:0"></p>
+        </div>
       </div>
+    </div>
+
+    <div id="list-view" class="hidden">
+      <button id="list-back">→ חזרה לחיפוש</button>
+      <div class="card">
+        <div class="route-head"><h2 style="margin:0">🛒 רשימת הקניות שלי</h2><span class="chip o" id="list-meters"></span></div>
+        <p class="muted" id="list-hint">המסלול הקצר ביותר בחנות, לפי הסדר. סמנו כל מוצר שלקחתם.</p>
+        <ol id="list-items" class="list-items"></ol>
+        <div class="map-box" style="margin-top:12px"><svg id="list-map"></svg></div>
+        <div class="row" style="margin-top:12px;justify-content:space-between">
+          <button type="button" id="list-speak" class="hidden">🔊 הקרא מסלול</button>
+          <button type="button" id="list-clear" class="danger">🗑️ ניקוי הרשימה</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button type="button" id="list-bar" class="list-bar hidden"><span>🛒 הרשימה שלי · <b id="list-count">0</b></span><span>למסלול ←</span></button>
+
+  <div id="help-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="sheet-card">
+      <h2 id="help-title">🙋 לקרוא לעובד?</h2>
+      <p id="help-where" class="muted"></p>
+      <label for="help-shelf">איפה אתם עומדים?</label>
+      <select id="help-shelf"></select>
+      <div class="row" style="margin-top:14px">
+        <button type="button" class="primary grow" id="help-send">כן, שיגיע עובד</button>
+        <button type="button" id="help-cancel">ביטול</button>
+      </div>
+      <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
   <script type="module" src="/js/customer.js"></script>
