@@ -24,6 +24,7 @@
     <button data-tab="demand">5. ביקושים</button>
     <button data-tab="alerts">🔔 התראות<span class="count hidden" id="alert-count"></span></button>
     <button data-tab="report">📊 דוח פיילוט</button>
+    <button data-tab="settings">⚙️ הגדרות</button>
   </nav>
 
   <main class="wrap">
@@ -188,6 +189,31 @@
       </div>
       <div class="card"><h2>📣 מוצרים שלקוחות ביקשו שנביא</h2><div id="r-requests" class="rank"></div></div>
       <p class="muted" style="font-size:.85rem">* זמן עבודה שנחסך: הערכה של 2 דקות לכל לקוח שמצא מוצר לבד, בלי לשאול עובד.</p>
+    </section>
+    <!-- SETTINGS -->
+    <section id="tab-settings" class="hidden">
+      <div class="grid2">
+        <form class="card" id="name-form">
+          <h2>שם החנות</h2>
+          <p class="muted">מופיע ללקוחות בראש המסך ועל שלט ה-QR.</p>
+          <input id="s-name" required maxlength="80">
+          <div class="row" style="margin-top:12px"><button class="primary" type="submit">שמירה</button><span class="muted" id="s-name-status"></span></div>
+        </form>
+        <form class="card" id="pass-form">
+          <h2>שינוי סיסמה</h2>
+          <label for="s-cur">סיסמה נוכחית</label>
+          <input id="s-cur" type="password" required autocomplete="current-password">
+          <label for="s-new">סיסמה חדשה (6 תווים לפחות)</label>
+          <input id="s-new" type="password" required minlength="6" autocomplete="new-password">
+          <div class="row" style="margin-top:12px"><button class="primary" type="submit">החלפת סיסמה</button><span class="muted" id="s-pass-status"></span></div>
+          <p class="muted" style="font-size:.85rem;margin:8px 0 0">אחרי ההחלפה, כל מכשיר אחר שמחובר לחנות ינותק.</p>
+        </form>
+      </div>
+      <div class="card">
+        <h2>📤 גיבוי הקטלוג</h2>
+        <p class="muted">כל המוצרים בקובץ שנפתח באקסל. אפשר לערוך אותו ולייבא בחזרה בלשונית "מוצרים".</p>
+        <button type="button" id="export-btn">⬇️ הורדת הקטלוג (Excel / CSV)</button>
+      </div>
     </section>
   </main>
   <script type="module" src="/js/owner.js"></script>

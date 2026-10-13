@@ -9,6 +9,7 @@ const { holidayDates } = require('../insights');
 const { search } = require('../search');
 
 const SLUG = 'demo';
+const PASSWORD = process.env.DEMO_PASSWORD || 'demo1234';
 const DAY = 24 * 60 * 60 * 1000;
 let seed = 42;
 const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
@@ -24,7 +25,7 @@ const map = {
     .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4][i], y: 4, w: 2, h: 15 })),
 };
 const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
-  .run(SLUG, 'הסטוק · סניף הדגמה', `${salt}:${crypto.scryptSync('demo1234', salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);
+  .run(SLUG, 'הסטוק · סניף הדגמה', `${salt}:${crypto.scryptSync(PASSWORD, salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);
 
 // Real products from the chain's catalog (demo/hastock), placed on shelf photos built by
 // demo/build-shelves.py: each product points at its shelf photo plus its box inside it,
@@ -148,5 +149,5 @@ ev.run(storeId, visitorId(), 'request', null, null, 'סיר לחץ חשמלי', 
 ev.run(storeId, visitorId(), 'empty', orient.id, orient.shelf_id, '', '', ago(9), null);
 ev.run(storeId, visitorId(), 'help', null, 'a2', 'מצעים לילדים', '', ago(2), null);
 
-console.log(`demo store "${SLUG}" (password demo1234): ${products.length} products, ${n} searches`);
+console.log(`demo store "${SLUG}" (password ${process.env.DEMO_PASSWORD ? '[DEMO_PASSWORD]' : 'demo1234'}): ${products.length} products, ${n} searches`);
 console.log(`pilot simulation (30 days): ${pilot.visitors} shoppers, ${pilot.found} found, ${pilot.problems} shelf reports, ${pilot.help} help calls, ${pilot.requests} requests`);

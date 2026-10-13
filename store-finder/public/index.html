@@ -24,6 +24,10 @@
         <p class="muted" style="font-size:.85rem">הלקוחות ייכנסו ל־<span dir="ltr" id="slug-preview">/s/…</span></p>
         <label for="r-pass">סיסמה</label>
         <input id="r-pass" type="password" required minlength="6" autocomplete="new-password">
+        <div id="r-code-box" class="hidden">
+          <label for="r-code">קוד הרשמה</label>
+          <input id="r-code" autocomplete="off" dir="ltr">
+        </div>
         <p class="error" id="r-error"></p>
         <button class="primary" type="submit">פתיחת חנות</button>
       </form>
@@ -42,12 +46,13 @@
     import { api, setToken, getToken } from '/js/api.js';
     if (getToken()) location.href = '/owner.html';
     const $ = (id) => document.getElementById(id);
+    api('/api/config').then((c) => { $('r-code-box').classList.toggle('hidden', !c.registrationCode); $('r-code').required = c.registrationCode; }).catch(() => {});
     $('r-slug').addEventListener('input', () => { $('slug-preview').textContent = `${location.origin}/s/${$('r-slug').value || '…'}`; });
     $('register').addEventListener('submit', async (e) => {
       e.preventDefault();
       $('r-error').textContent = '';
       try {
-        const { token } = await api('/api/stores', { method: 'POST', body: { name: $('r-name').value, slug: $('r-slug').value, password: $('r-pass').value } });
+        const { token } = await api('/api/stores', { method: 'POST', body: { name: $('r-name').value, slug: $('r-slug').value, password: $('r-pass').value, code: $('r-code').value } });
         setToken(token);
         location.href = '/owner.html';
       } catch (err) { $('r-error').textContent = err.message; }

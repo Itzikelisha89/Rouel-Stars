@@ -13,13 +13,14 @@ let mode = 'draw';
 // ---------- tabs ----------
 function showTab(name) {
   for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === name);
-  for (const t of ['map', 'photo', 'products', 'share', 'demand', 'alerts', 'report']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
+  for (const t of ['map', 'photo', 'products', 'share', 'demand', 'alerts', 'report', 'settings']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
   if (name === 'photo') renderPicker();
   if (name === 'products') loadProducts();
   if (name === 'share') loadShare();
   if (name === 'demand') loadDemand();
   if (name === 'alerts') loadAlerts();
   if (name === 'report') loadReport();
+  if (name === 'settings') $('s-name').value = store.name;
 }
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
 
@@ -616,6 +617,34 @@ async function loadReport() {
   $('r-requests').innerHTML = rankList(r.topRequests, (q) => q.query, (q) => q.count, { sub: (q) => (q.withPhone ? `${q.withPhone} השאירו טלפון` : '') });
 }
 $('r-days').addEventListener('change', loadReport);
+
+// ---------- settings ----------
+$('name-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/api/store/settings', { method: 'PUT', body: { name: $('s-name').value } });
+    store.name = r.name;
+    $('store-name').textContent = r.name;
+    $('s-name-status').textContent = 'נשמר ✓';
+  } catch (err) { $('s-name-status').textContent = err.message; }
+});
+$('pass-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/store/settings', { method: 'PUT', body: { currentPassword: $('s-cur').value, newPassword: $('s-new').value } });
+    $('pass-form').reset();
+    $('s-pass-status').textContent = 'הסיסמה הוחלפה ✓';
+  } catch (err) { $('s-pass-status').textContent = err.message; }
+});
+$('export-btn').addEventListener('click', async () => {
+  const res = await fetch('/api/products/export.csv', { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) return alert('ההורדה נכשלה');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(await res.blob());
+  a.download = `${store.slug}-קטלוג.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 // ---------- init ----------
 (async () => {

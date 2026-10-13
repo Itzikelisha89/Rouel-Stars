@@ -12,6 +12,16 @@ const insights = require('./insights');
 const pilot = require('./pilot');
 
 const app = express();
+// Behind a hosting proxy (Railway, Render, Cloudflare) every request comes from the proxy; trust one hop
+// so rate limits see each shopper's own address.
+const behindProxy = process.env.TRUST_PROXY ?? (Object.keys(process.env).some((k) => k.startsWith('RAILWAY_')) ? '1' : '0');
+app.set('trust proxy', Number(behindProxy) || false);
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'SAMEORIGIN' });
+  next();
+});
+app.get('/healthz', (_req, res) => res.json({ ok: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
@@ -63,9 +73,11 @@ function productRow(p) {
 const PRODUCTS_QUERY = `SELECT products.*, photos.file FROM products
   LEFT JOIN photos ON photos.id = products.photo_id WHERE products.store_id = ?`;
 
+const SESSION_DAYS = 30;
 function requireOwner(req, res, next) {
   const token = (req.get('authorization') || '').replace(/^Bearer /, '');
-  const session = token && db.prepare('SELECT store_id FROM sessions WHERE token = ?').get(token);
+  const session = token && db.prepare(`SELECT store_id FROM sessions WHERE token = ? AND created_at >= datetime('now', ?)`)
+    .get(token, `-${SESSION_DAYS} days`);
   if (!session) return res.status(401).json({ error: 'צריך להתחבר מחדש' });
   req.store = db.prepare('SELECT * FROM stores WHERE id = ?').get(session.store_id);
   next();
@@ -100,7 +112,14 @@ function shelfExists(store, shelfId) {
 }
 
 // ---------- owner: account ----------
+// On a public server, set REGISTRATION_CODE so only people you give the code to can open a store.
+app.get('/api/config', (_req, res) => res.json({ registrationCode: Boolean(process.env.REGISTRATION_CODE) }));
+
 app.post('/api/stores', (req, res) => {
+  if (rateLimited(`register:${req.ip}`, 5, 10 * 60000)) return res.status(429).json({ error: 'יותר מדי ניסיונות, נסו שוב בעוד כמה דקות' });
+  if (process.env.REGISTRATION_CODE && String(req.body.code || '') !== process.env.REGISTRATION_CODE) {
+    return res.status(403).json({ error: 'קוד הרשמה שגוי' });
+  }
   const name = String(req.body.name || '').trim();
   const slug = String(req.body.slug || '').trim().toLowerCase();
   const password = String(req.body.password || '');
@@ -114,6 +133,8 @@ app.post('/api/stores', (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
+  if (rateLimited(`login:${req.ip}`, 10, 5 * 60000)) return res.status(429).json({ error: 'יותר מדי ניסיונות כניסה, נסו שוב בעוד 5 דקות' });
+  db.prepare(`DELETE FROM sessions WHERE created_at < datetime('now', ?)`).run(`-${SESSION_DAYS} days`);
   const store = getStoreBySlug(String(req.body.slug || '').trim().toLowerCase());
   if (!store || !checkPassword(String(req.body.password || ''), store.password_hash)) {
     return res.status(401).json({ error: 'כתובת חנות או סיסמה שגויים' });
@@ -124,6 +145,31 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', requireOwner, (req, res) => {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(req.get('authorization').replace(/^Bearer /, ''));
   res.json({ ok: true });
+});
+
+// Store name and password, changed by the manager.
+app.put('/api/store/settings', requireOwner, (req, res) => {
+  const name = req.body.name === undefined ? req.store.name : String(req.body.name).trim();
+  if (!name || name.length > 80) return res.status(400).json({ error: 'צריך שם חנות' });
+  if (req.body.newPassword !== undefined) {
+    if (!checkPassword(String(req.body.currentPassword || ''), req.store.password_hash)) return res.status(403).json({ error: 'הסיסמה הנוכחית שגויה' });
+    if (String(req.body.newPassword).length < 6) return res.status(400).json({ error: 'סיסמה של 6 תווים לפחות' });
+    db.prepare('UPDATE stores SET password_hash = ? WHERE id = ?').run(hashPassword(String(req.body.newPassword)), req.store.id);
+    // Sign out every other device that knew the old password.
+    db.prepare('DELETE FROM sessions WHERE store_id = ? AND token != ?').run(req.store.id, (req.get('authorization') || '').replace(/^Bearer /, ''));
+  }
+  db.prepare('UPDATE stores SET name = ? WHERE id = ?').run(name, req.store.id);
+  res.json({ ok: true, name });
+});
+
+// The whole catalog as a CSV file that opens in Excel (and imports back in the products tab).
+app.get('/api/products/export.csv', requireOwner, (req, res) => {
+  const shelves = JSON.parse(req.store.map_json).shelves;
+  const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = db.prepare('SELECT * FROM products WHERE store_id = ? ORDER BY shelf_id, name').all(req.store.id).map((p) =>
+    [p.name, shelves.find((s) => s.id === p.shelf_id)?.name ?? '', p.level, p.price, p.keywords, p.description, p.active ? 'כן' : 'לא'].map(cell).join(','));
+  res.type('text/csv; charset=utf-8').attachment(`${req.store.slug}-products.csv`)
+    .send(`\ufeff${['שם', 'מעבר', 'מדף', 'מחיר', 'מילות חיפוש', 'תיאור', 'מוצג'].join(',')}\n${rows.join('\n')}\n`);
 });
 
 app.get('/api/me', requireOwner, (req, res) => {
@@ -480,6 +526,8 @@ app.use((err, _req, res, _next) => {
 });
 
 if (require.main === module) {
+  // SEED_DEMO=1 on a fresh server: create the demo store (the הסטוק catalog) once, to show the system.
+  if (process.env.SEED_DEMO === '1' && !getStoreBySlug('demo')) require('./scripts/seed-demo');
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => {
     console.log(`Store Finder running on http://localhost:${port}`);
