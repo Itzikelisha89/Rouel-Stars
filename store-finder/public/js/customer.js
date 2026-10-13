@@ -1,10 +1,21 @@
 import { api, escapeHtml } from '/js/api.js';
-import { renderMap, findPath, describeLocation, drawCrop } from '/js/map.js';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot } from '/js/map.js';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
 let store = null;
 let results = [];
+let hereShelf = null; // set when the page was opened from an aisle QR sticker
+const LAST_KEY = `storeFinder:last:${slug}`;
+function rememberProduct(p) {
+  try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: p.id, ts: Date.now() })); } catch { /* private mode */ }
+}
+function recentProductId() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_KEY) || 'null');
+    return v && Date.now() - v.ts < 30 * 60 * 1000 ? v.id : null;
+  } catch { return null; }
+}
 
 function shelfOf(p) { return store.map.shelves.find((s) => s.id === p.shelfId); }
 
@@ -55,11 +66,15 @@ function showDetail(p) {
   $('detail-desc').textContent = p.description;
   $('detail-where').textContent = `📍 ${shelf?.name ?? ''}${p.level ? ` · ${p.level}` : ''}`;
   if (shelf) {
-    const path = findPath(store.map, shelf);
-    const loc = describeLocation(store.map, shelf, path);
-    $('detail-how').textContent = [loc.side, loc.depth, loc.meters].filter(Boolean).join(' · ');
-    renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path });
+    const here = hereShelf && aisleSpot(store.map, hereShelf);
+    const path = findPath(store.map, shelf, here || store.map.entrance);
+    const loc = describeLocation(store.map, shelf, path, Boolean(here));
+    $('detail-how').textContent = hereShelf?.id === shelf.id
+      ? `המוצר נמצא במעבר שבו אתה עומד${p.level ? ` · ${p.level}` : ''}`
+      : [loc.side, loc.depth, loc.meters].filter(Boolean).join(' · ');
+    renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here });
   }
+  rememberProduct(p);
   if (p.photo) $('detail-photo').src = p.photo;
   $('detail-photo').closest('details').classList.toggle('hidden', !p.photo);
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -93,8 +108,20 @@ if (Recognition) {
     store = await api(`/api/public/${encodeURIComponent(slug)}`);
     $('store-name').textContent = store.name;
     document.title = `${store.name} — איפה זה בחנות?`;
-    const q = new URLSearchParams(location.search).get('q');
+    const params = new URLSearchParams(location.search);
+    hereShelf = store.map.shelves.find((s) => s.id === params.get('at')) || null;
+    if (hereShelf) {
+      $('here-banner').textContent = `📍 אתה ליד: ${hereShelf.name}`;
+      $('here-banner').classList.remove('hidden');
+    }
+    const q = params.get('q');
+    const lastId = hereShelf && !q ? recentProductId() : null;
     if (q) { $('q').value = q; runSearch(q); }
+    else if (lastId) {
+      // Scanned an aisle sticker mid-trip: continue to the product chosen a moment ago.
+      const p = await api(`/api/public/${encodeURIComponent(slug)}/products/${lastId}`).catch(() => null);
+      if (p) { results = [p]; showDetail(p); }
+    }
   } catch (err) {
     $('store-name').textContent = 'החנות לא נמצאה';
     $('search-form').classList.add('hidden');

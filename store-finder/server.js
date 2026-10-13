@@ -249,10 +249,21 @@ app.get('/api/public/:slug/search', async (req, res) => {
   res.json({ expanded, results: results.map((r) => productRow(r.product)) });
 });
 
+app.get('/api/public/:slug/products/:id', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  const p = store && db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(store.id, req.params.id);
+  if (!p) return res.status(404).json({ error: 'המוצר לא נמצא' });
+  res.json(productRow(p));
+});
+
+// Entrance QR (no params) or an aisle sticker (?at=<shelfId>) that tells the app where the shopper stands.
 app.get('/api/public/:slug/qr.svg', async (req, res) => {
   const store = getStoreBySlug(req.params.slug);
   if (!store) return res.status(404).end();
-  res.type('image/svg+xml').send(await QRCode.toString(storeUrl(req, store.slug), { type: 'svg', margin: 1, width: 320 }));
+  const at = String(req.query.at || '');
+  if (at && !shelfExists(store, at)) return res.status(404).end();
+  const url = storeUrl(req, store.slug) + (at ? `?at=${encodeURIComponent(at)}` : '');
+  res.type('image/svg+xml').send(await QRCode.toString(url, { type: 'svg', margin: 1, width: 320 }));
 });
 
 app.get('/s/:slug', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'customer.html')));

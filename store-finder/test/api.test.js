@@ -75,6 +75,15 @@ test('full owner -> customer flow', async () => {
   assert.equal(r.data.total, 2);
   assert.equal(r.data.missing[0].query, 'אופניים');
 
+  r = await call('GET', `/api/public/kli-bait/products/${potId}`);
+  assert.equal(r.data.name, 'סיר נירוסטה 16 ס"מ');
+  assert.equal(r.data.shelfId, 'a2');
+  r = await call('GET', '/api/public/other-store/products/1');
+  assert.equal(r.status, 404);
+  const aisleQr = await fetch(`${base}/api/public/kli-bait/qr.svg?at=a1`);
+  assert.equal(aisleQr.status, 200);
+  assert.equal((await fetch(`${base}/api/public/kli-bait/qr.svg?at=nope`)).status, 404);
+
   const qr = await fetch(`${base}/api/public/kli-bait/qr.svg`);
   assert.match(await qr.text(), /<svg/);
   assert.equal((await fetch(`${base}/s/kli-bait`)).status, 200);

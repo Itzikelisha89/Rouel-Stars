@@ -248,6 +248,13 @@ async function loadShare() {
   $('qr-title').textContent = `${store.name} — סרקו ומצאו כל מוצר`;
   $('qr-img').src = `/api/public/${encodeURIComponent(store.slug)}/qr.svg`;
   $('qr-url').textContent = url;
+  $('aisle-stickers').innerHTML = store.map.shelves.map((s) => `
+    <div class="sticker">
+      <div class="sticker-title">📍 אתה כאן</div>
+      <div class="sticker-name">${escapeHtml(s.name)}</div>
+      <img src="/api/public/${encodeURIComponent(store.slug)}/qr.svg?at=${encodeURIComponent(s.id)}" alt="QR ${escapeHtml(s.name)}">
+      <div class="muted" style="font-size:.85rem">סרקו כדי לראות את הדרך מכאן</div>
+    </div>`).join('') || '<p class="muted">קודם צייר מדפים במפה.</p>';
   const data = await api('/api/insights');
   $('insights-total').textContent = `סה״כ ${data.total} חיפושים`;
   const li = (r) => `<li>${escapeHtml(r.query)} <span class="badge">${r.count}</span></li>`;

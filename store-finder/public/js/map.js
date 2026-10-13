@@ -9,7 +9,7 @@ function el(tag, attrs = {}, parent) {
   return node;
 }
 
-export function renderMap(svg, map, { targetShelfId = null, path = null, onShelfClick = null } = {}) {
+export function renderMap(svg, map, { targetShelfId = null, path = null, onShelfClick = null, here = null } = {}) {
   svg.innerHTML = '';
   svg.setAttribute('viewBox', `0 0 ${map.cols * CELL} ${map.rows * CELL}`);
   const grid = el('g', { class: 'map-grid' }, svg);
@@ -27,6 +27,11 @@ export function renderMap(svg, map, { targetShelfId = null, path = null, onShelf
 
   if (path && path.length > 1) {
     el('polyline', { class: 'map-path', points: path.map((p) => `${p.x * CELL + CELL / 2},${p.y * CELL + CELL / 2}`).join(' ') }, svg);
+  }
+
+  if (here) {
+    const h = el('g', { class: 'map-here' }, svg);
+    el('circle', { cx: here.x * CELL + CELL / 2, cy: here.y * CELL + CELL / 2, r: CELL * 0.7 }, h);
   }
 
   const e = map.entrance;
@@ -59,12 +64,11 @@ export function shelfAt(map, cell) {
 }
 
 // Shortest walk from the entrance to a free cell touching the shelf.
-export function findPath(map, shelf) {
+export function findPath(map, shelf, start = map.entrance) {
   const blocked = new Uint8Array(map.cols * map.rows);
   for (const s of map.shelves) {
     for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) blocked[y * map.cols + x] = 1;
   }
-  const start = map.entrance;
   const goal = (x, y) => x >= shelf.x - 1 && x <= shelf.x + shelf.w && y >= shelf.y - 1 && y <= shelf.y + shelf.h &&
     !((x === shelf.x - 1 || x === shelf.x + shelf.w) && (y === shelf.y - 1 || y === shelf.y + shelf.h)); // no diagonal corners
   const prev = new Int32Array(map.cols * map.rows).fill(-1);
@@ -91,11 +95,18 @@ export function findPath(map, shelf) {
   return null;
 }
 
-export function describeLocation(map, shelf, path) {
+// The aisle-end spot a shopper stands on when scanning that aisle's QR sticker:
+// the free cell next to the shelf that is closest to the entrance.
+export function aisleSpot(map, shelf) {
+  const p = findPath(map, shelf);
+  return p ? p[p.length - 1] : null;
+}
+
+export function describeLocation(map, shelf, path, fromHere = false) {
   const cx = shelf.x + shelf.w / 2, cy = shelf.y + shelf.h / 2;
   const side = cx < map.cols / 3 ? 'בצד שמאל של החנות' : cx > (map.cols * 2) / 3 ? 'בצד ימין של החנות' : 'במרכז החנות';
   const depth = Math.abs(cy - map.entrance.y) < map.rows / 3 ? 'קרוב לכניסה' : Math.abs(cy - map.entrance.y) > (map.rows * 2) / 3 ? 'בחלק הרחוק מהכניסה' : 'באמצע הדרך';
-  const meters = path ? `כ-${path.length - 1} מטר הליכה מהכניסה` : '';
+  const meters = path ? `כ-${path.length - 1} מטר הליכה ${fromHere ? 'מהמקום שלך' : 'מהכניסה'}` : '';
   return { side, depth, meters };
 }
 
