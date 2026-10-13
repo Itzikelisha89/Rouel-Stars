@@ -119,3 +119,53 @@ test('photo of a single product -> name, description and many search words', asy
     delete process.env.GEMINI_API_KEY;
   }
 });
+
+test('aisle video: frames in one request, products saved on the clearest frame', async () => {
+  const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const realFetch = global.fetch;
+  let geminiBody;
+  global.fetch = async (url, opts) => {
+    if (!String(url).includes('generativelanguage.googleapis.com')) return realFetch(url, opts);
+    geminiBody = JSON.parse(opts.body);
+    return new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ products: [
+      { name: 'סיר קטן', description: '', keywords: ['סיר'], level: 'מדף תחתון', frame: 2, box: { x0: 10, y0: 10, x1: 200, y1: 300 } },
+      { name: 'סיר קטן', description: '', keywords: ['סיר'], level: 'מדף תחתון', frame: 3, box: { x0: 10, y0: 10, x1: 200, y1: 300 } },
+      { name: 'מחבת', description: '', keywords: ['מחבת'], level: 'מדף עליון', frame: 2, box: { x0: 300, y0: 10, x1: 500, y1: 200 } },
+      { name: 'פריים לא קיים', description: '', keywords: [], level: '', frame: 99, box: { x0: 0, y0: 0, x1: 1, y1: 1 } },
+    ] }) }] } }] }), { status: 200 });
+  };
+  const call = async (method, url, { token, body, form } = {}) => {
+    const headers = body ? { 'Content-Type': 'application/json' } : {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await realFetch(base + url, { method, headers, body: form || (body && JSON.stringify(body)) });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  try {
+    const { data: { token } } = await call('POST', '/api/stores', { body: { name: 'וידאו', slug: 'video-store', password: 'secret1' } });
+    await call('PUT', '/api/store/map', { token, body: { cols: 10, rows: 8, entrance: { x: 5, y: 7 }, shelves: [{ id: 'a1', name: 'מעבר 1', x: 1, y: 1, w: 1, h: 5 }] } });
+    const form = () => {
+      const f = new FormData();
+      f.append('shelfId', 'a1');
+      for (let i = 0; i < 4; i++) f.append('frames', new Blob([JPEG], { type: 'image/jpeg' }), `f${i}.jpg`);
+      return f;
+    };
+    assert.equal((await call('POST', '/api/videos', { token, form: form() })).status, 503); // no key yet
+
+    process.env.GEMINI_API_KEY = 'test-key';
+    const r = await call('POST', '/api/videos', { token, form: form() });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.frames, 4);
+    assert.deepEqual(r.data.products.map((p) => p.name), ['סיר קטן', 'מחבת']); // duplicate and bad frame dropped
+    assert.equal(r.data.keptFrames, 1);
+    assert.equal(r.data.products[0].photo, r.data.products[1].photo);
+    assert.equal(geminiBody.contents[0].parts.filter((p) => p.inline_data).length, 4);
+    assert.ok(geminiBody.generationConfig.responseSchema.properties.products.items.required.includes('frame'));
+    const s = await call('GET', `/api/public/video-store/search?q=${encodeURIComponent('סיר')}`);
+    assert.equal(s.data.results[0].name, 'סיר קטן');
+  } finally {
+    global.fetch = realFetch;
+    delete process.env.GEMINI_API_KEY;
+    server.close();
+  }
+});

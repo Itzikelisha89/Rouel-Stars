@@ -134,6 +134,45 @@ async function detectProducts(imageBuffer, mediaType, shelfName) {
   return parsed.products.map((p) => ({ ...p, box: clampBox(p.box) }));
 }
 
+// A walk-through video of an aisle, as frames sampled on the phone (in order). One request for the
+// whole aisle; the model de-duplicates products seen in several frames and points at the clearest one.
+const FRAME_PRODUCTS_SCHEMA = structuredClone(PRODUCTS_SCHEMA);
+FRAME_PRODUCTS_SCHEMA.properties.products.items.properties.frame = { type: 'integer', description: 'מספר הפריים שבו רואים את המוצר הכי ברור' };
+FRAME_PRODUCTS_SCHEMA.properties.products.items.required.push('frame');
+const VIDEO_SYSTEM = `${SYSTEM}
+התמונות הן פריימים מסרטון שצולם בהליכה לאורך מעבר בחנות, לפי הסדר, וכל אחת מסומנת במספר.
+אותו מוצר מופיע בדרך כלל בכמה פריימים: החזר אותו פעם אחת בלבד, עם מספר הפריים שבו רואים אותו הכי ברור ושלם,
+והמלבן (box) שלו בתוך הפריים הזה.`;
+
+async function detectProductsInFrames(frames, shelfName) {
+  const ask = `הסרטון צולם ב: ${shelfName}. יש ${frames.length} פריימים (0 עד ${frames.length - 1}). החזר את רשימת המוצרים במעבר.`;
+  let products;
+  if (provider() === 'gemini') {
+    const parts = frames.flatMap((f, i) => [{ text: `פריים ${i}:` }, { inline_data: { mime_type: f.mediaType, data: f.buffer.toString('base64') } }]);
+    ({ products = [] } = await gemini({ system: VIDEO_SYSTEM, schema: FRAME_PRODUCTS_SCHEMA, parts: [...parts, { text: ask }] }));
+  } else {
+    const content = frames.flatMap((f, i) => [
+      { type: 'text', text: `פריים ${i}:` },
+      { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.buffer.toString('base64') } },
+    ]);
+    const response = await getClient().beta.messages.create({
+      model: MODEL,
+      max_tokens: 32000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: FRAME_PRODUCTS_SCHEMA } },
+      system: VIDEO_SYSTEM,
+      messages: [{ role: 'user', content: [...content, { type: 'text', text: ask }] }],
+    });
+    if (response.stop_reason === 'refusal') throw new Error('המודל סירב לעבד את הסרטון');
+    if (response.stop_reason === 'max_tokens') throw new Error('התשובה נקטעה — נסו סרטון קצר יותר');
+    ({ products = [] } = JSON.parse(response.content.filter((b) => b.type === 'text').map((b) => b.text).join('')));
+  }
+  return products
+    .filter((p) => p.box && Number.isInteger(p.frame) && p.frame >= 0 && p.frame < frames.length)
+    .map((p) => ({ ...p, box: clampBox(p.box) }));
+}
+
 // One product in a photo (a product the manager is adding, or a shopper's "find this" picture).
 const IDENTIFY_SCHEMA = {
   type: 'object',
@@ -245,4 +284,4 @@ async function expandQuery(query) {
   return terms;
 }
 
-module.exports = { aiEnabled, provider, detectProducts, identifyProduct, expandQuery, toGeminiSchema };
+module.exports = { aiEnabled, provider, detectProducts, detectProductsInFrames, identifyProduct, expandQuery, toGeminiSchema };

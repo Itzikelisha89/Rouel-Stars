@@ -1,4 +1,4 @@
-import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice } from '/js/api.js';
+import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames } from '/js/api.js';
 import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
 
 if (!getToken()) location.href = '/';
@@ -156,7 +156,33 @@ $('photo-input').addEventListener('change', async (e) => {
   } catch (err) { $('photo-status').textContent = err.message; }
 });
 
+$('video-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  const shelfId = $('photo-shelf').value;
+  if (!file) return;
+  if (!shelfId) return ($('photo-status').textContent = 'קודם צייר ושמור מדפים במפה');
+  const status = (text) => { $('photo-status').innerHTML = `<span class="row"><span class="spinner"></span> ${escapeHtml(text)}</span>`; };
+  try {
+    status('מכין את הסרטון…');
+    const frames = await extractFrames(file, { onProgress: (n, total) => status(`מכין את הסרטון… ${n}/${total}`) });
+    status(`מזהה מוצרים ב-${frames.length} תמונות מהסרטון… (עד 2 דקות)`);
+    const form = new FormData();
+    form.append('shelfId', shelfId);
+    frames.forEach((f, i) => form.append('frames', f, `frame-${i}.jpg`));
+    const result = await api('/api/videos', { method: 'POST', form });
+    $('photo-status').textContent = `זוהו ${result.products.length} מוצרים ב"${shelfName(shelfId)}" מתוך ${result.frames} תמונות בסרטון. אפשר לתקן בלשונית מוצרים.`;
+    lastPhoto = null;
+    $('photo-result').classList.remove('hidden');
+    $('photo-preview').innerHTML = '';
+    $('manual-add').classList.add('hidden');
+    $('detected').innerHTML = '';
+    for (const p of result.products) $('detected').appendChild(productItem(p));
+  } catch (err) { $('photo-status').textContent = err.message; }
+});
+
 function showPhotoResult(detected) {
+  $('manual-add').classList.remove('hidden');
   $('photo-result').classList.remove('hidden');
   const boxes = detected.filter((p) => p.box).map((p) => {
     const b = p.box;
@@ -604,5 +630,6 @@ $('r-days').addEventListener('change', loadReport);
   products = await api('/api/products');
   loadAlerts();
   setInterval(loadAlerts, 15000);
+  $('video-box').classList.toggle('hidden', !store.aiEnabled);
   if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי — אפשר לצלם את המדף ולהוסיף מוצרים ידנית, או להוסיף מוצרים בלשונית "מוצרים".';
 })();

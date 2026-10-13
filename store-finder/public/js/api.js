@@ -49,3 +49,38 @@ export function resizeImage(file, maxSide = 1600) {
     img.src = url;
   });
 }
+
+// Sample frames from a video on the phone, so we upload a few small JPEGs instead of the video.
+// Every `every` seconds (more spaced out for long videos), at most `max` frames.
+export function extractFrames(file, { every = 1.5, max = 40, maxSide = 1024, onProgress } = {}) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.preload = 'auto'; video.src = url;
+    const fail = () => { URL.revokeObjectURL(url); reject(new Error('לא הצלחתי לקרוא את הסרטון (נסו MP4 או MOV)')); };
+    video.onerror = fail;
+    video.onloadeddata = async () => {
+      try {
+        const duration = video.duration;
+        if (!Number.isFinite(duration) || duration <= 0) return fail();
+        const step = Math.max(every, duration / max);
+        const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        const ctx = canvas.getContext('2d');
+        const times = [];
+        for (let t = Math.min(step / 2, duration / 2); t < duration && times.length < max; t += step) times.push(t);
+        const frames = [];
+        for (const t of times) {
+          await new Promise((ok) => { video.onseeked = ok; video.currentTime = t; });
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          frames.push(await new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.82)));
+          onProgress?.(frames.length, times.length);
+        }
+        URL.revokeObjectURL(url);
+        resolve(frames.filter(Boolean));
+      } catch { fail(); }
+    };
+  });
+}

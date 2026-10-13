@@ -188,6 +188,44 @@ app.post('/api/products/identify', requireOwner, upload.single('image'), async (
   }
 });
 
+// Walk-through video of an aisle. The phone samples frames from the video (no heavy upload) and the AI
+// finds every product in one request. Only frames that show a product are kept, as shelf photos.
+app.post('/api/videos', requireOwner, upload.array('frames', 60), async (req, res) => {
+  const frames = req.files || [];
+  if (!frames.length) return res.status(400).json({ error: 'לא התקבלו תמונות מהסרטון' });
+  const shelfId = String(req.body.shelfId || '');
+  const shelf = JSON.parse(req.store.map_json).shelves.find((s) => s.id === shelfId);
+  if (!shelf) return res.status(400).json({ error: 'בחר מדף מהמפה' });
+  if (!ai.aiEnabled()) return res.status(503).json({ error: 'זיהוי מסרטון דורש מפתח GEMINI_API_KEY (חינמי) בשרת' });
+
+  let detected;
+  try {
+    detected = await ai.detectProductsInFrames(frames.map((f) => ({ buffer: f.buffer, mediaType: f.mimetype })), shelf.name);
+  } catch (err) {
+    console.error('video detection failed:', err.message);
+    return res.status(502).json({ error: `הזיהוי נכשל: ${err.message}` });
+  }
+  const photoIds = new Map();
+  const insert = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, box_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  const seen = new Set();
+  const ids = [];
+  for (const p of detected) {
+    const c = cleanProduct(p);
+    if (!c.name || seen.has(c.name)) continue;
+    seen.add(c.name);
+    if (!photoIds.has(p.frame)) {
+      const f = frames[p.frame];
+      const file = `${req.store.id}-v${crypto.randomBytes(8).toString('hex')}.${{ 'image/png': 'png', 'image/webp': 'webp' }[f.mimetype] || 'jpg'}`;
+      fs.writeFileSync(path.join(UPLOAD_DIR, file), f.buffer);
+      photoIds.set(p.frame, Number(db.prepare('INSERT INTO photos (store_id, shelf_id, file) VALUES (?, ?, ?)').run(req.store.id, shelfId, file).lastInsertRowid));
+    }
+    ids.push(Number(insert.run(req.store.id, shelfId, photoIds.get(p.frame), c.name, c.description, c.keywords, c.level, JSON.stringify(p.box)).lastInsertRowid));
+  }
+  const products = ids.map((id) => productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, id)));
+  res.json({ frames: frames.length, keptFrames: photoIds.size, products });
+});
+
 app.get('/api/products', requireOwner, (req, res) => {
   res.json(db.prepare(`${PRODUCTS_QUERY} ORDER BY products.id DESC`).all(req.store.id).map(productRow));
 });
