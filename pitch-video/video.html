@@ -288,14 +288,28 @@
   <section class="scene" id="s-data">
     <div class="abs fade" id="data-text" style="right:110px;top:180px;width:640px">
       <div class="step-label">ערך להנהלה</div>
-      <div class="h2" style="margin-top:14px">לראשונה: יודעים מה הלקוחות <span class="accent">מחפשים ולא מוצאים</span></div>
-      <div class="p" style="margin-top:24px">כל חיפוש הוא נתון. החלטות על מלאי, סידור מדפים ומבצעים מתקבלות לפי מה שהלקוחות באמת ביקשו.</div>
+      <div class="h2" style="margin-top:14px">לראשונה: יודעים מה הלקוחות <span class="accent">מחפשים ולא מוצאים</span>. ומתי.</div>
+      <div class="p" style="margin-top:24px">כל חיפוש הוא נתון. המערכת מזהה עונתיות לפי החגים, וממליצה מתי להזמין מלאי ומתי לצאת בקמפיין.</div>
     </div>
-    <div class="abs card fade" id="dash" style="left:110px;top:170px;width:960px;padding:46px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="h3">חיפשו ולא מצאו · השבוע</div><div style="font-size:22px;color:var(--muted)">נתונים להמחשה</div></div>
-      <div id="bars" style="margin-top:20px"></div>
-      <div style="display:flex;gap:20px;margin-top:30px">
-        <div class="pill">🔎 1,284 חיפושים</div><div class="pill">✅ 91% נמצאו</div><div class="pill" style="color:var(--orange)">⚠️ 116 לא נמצאו</div>
+    <div class="abs card fade" id="dash" style="left:110px;top:110px;width:960px;padding:36px 46px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="h3">חיפשו ולא מצאו · 12 חודשים</div><div style="font-size:22px;color:var(--muted)">סניף הדגמה · נתונים מדומים</div></div>
+      <div id="bars" style="margin-top:10px"></div>
+      <div style="display:flex;gap:20px;margin-top:20px">
+        <div class="pill">🔎 1,753 חיפושים</div><div class="pill">✅ 74% נמצאו</div><div class="pill" style="color:#ffb36b">⚠️ 448 לא נמצאו</div>
+      </div>
+    </div>
+    <div class="abs card fade glow-o" id="season" style="left:110px;top:690px;width:960px;padding:30px 40px">
+      <div style="display:flex;align-items:center;gap:26px">
+        <div style="width:110px;height:110px;border-radius:26px;background:linear-gradient(135deg,#ffb36b,#ff5a36);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><div style="font-size:20px;font-weight:700;opacity:.9">חג</div><div style="font-size:38px;font-weight:900;line-height:1">פסח</div></div>
+        <div style="flex:1">
+          <div style="font-size:24px;color:#ffb36b;font-weight:700">המלצה עונתית · פסח בעוד 191 ימים</div>
+          <div style="font-size:38px;font-weight:800;margin-top:4px">סט כלים לפסח</div>
+          <div style="font-size:24px;color:var(--muted);margin-top:4px">82% מהחיפושים היו בחודש שלפני החג</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="pill" style="font-size:24px">📦 להזמין מלאי עד 11.3</div>
+          <div class="pill" style="font-size:24px;color:#ffb36b">📣 קמפיין מ-25.3</div>
+        </div>
       </div>
     </div>
   </section>
@@ -719,7 +733,7 @@ pot($('hero-img'), 110, 50, 120, 140, '#cfd6e4');
 const waveBars = [...Array(24)].map(() => { const b = document.createElement('div'); b.style.cssText = 'width:6px;border-radius:3px;background:linear-gradient(#ffb36b,#ff5a36)'; $('wave').appendChild(b); return b; });
 
 // data bars
-const BARS = [['סיר לחץ חשמלי', 31], ['קופסאות אחסון זכוכית', 24], ['מסננת סיליקון', 19], ['תבנית אפייה עגולה', 15], ['סכין לחם', 11]];
+const BARS = [['צידנית גדולה', 55], ['צלחות חד פעמיות', 53], ['סיר לחץ', 51], ['סט כלים לפסח', 51], ['מסננת סיליקון', 50]];
 const barEls = BARS.map(([lbl, n]) => {
   const r = document.createElement('div'); r.className = 'bar-row';
   r.innerHTML = `<div class="lbl">${lbl}</div><div class="bar" style="width:0"></div><div class="num">${n}</div>`;
@@ -997,8 +1011,9 @@ const UPDATE = {
     show($('dash'), t, 0.4, 0.8);
     barEls.forEach((b, i) => {
       const p = prog(t, 1.5 + i * 0.5, 1.2);
-      b.bar.style.width = `${(b.n / 31) * 420 * p}px`;
+      b.bar.style.width = `${(b.n / 55) * 420 * p}px`;
     });
+    show($('season'), t, 8.5, 0.9, 40);
   },
   's-chain'(t) {
     show($('chain-text'), t, 0.4);
