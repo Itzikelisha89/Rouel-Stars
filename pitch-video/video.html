@@ -43,6 +43,8 @@
   .ui-search .mic { margin-right: auto; width: 42px; height: 42px; border-radius: 14px; background: linear-gradient(135deg,#ff8a2a,#ff5a36); display: flex; align-items: center; justify-content: center; font-size: 20px; }
   .ui-card { margin: 16px 22px 0; border-radius: 26px; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.1); overflow: hidden; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 16px; font-weight: 600; background: rgba(255,255,255,.08); color: #dfe6ff; }
+  .nav-step { display: flex; align-items: center; gap: 12px; font-size: 18px; padding: 7px 0; border-top: 1px solid rgba(255,255,255,.07); }
+  .nav-step span { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,122,26,.18); color: #ffb36b; display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; }
   .chip.o { background: rgba(255,122,26,.18); color: #ffb36b; }
   .blue { color: var(--blue); }
   .tag { display: inline-block; padding: 10px 28px; border: 2px solid var(--line); border-radius: 999px; font-size: 28px; color: var(--muted); font-weight: 500; }
@@ -253,13 +255,18 @@
 
           <!-- 5 navigation -->
           <div class="abs ph" id="ph-nav" style="left:0;right:0;top:100px;opacity:0">
-            <div style="margin:10px 18px 0;border-radius:24px;background:linear-gradient(135deg,#ff8a2a,#ff5a36);padding:16px 20px;display:flex;align-items:center;gap:16px">
-              <div id="nav-arrow" style="font-size:56px;line-height:1;width:64px;text-align:center">⬆</div>
-              <div><div id="nav-main" style="font-size:27px;font-weight:800">ישר</div><div id="nav-sub" style="font-size:18px;opacity:.9">3 מטר</div></div>
+            <div class="ui-card" style="margin-top:8px;padding:14px 16px">
+              <div style="font-size:20px;font-weight:800;margin-bottom:8px">הדרך אל המוצר</div>
+              <div class="nav-step"><span>⬆</span>ישר 3 מ׳ מהכניסה</div>
+              <div class="nav-step"><span>➡</span>ימינה, אל מעבר 4</div>
+              <div class="nav-step"><span>⬆</span>9 מ׳ לאורך המעבר · משמאל</div>
             </div>
-            <svg id="nav-mini" width="350" height="219" viewBox="0 0 800 500" style="display:block;margin:14px auto 0;border-radius:18px;background:#0a0f1f"></svg>
-            <div style="margin:14px 22px 0;display:flex;justify-content:space-between;font-size:20px;color:#aab4d4"><span>אל: סיר נירוסטה 16 ס״מ</span><span id="nav-left" style="font-weight:800;color:#ffb36b">14 מ׳</span></div>
-            <div style="margin:10px 22px 0;height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden"><div id="nav-bar" style="height:100%;width:0;background:linear-gradient(90deg,#ff5a36,#ffb36b)"></div></div>
+            <svg id="nav-mini" width="350" height="219" viewBox="0 0 800 500" style="display:block;margin:12px auto 0;border-radius:18px;background:#0a0f1f"></svg>
+            <div style="margin:12px 22px 0;font-size:16px;color:#8f9bc0;text-align:center">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר</div>
+            <div id="nav-toast" style="position:absolute;left:14px;right:14px;top:6px;border-radius:22px;background:linear-gradient(135deg,#4f7cff,#3a5ee0);padding:16px 18px;box-shadow:0 18px 40px rgba(0,0,0,.45);opacity:0">
+              <div style="font-size:22px;font-weight:800">📍 אתה ליד: מעבר 4</div>
+              <div style="font-size:18px;opacity:.92;margin-top:4px">המוצר עוד 9 מ׳ לפניך, משמאלך</div>
+            </div>
           </div>
 
           <!-- 6 arrived -->
@@ -640,6 +647,16 @@ function navLayer(root, scale) {
 drawQR($('scan-qr'), 0, 0, 240);
 const NAV_BIG = navLayer($('nav-map'), 'big');
 const NAV_MINI = navLayer($('nav-mini'), 'mini');
+const STICKER = svg('g', {}, $('nav-map'));
+svg('rect', { x: 384, y: 381, width: 32, height: 32, rx: 4, fill: '#fff', stroke: '#ff8a2a', 'stroke-width': 2 }, STICKER);
+drawQR(STICKER, 389, 386, 22);
+const STICKER_OK = svg('circle', { cx: 400, cy: 397, r: 26, fill: 'none', stroke: '#22c55e', 'stroke-width': 5, opacity: 0 }, $('nav-map'));
+const SCAN_BEAM = svg('path', { d: 'M440 410 L416 389 L416 413 Z', fill: '#ffb36b', opacity: 0 }, $('nav-map'));
+// the shopper's phone only knows the start point: the entrance, then the aisle sticker once scanned
+function remainingFrom(f0) {
+  const d0 = f0 * ROUTE_LEN, cum = [0, 3, 4.5, 13.5];
+  return [pointAlong(ROUTE, f0), ...ROUTE.filter((_, i) => cum[i] > d0)];
+}
 const ROUTE_LEN = 13.5; // meters (cells)
 function routeState(f) {
   const pos = pointAlong(ROUTE, f);
@@ -871,13 +888,13 @@ const UPDATE = {
   's-customer'(t) {
     show($('cust-text'), t, 0.3);
     // headline changes with the story
-    const HEADS = [[0, 'פשוט אומרים מה מחפשים.'], [15, 'בוחרים מתוך אפשרויות — עם תמונה.'], [27, 'והמערכת מנווטת עד המדף.'], [46, 'בלי לשאול אף אחד. בלי לחפש.']];
+    const HEADS = [[0, 'פשוט אומרים מה מחפשים.'], [15, 'בוחרים מתוך אפשרויות — עם תמונה.'], [27, 'והמערכת מראה את הדרך עד המדף.'], [46, 'בלי לשאול אף אחד. בלי לחפש.']];
     let hi = 0; HEADS.forEach((h, i) => { if (t >= h[0]) hi = i; });
     const head = $('cust-head'); head.textContent = HEADS[hi][1];
     const next = HEADS[hi + 1] ? HEADS[hi + 1][0] : 1e9;
     head.style.opacity = hi === 0 ? 1 : Math.min(prog(t, HEADS[hi][0], 0.5), 1 - prog(t, next - 0.4, 0.4));
     if (hi === 0) head.style.opacity = 1 - prog(t, next - 0.4, 0.4);
-    const CHIPS = [[0, '🚪 בכניסה לסניף'], [5, '📱 סורק את הקוד'], [9, '🎙️ אומר מה הוא מחפש'], [14.5, '👆 בוחר מוצר'], [26.5, '🧭 בדרך למוצר'], [45.5, '✅ הגיע למדף']];
+    const CHIPS = [[0, '🚪 בכניסה לסניף'], [5, '📱 סורק את הקוד'], [9, '🎙️ אומר מה הוא מחפש'], [14.5, '👆 בוחר מוצר'], [26.5, '🧭 בדרך למוצר'], [31.4, '📱 סורק מדבקת "אתה כאן"'], [35.2, '🧭 ממשיך למוצר'], [45.5, '✅ הגיע למדף']];
     let ci = 0; CHIPS.forEach((c, i) => { if (t >= c[0]) ci = i; });
     $('stage-chip-t').textContent = CHIPS[ci][1];
     $('stage-chip').style.opacity = Math.min(1, prog(t, CHIPS[ci][0], 0.4) + (ci === 0 ? 1 : 0));
@@ -956,19 +973,19 @@ const UPDATE = {
     }
     fg.style.opacity = fo;
 
-    // walking
-    const f = clamp((t - 27.6) / 17.4);
-    const st = placeNav(NAV_BIG, f, t);
-    placeNav(NAV_MINI, f, t);
-    const d = st.d;
-    let arrow, main, sub;
-    if (d < 2.2) { arrow = '⬆'; main = 'ישר'; sub = `${Math.max(1, Math.ceil(3 - d))} מטר, ואז ימינה`; }
-    else if (d < 4.5) { arrow = '➡'; main = 'פנה ימינה'; sub = 'אל מעבר 4'; }
-    else if (d < 11.5) { arrow = '⬆'; main = 'לאורך מעבר 4'; sub = `עוד ${Math.ceil(13.5 - d)} מטר`; }
-    else { arrow = '⬅'; main = 'המוצר משמאלך'; sub = 'מדף שני מלמטה'; }
-    $('nav-arrow').textContent = arrow; $('nav-main').textContent = main; $('nav-sub').textContent = sub;
-    $('nav-left').textContent = `${Math.max(0, Math.ceil(13.5 - d))} מ׳`;
-    $('nav-bar').style.width = `${f * 100}%`;
+    // walking: the person walks to the aisle end, scans the sticker, continues
+    const A = 4.5 / ROUTE_LEN;
+    const f = t < 31.4 ? A * clamp((t - 27.6) / 3.8) : t < 35.2 ? A : A + (1 - A) * clamp((t - 35.2) / 9.6);
+    placeNav(NAV_BIG, f, t);
+    const scanned = t > 33.2;
+    SCAN_BEAM.setAttribute('opacity', t > 31.8 && t < 33.2 ? 0.5 + 0.3 * Math.sin(t * 14) : 0);
+    STICKER_OK.setAttribute('opacity', prog(t, 33.2, 0.3) * (1 - prog(t, 36, 0.5)));
+    // phone: static route from the known start point, no live tracking
+    const f0 = scanned ? A : 0;
+    placeNav(NAV_MINI, f0, t);
+    NAV_MINI.done.setAttribute('points', remainingFrom(f0).map((p) => p.join(',')).join(' '));
+    $('nav-toast').style.opacity = prog(t, 33.3, 0.4) * (1 - prog(t, 39, 0.5));
+    $('nav-toast').style.transform = `translateY(${(1 - prog(t, 33.3, 0.4)) * -20}px)`;
     // arrival
     $('arr-check').style.transform = `scale(${0.6 + 0.4 * prog(t, 45.6, 0.6)})`;
     const pulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 3));
