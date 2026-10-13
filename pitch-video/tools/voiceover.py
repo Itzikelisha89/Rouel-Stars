@@ -83,7 +83,7 @@ def main():
     n = len(SEGMENTS)
     filters.append(''.join(f'[v{i}]' for i in range(n)) + f'amix=inputs={n}:normalize=0,loudnorm=I=-16:TP=-1.5,apad[voice]')
     filters.append('[voice]asplit=2[vo][sc]')
-    filters.append('[1:a]volume=0.55[mus]')
+    filters.append('[1:a]volume=0.28[mus]')
     filters.append('[mus][sc]sidechaincompress=threshold=0.02:ratio=8:attack=20:release=400[duck]')
     filters.append('[vo][duck]amix=inputs=2:normalize=0[mix]')
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', video, '-i', music, *inputs,
