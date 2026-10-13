@@ -19,7 +19,7 @@ if (old) db.prepare('DELETE FROM stores WHERE id = ?').run(old.id);
 const salt = crypto.randomBytes(16).toString('hex');
 const map = {
   cols: 40, rows: 25, entrance: { x: 20, y: 24 },
-  shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'פחים', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים']
+  shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'פחים', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר']
     .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4][i], y: 4, w: 2, h: 15 })),
 };
 const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
@@ -53,7 +53,9 @@ const DEMAND = [
   [['סיר לחץ חשמלי', 'סיר לחץ', 'מולטיקוקר'], false, 0.15, (d) => 1 + 4 * Math.max(0, 1 - (now - d) / (60 * DAY))],
   [['מחבת לסופגניות', 'סיר לטיגון עמוק', 'פריטוז'], false, 0.03, (d) => (near(d, 'hanukkah') ? 45 : 1)],
   [['צלחות חד פעמיות', 'כלים חד פעמיים'], false, 0.08, (d) => (near(d, 'sukkot', 21) || near(d, 'rosh', 21) ? 22 : 1)],
-  [['קופסת אוכל לילדים', 'קופסאות אוכל', 'בקבוק מים לילדים'], false, 0.05, (d) => (near(d, 'school', 30) ? 25 : 1)],
+  [['קופסת אוכל לילדים', 'תיק גב', 'ילקוט'], true, 0.1, (d) => (near(d, 'school', 30) ? 25 : 1)],
+  [['בקבוק מים לילדים', 'קלמר', 'מחברות'], false, 0.05, (d) => (near(d, 'school', 30) ? 25 : 1)],
+  [['מפרץ ההרפתקאות', 'פאו פטרול'], true, 0.4, (d) => (near(d, 'hanukkah', 21) ? 3 : 1)],
   [['צידנית', 'צידנית גדולה'], false, 0.05, (d) => ([5, 6, 7].includes(d.getUTCMonth()) ? 9 : 1)],
   [['מסננת סיליקון'], false, 0.12, () => 1],
 ];
