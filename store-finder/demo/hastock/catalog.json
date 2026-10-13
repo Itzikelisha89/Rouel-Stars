@@ -328,5 +328,49 @@
   "aisle": "a6",
   "level": "מדף תחתון",
   "image": "snack-4.jpg"
+ },
+ {
+  "id": "prestige",
+  "name": "סיר נירוסטה PRESTIGE 18 ס\"מ",
+  "brand": "food appeal",
+  "category": "כלי בישול",
+  "price": "69.90",
+  "keywords": "סיר, סיר קטן, סירים, סיר נירוסטה, כלי בישול, סיר עם מכסה",
+  "aisle": "a6",
+  "level": "מדף אמצעי",
+  "image": "prestige.jpg"
+ },
+ {
+  "id": "orient",
+  "name": "סיר ORIENT 20 ס\"מ",
+  "brand": "food appeal",
+  "category": "כלי בישול",
+  "price": "99.90",
+  "keywords": "סיר, סיר קטן, סירים, סיר יציקה, קדירה, בישול איטי, כלי בישול",
+  "aisle": "a6",
+  "level": "מדף תחתון",
+  "image": "orient-small.jpg"
+ },
+ {
+  "id": "orient-28",
+  "name": "סיר ORIENT 28 ס\"מ",
+  "brand": "food appeal",
+  "category": "כלי בישול",
+  "price": "179.90",
+  "keywords": "סיר, סיר גדול, סירים, סיר יציקה, קדירה, כלי בישול",
+  "aisle": "a6",
+  "level": "מדף תחתון",
+  "image": "orient.jpg"
+ },
+ {
+  "id": "velare",
+  "name": "סיר VELARE 20 ס\"מ",
+  "brand": "food appeal",
+  "category": "כלי בישול",
+  "price": "119.90",
+  "keywords": "סיר, סיר קטן, סירים, סיר קרם, סיר שחור, כלי בישול",
+  "aisle": "a6",
+  "level": "מדף אמצעי",
+  "image": "velare.jpg"
  }
 ]

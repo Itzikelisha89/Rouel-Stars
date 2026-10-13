@@ -110,7 +110,7 @@
       <div class="h2" style="margin-top:14px">1,000 מ״ר.<br>אלפי מוצרים.</div>
     </div>
     <div class="abs" style="right:120px;top:450px;width:700px">
-      <div class="h3 fade" id="prob-l1">הלקוח מחפש <span class="accent">פח למטבח</span>…</div>
+      <div class="h3 fade" id="prob-l1">הלקוח מחפש <span class="accent">סיר קטן</span>…</div>
       <div class="h3 fade" id="prob-l2" style="margin-top:26px">מסתובב בין המעברים,</div>
       <div class="h3 fade" id="prob-l3" style="margin-top:26px">מחפש עובד פנוי,</div>
       <div class="h3 fade" id="prob-l4" style="margin-top:26px;color:var(--red)">ולפעמים יוצא בלי לקנות.</div>
@@ -238,18 +238,18 @@
 
           <!-- 3 options -->
           <div class="abs ph" id="ph-options" style="left:0;right:0;top:110px;opacity:0">
-            <div class="ui-search" style="height:54px;font-size:21px"><span style="opacity:.6">🔍</span>פח למטבח</div>
-            <div style="padding:16px 26px 4px;font-size:24px;font-weight:800">מצאתי 3 פחים למטבח</div>
+            <div class="ui-search" style="height:54px;font-size:21px"><span style="opacity:.6">🔍</span>סיר קטן</div>
+            <div style="padding:16px 26px 4px;font-size:24px;font-weight:800">מצאתי 3 סירים קטנים</div>
             <div style="padding:0 26px;font-size:18px;color:#8f9bc0">איזה מתאים לך?</div>
             <div id="opts"></div>
           </div>
 
           <!-- 4 product -->
           <div class="abs ph" id="ph-product" style="left:0;right:0;top:110px;opacity:0">
-            <div style="width:340px;height:250px;margin:6px auto 0;border-radius:26px;overflow:hidden;background:#fff"><img src="assets/dublin.jpg" style="width:100%;height:100%;object-fit:contain"></div>
-            <div style="padding:14px 26px 0;font-size:27px;font-weight:800">פח סנסור DUBLIN 30 ליטר</div>
-            <div style="padding:2px 26px;font-size:18px;color:#8f9bc0">CAMEO · נירוסטה · חיישן עליון · <b style="color:#ffb36b">₪199.90</b></div>
-            <div style="padding:12px 26px;display:flex;gap:8px;flex-wrap:wrap"><span class="chip o">📍 מעבר 4</span><span class="chip">תצוגת פחים</span><span class="chip">🚶 14 מ׳</span></div>
+            <div style="width:340px;height:250px;margin:6px auto 0;border-radius:26px;overflow:hidden;background:#fff"><img src="assets/orient-small.jpg" style="width:100%;height:100%;object-fit:cover"></div>
+            <div style="padding:14px 26px 0;font-size:27px;font-weight:800">סיר ORIENT 20 ס״מ</div>
+            <div style="padding:2px 26px;font-size:18px;color:#8f9bc0">food appeal · לבישול איטי ותבשילי קדירה · <b style="color:#ffb36b">₪99.90</b></div>
+            <div style="padding:12px 26px;display:flex;gap:8px;flex-wrap:wrap"><span class="chip o">📍 מעבר 4</span><span class="chip">תצוגת סירים</span><span class="chip">🚶 14 מ׳</span></div>
             <div id="go-btn" style="margin:14px 22px 0;height:70px;border-radius:22px;background:linear-gradient(135deg,#ff8a2a,#ff5a36);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;box-shadow:0 14px 30px rgba(255,90,54,.35)">🧭 קח אותי לשם</div>
           </div>
 
@@ -273,7 +273,7 @@
           <div class="abs ph" id="ph-arrived" style="left:0;right:0;top:140px;text-align:center;opacity:0">
             <div id="arr-check" style="width:150px;height:150px;border-radius:50%;margin:30px auto 0;background:linear-gradient(135deg,#34d399,#16a34a);display:flex;align-items:center;justify-content:center;font-size:84px;color:#fff;box-shadow:0 0 0 18px rgba(34,197,94,.15)">✓</div>
             <div style="font-size:40px;font-weight:900;margin-top:30px">הגעת!</div>
-            <div style="font-size:23px;color:#c7cff0;margin-top:10px;line-height:1.5">המוצר משמאלך<br><b style="color:#ffb36b">בתצוגת הפחים</b></div>
+            <div style="font-size:23px;color:#c7cff0;margin-top:10px;line-height:1.5">המוצר משמאלך<br><b style="color:#ffb36b">בתצוגת הסירים</b></div>
             <div style="margin:26px 40px 0" class="chip">⏱️ 31 שניות מהכניסה</div>
           </div>
 
@@ -686,26 +686,26 @@ function placeNav(L, f, t) {
 const SH = {};
 (() => {
   const v = $('v-shelf');
-  svg('image', { href: 'assets/bins-display.jpg', x: 0, y: 0, width: 1130, height: 700 }, v);
-  const d = { x: 623, y: 265, w: 200, h: 295 };
+  svg('image', { href: 'assets/pots-display.jpg', x: 0, y: 0, width: 1130, height: 700 }, v);
+  const d = { x: 434, y: 276, w: 300, h: 280 };
   SH.ring = svg('rect', { x: d.x - 14, y: d.y - 14, width: d.w + 28, height: d.h + 28, rx: 22, fill: '#ff7a1a', 'fill-opacity': 0.08, stroke: '#ff7a1a', 'stroke-width': 7 }, v);
   SH.tag = svg('g', {}, v);
   svg('rect', { x: d.x + d.w / 2 - 180, y: d.y - 100, width: 360, height: 64, rx: 32, fill: '#ff7a1a' }, SH.tag);
-  const tt = svg('text', { x: d.x + d.w / 2, y: d.y - 57, 'text-anchor': 'middle', 'font-size': 29, 'font-weight': 800, fill: '#fff', 'font-family': 'Heebo' }, SH.tag); tt.textContent = '✓ פח סנסור DUBLIN';
+  const tt = svg('text', { x: d.x + d.w / 2, y: d.y - 57, 'text-anchor': 'middle', 'font-size': 29, 'font-weight': 800, fill: '#fff', 'font-family': 'Heebo' }, SH.tag); tt.textContent = '✓ סיר ORIENT 20 ס״מ';
 })();
 
 // product options
 const OPTS = [
-  { name: 'פח פדל MAX 30 ליטר', sub: 'מתכת · דוושה · ₪199.90', aisle: 'מעבר 4', img: 'max' },
-  { name: 'פח סנסור DUBLIN 30 ליטר', sub: 'נירוסטה · חיישן · ₪199.90', aisle: 'מעבר 4', img: 'dublin' },
-  { name: 'פח מלבני EKO 30 ליטר', sub: 'סגירה רכה · ₪249.90', aisle: 'מעבר 4', img: 'eko-rect' },
+  { name: 'סיר נירוסטה PRESTIGE 18 ס״מ', sub: 'עם מכסה זכוכית · ₪69.90', aisle: 'מעבר 4', img: 'prestige' },
+  { name: 'סיר ORIENT 20 ס״מ', sub: 'לבישול איטי · ₪99.90', aisle: 'מעבר 4', img: 'orient-small' },
+  { name: 'סיר VELARE 20 ס״מ', sub: 'קרם / שחור · ₪119.90', aisle: 'מעבר 4', img: 'velare' },
 ];
 const optEls = OPTS.map((o) => {
   const d = document.createElement('div');
   d.className = 'ui-card';
   d.style.cssText = 'display:flex;gap:14px;align-items:center;padding:12px;margin-top:12px;transition:none';
   d.innerHTML = `<div style="width:84px;height:84px;border-radius:16px;overflow:hidden;background:#fff;flex:none"><img src="assets/${o.img}.jpg" style="width:100%;height:100%;object-fit:contain"></div>
-    <div style="flex:1;min-width:0"><div style="font-size:19px;font-weight:800;white-space:nowrap">${o.name}</div><div style="font-size:15px;color:#8f9bc0">${o.sub}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:18px;font-weight:800;line-height:1.2">${o.name}</div><div style="font-size:15px;color:#8f9bc0">${o.sub}</div>
     <div style="margin-top:6px"><span class="chip o" style="font-size:14px">📍 ${o.aisle}</span></div></div>`;
   $('opts').appendChild(d);
   return d;
@@ -908,7 +908,7 @@ const UPDATE = {
     P.beam.setAttribute('opacity', scan ? 0.45 + 0.25 * Math.sin(t * 12) : 0);
     P.qrOk.setAttribute('opacity', prog(t, 7.3, 0.4) * (1 - prog(t, 10, 0.6)));
     // speaking
-    const phrase = 'אני מחפש פח למטבח';
+    const phrase = 'אני מחפש סיר קטן';
     const nb = Math.floor(clamp((t - 9.8) / 2.2) * phrase.length);
     P.bubbleText.textContent = phrase.slice(0, nb);
     P.bubble.setAttribute('opacity', prog(t, 9.6, 0.4) * (1 - prog(t, 16, 0.6)));
@@ -1033,7 +1033,7 @@ const UPDATE = {
 
 window.render = render;
 window.DURATION = DURATION;
-const ASSETS = ['shelf-camera', 'bins-display', 'dublin', 'max', 'eko-rect'].map((n) => `assets/${n}.jpg`);
+const ASSETS = ['shelf-camera', 'pots-display', 'prestige', 'orient-small', 'velare'].map((n) => `assets/${n}.jpg`);
 window.ready = Promise.all([document.fonts.ready, ...ASSETS.map((src) => { const i = new Image(); i.src = src; return i.decode(); }),
   ...[...document.images].map((i) => i.decode().catch(() => {}))]).then(() => true);
 // live preview when opened directly in a browser
