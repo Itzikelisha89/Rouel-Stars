@@ -1,4 +1,4 @@
-import { api, escapeHtml, formatPrice, resizeImage } from '/js/api.js';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js';
 import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute } from '/js/map.js';
 
 const $ = (id) => document.getElementById(id);
@@ -414,6 +414,10 @@ if (Recognition) {
     if (hereShelf) {
       $('here-banner').textContent = `📍 אתה ליד: ${hereShelf.name}`;
       $('here-banner').classList.remove('hidden');
+      // A worker (signed in on this phone) scanning an aisle sticker: offer to move a product here.
+      if (getToken()) {
+        $('here-banner').insertAdjacentHTML('afterend', `<a class="btn primary staff-bar" href="/staff.html?to=${encodeURIComponent(hereShelf.id)}">👷 מצב עובד: העברת מוצר למעבר הזה</a>`);
+      }
     }
     renderListBar();
     loadDeals();

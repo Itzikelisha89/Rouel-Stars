@@ -77,6 +77,12 @@ const productCols = db.prepare('PRAGMA table_info(products)').all().map((c) => c
 if (!productCols.includes('image')) db.exec('ALTER TABLE products ADD COLUMN image TEXT'); // the product's own photo, uploaded by the manager
 if (!productCols.includes('promo')) db.exec("ALTER TABLE products ADD COLUMN promo TEXT NOT NULL DEFAULT ''"); // deal text, e.g. "2 ב-50 ₪"
 if (!productCols.includes('active')) db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1'); // 0 = hidden from shoppers
+if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'staff_pin_hash')) {
+  db.exec('ALTER TABLE stores ADD COLUMN staff_pin_hash TEXT'); // workers' code, set by the manager
+}
+if (!db.prepare('PRAGMA table_info(sessions)').all().some((c) => c.name === 'role')) {
+  db.exec("ALTER TABLE sessions ADD COLUMN role TEXT NOT NULL DEFAULT 'owner'"); // 'owner' or 'staff'
+}
 if (!db.prepare('PRAGMA table_info(searches)').all().some((c) => c.name === 'visitor')) {
   db.exec("ALTER TABLE searches ADD COLUMN visitor TEXT NOT NULL DEFAULT ''");
 }

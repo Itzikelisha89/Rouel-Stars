@@ -16,7 +16,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && token) {
     setToken(null);
-    if (!location.pathname.endsWith('/index.html') && location.pathname !== '/') location.href = '/';
+    if (!location.pathname.endsWith('/index.html') && location.pathname !== '/' && !location.pathname.startsWith('/staff')) location.href = '/';
   }
   if (!res.ok) throw new Error(data.error || `שגיאה ${res.status}`);
   return data;

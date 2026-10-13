@@ -43,9 +43,9 @@ function checkPassword(password, stored) {
   const candidate = crypto.scryptSync(password, salt, 32);
   return crypto.timingSafeEqual(candidate, Buffer.from(hash, 'hex'));
 }
-function newSession(storeId) {
+function newSession(storeId, role = 'owner') {
   const token = crypto.randomBytes(24).toString('hex');
-  db.prepare('INSERT INTO sessions (token, store_id) VALUES (?, ?)').run(token, storeId);
+  db.prepare('INSERT INTO sessions (token, store_id, role) VALUES (?, ?, ?)').run(token, storeId, role);
   return token;
 }
 function getStoreBySlug(slug) {
@@ -75,14 +75,22 @@ const PRODUCTS_QUERY = `SELECT products.*, photos.file FROM products
   LEFT JOIN photos ON photos.id = products.photo_id WHERE products.store_id = ?`;
 
 const SESSION_DAYS = 30;
-function requireOwner(req, res, next) {
-  const token = (req.get('authorization') || '').replace(/^Bearer /, '');
-  const session = token && db.prepare(`SELECT store_id FROM sessions WHERE token = ? AND created_at >= datetime('now', ?)`)
-    .get(token, `-${SESSION_DAYS} days`);
-  if (!session) return res.status(401).json({ error: 'צריך להתחבר מחדש' });
-  req.store = db.prepare('SELECT * FROM stores WHERE id = ?').get(session.store_id);
-  next();
+// Managers can do everything; workers (signed in with the store's worker code) only handle alerts
+// and keep products in the right place.
+function requireRole(...roles) {
+  return (req, res, next) => {
+    const token = (req.get('authorization') || '').replace(/^Bearer /, '');
+    const session = token && db.prepare(`SELECT store_id, role FROM sessions WHERE token = ? AND created_at >= datetime('now', ?)`)
+      .get(token, `-${SESSION_DAYS} days`);
+    if (!session) return res.status(401).json({ error: 'צריך להתחבר מחדש' });
+    if (!roles.includes(session.role)) return res.status(403).json({ error: 'רק מנהל החנות יכול לעשות את זה' });
+    req.store = db.prepare('SELECT * FROM stores WHERE id = ?').get(session.store_id);
+    req.role = session.role;
+    next();
+  };
 }
+const requireOwner = requireRole('owner');
+const requireStaff = requireRole('owner', 'staff');
 
 function validateMap(map) {
   if (!map || typeof map !== 'object') return 'מפה לא תקינה';
@@ -143,7 +151,7 @@ app.post('/api/login', (req, res) => {
   res.json({ token: newSession(store.id) });
 });
 
-app.post('/api/logout', requireOwner, (req, res) => {
+app.post('/api/logout', requireStaff, (req, res) => {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(req.get('authorization').replace(/^Bearer /, ''));
   res.json({ ok: true });
 });
@@ -159,6 +167,13 @@ app.put('/api/store/settings', requireOwner, (req, res) => {
     // Sign out every other device that knew the old password.
     db.prepare('DELETE FROM sessions WHERE store_id = ? AND token != ?').run(req.store.id, (req.get('authorization') || '').replace(/^Bearer /, ''));
   }
+  if (req.body.staffPin !== undefined) {
+    const pin = String(req.body.staffPin);
+    if (pin && !/^\d{4,8}$/.test(pin)) return res.status(400).json({ error: 'קוד עובדים: 4 עד 8 ספרות' });
+    db.prepare('UPDATE stores SET staff_pin_hash = ? WHERE id = ?').run(pin ? hashPassword(pin) : null, req.store.id);
+    // A new code (or none) signs out every worker who used the old one.
+    db.prepare("DELETE FROM sessions WHERE store_id = ? AND role = 'staff'").run(req.store.id);
+  }
   db.prepare('UPDATE stores SET name = ? WHERE id = ?').run(name, req.store.id);
   res.json({ ok: true, name });
 });
@@ -173,8 +188,18 @@ app.get('/api/products/export.csv', requireOwner, (req, res) => {
     .send(`\ufeff${['שם', 'מעבר', 'מדף', 'מחיר', 'מבצע', 'מילות חיפוש', 'תיאור', 'מוצג'].join(',')}\n${rows.join('\n')}\n`);
 });
 
-app.get('/api/me', requireOwner, (req, res) => {
-  res.json({ ...publicStore(req.store), aiEnabled: ai.aiEnabled() });
+app.get('/api/me', requireStaff, (req, res) => {
+  res.json({ ...publicStore(req.store), aiEnabled: ai.aiEnabled(), role: req.role, staffPinSet: Boolean(req.store.staff_pin_hash) });
+});
+
+// Worker sign-in: store address + the worker code the manager set (digits).
+app.post('/api/staff/login', (req, res) => {
+  if (rateLimited(`login:${req.ip}`, 10, 5 * 60000)) return res.status(429).json({ error: 'יותר מדי ניסיונות כניסה, נסו שוב בעוד 5 דקות' });
+  const store = getStoreBySlug(String(req.body.slug || '').trim().toLowerCase());
+  if (!store?.staff_pin_hash || !checkPassword(String(req.body.pin || ''), store.staff_pin_hash)) {
+    return res.status(401).json({ error: 'כתובת חנות או קוד עובדים שגויים' });
+  }
+  res.json({ token: newSession(store.id, 'staff') });
 });
 
 app.put('/api/store/map', requireOwner, (req, res) => {
@@ -273,7 +298,7 @@ app.post('/api/videos', requireOwner, upload.array('frames', 60), async (req, re
   res.json({ frames: frames.length, keptFrames: photoIds.size, products });
 });
 
-app.get('/api/products', requireOwner, (req, res) => {
+app.get('/api/products', requireStaff, (req, res) => {
   res.json(db.prepare(`${PRODUCTS_QUERY} ORDER BY products.id DESC`).all(req.store.id).map(productRow));
 });
 
@@ -313,9 +338,11 @@ app.post('/api/products/import', requireOwner, (req, res) => {
   res.json({ added, skipped: skipped.slice(0, 50), skippedCount: skipped.length });
 });
 
-app.put('/api/products/:id', requireOwner, (req, res) => {
+app.put('/api/products/:id', requireStaff, (req, res) => {
   const existing = db.prepare('SELECT * FROM products WHERE id = ? AND store_id = ?').get(req.params.id, req.store.id);
   if (!existing) return res.status(404).json({ error: 'מוצר לא נמצא' });
+  // Workers move products and mark them out of stock; everything else stays with the manager.
+  if (req.role === 'staff') req.body = Object.fromEntries(Object.entries(req.body).filter(([k]) => ['shelfId', 'level', 'active'].includes(k)));
   const p = cleanProduct({ ...existing, ...req.body });
   if (!p.name) return res.status(400).json({ error: 'צריך שם מוצר' });
   const shelfId = req.body.shelfId ?? existing.shelf_id;
@@ -363,7 +390,7 @@ app.get('/api/insights', requireOwner, (req, res) => {
 // Things that need a staff member now: a shopper asking for help, a product that was not on its shelf,
 // and requests for products the store does not carry.
 const ALERT_TYPES = ['help', 'not_there', 'empty', 'request'];
-app.get('/api/alerts', requireOwner, (req, res) => {
+app.get('/api/alerts', requireStaff, (req, res) => {
   const rows = db.prepare(`SELECT events.*, products.name AS product_name FROM events
     LEFT JOIN products ON products.id = events.product_id
     WHERE events.store_id = ? AND events.type IN (SELECT value FROM json_each(?))
@@ -375,7 +402,7 @@ app.get('/api/alerts', requireOwner, (req, res) => {
   })));
 });
 
-app.post('/api/alerts/:id/resolve', requireOwner, (req, res) => {
+app.post('/api/alerts/:id/resolve', requireStaff, (req, res) => {
   const changes = db.prepare("UPDATE events SET resolved_at = datetime('now') WHERE id = ? AND store_id = ? AND resolved_at IS NULL")
     .run(req.params.id, req.store.id).changes;
   res.json({ ok: true, changes });
@@ -545,6 +572,14 @@ app.get('/api/public/:slug/qr.svg', async (req, res) => {
   if (at && !shelfExists(store, at)) return res.status(404).end();
   const url = storeUrl(req, store.slug) + (at ? `?at=${encodeURIComponent(at)}` : '');
   res.type('image/svg+xml').send(await QRCode.toString(url, { type: 'svg', margin: 1, width: 320 }));
+});
+
+// QR for the workers' sign-in page (the code itself is never in the QR).
+app.get('/api/public/:slug/staff-qr.svg', async (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).end();
+  const base = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  res.type('image/svg+xml').send(await QRCode.toString(`${base}/staff.html?store=${encodeURIComponent(store.slug)}`, { type: 'svg', margin: 1, width: 240 }));
 });
 
 app.get('/s/:slug', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'customer.html')));

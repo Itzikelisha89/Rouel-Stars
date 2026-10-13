@@ -1,4 +1,5 @@
-import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames, whatsappLink, arrivedMessage } from '/js/api.js';
+import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames } from '/js/api.js';
+import { createAlertsFeed } from '/js/alerts.js';
 import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
 
 if (!getToken()) location.href = '/';
@@ -20,7 +21,7 @@ function showTab(name) {
   if (name === 'demand') loadDemand();
   if (name === 'alerts') loadAlerts();
   if (name === 'report') loadReport();
-  if (name === 'settings') $('s-name').value = store.name;
+  if (name === 'settings') loadSettings();
 }
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab); });
 
@@ -514,72 +515,13 @@ async function loadDemand() {
 }
 
 // ---------- live alerts from shoppers ----------
-const shelfLabel = (id) => (id ? shelfName(id) : 'ליד הכניסה');
-const ago = (iso) => {
-  const mins = Math.round((Date.now() - new Date(`${iso.replace(' ', 'T')}Z`)) / 60000);
-  return mins < 1 ? 'עכשיו' : mins < 60 ? `לפני ${mins} דק׳` : `לפני ${Math.round(mins / 60)} שע׳`;
-};
-const ALERT_VIEW = {
-  help: (a) => ['🙋', 'לקוח מבקש עזרה', [shelfLabel(a.shelfId), a.productName && `מחפש: ${a.productName}`, !a.productName && a.query && `חיפש: "${a.query}"`]],
-  not_there: (a) => ['🔀', `לא במקום: ${a.productName || 'מוצר'}`, [`אמור להיות ב${shelfLabel(a.shelfId)}`]],
-  empty: (a) => ['📭', `מדף ריק: ${a.productName || 'מוצר'}`, [shelfLabel(a.shelfId), 'צריך למלא מלאי']],
-  request: (a) => ['📣', `לקוח ביקש שנביא: "${a.query}"`, [a.phone ? `<a href="tel:${escapeHtml(a.phone)}" dir="ltr">${escapeHtml(a.phone)}</a>` : 'בלי טלפון']],
-};
+const alertsFeed = createAlertsFeed({ list: $('alert-list'), count: $('alert-count'), store: () => store, title: 'ניהול' });
+const loadAlerts = alertsFeed.load;
 let soundOn = false;
-let seenAlerts = null;
-function beep() {
-  try {
-    const ctx = new AudioContext();
-    for (const [i, f] of [880, 1320].entries()) {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.18);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.16);
-      o.start(ctx.currentTime + i * 0.18); o.stop(ctx.currentTime + i * 0.18 + 0.17);
-    }
-  } catch { /* no audio */ }
-}
 $('notify-btn').addEventListener('click', () => {
-  soundOn = !soundOn;
+  soundOn = alertsFeed.enableSound(!soundOn);
   $('notify-btn').textContent = soundOn ? '🔔 התראה קולית פעילה' : '🔊 התראה קולית במסך הזה';
   $('notify-btn').classList.toggle('active', soundOn);
-  if (soundOn) beep();
-});
-
-async function loadAlerts() {
-  let alerts;
-  try { alerts = await api('/api/alerts'); } catch { return; }
-  // Only help calls and shelf problems need someone now; product requests are counted but don't nag.
-  const open = alerts.filter((a) => !a.resolvedAt);
-  const urgent = open.filter((a) => a.type !== 'request');
-  $('alert-count').textContent = urgent.length;
-  $('alert-count').classList.toggle('hidden', !urgent.length);
-  document.title = `${urgent.length ? `(${urgent.length}) ` : ''}${store.name} — ניהול`;
-  const ids = new Set(urgent.map((a) => a.id));
-  if (seenAlerts && soundOn && [...ids].some((id) => !seenAlerts.has(id))) beep();
-  seenAlerts = ids;
-  $('alert-list').innerHTML = alerts.map((a) => {
-    const [ico, title, meta] = ALERT_VIEW[a.type](a);
-    return `<div class="alert t-${a.type} ${a.resolvedAt ? 'done' : 'open'}">
-      <div class="a-ico">${ico}</div>
-      <div class="a-main"><div class="a-title">${escapeHtml(title)}</div>
-        <div class="a-meta">${meta.filter(Boolean).map((m) => (m.startsWith('<a ') ? m : escapeHtml(m))).join(' · ')} · ${ago(a.createdAt)}</div></div>
-      <div class="a-actions">
-        ${a.type === 'request' && a.phone && !a.resolvedAt ? `<a class="btn wa-btn" target="_blank" rel="noopener" data-wa="${a.id}" href="${escapeHtml(whatsappLink(a.phone, arrivedMessage(store.name, a.query)))}">💬 הגיע! שליחה בוואטסאפ</a>` : ''}
-        ${a.resolvedAt ? '<span class="muted">✓ טופל</span>' : `<button type="button" class="primary" data-resolve="${a.id}">טופל ✓</button>`}
-      </div>
-    </div>`;
-  }).join('') || '<p class="muted">אין התראות פתוחות 👌</p>';
-}
-$('alert-list').addEventListener('click', async (e) => {
-  // Sending the WhatsApp message also closes the request.
-  const wa = e.target.closest('[data-wa]')?.dataset.wa;
-  if (wa) { setTimeout(() => api(`/api/alerts/${wa}/resolve`, { method: 'POST' }).then(loadAlerts).catch(() => {}), 500); return; }
-  const id = e.target.dataset.resolve;
-  if (!id) return;
-  e.target.disabled = true;
-  await api(`/api/alerts/${id}/resolve`, { method: 'POST' }).catch(() => {});
-  loadAlerts();
 });
 
 // ---------- pilot report ----------
@@ -627,6 +569,24 @@ async function loadReport() {
 $('r-days').addEventListener('change', loadReport);
 
 // ---------- settings ----------
+function loadSettings() {
+  $('s-name').value = store.name;
+  const url = `${location.origin}/staff.html?store=${encodeURIComponent(store.slug)}`;
+  $('staff-url').textContent = url;
+  $('staff-qr').src = `/api/public/${encodeURIComponent(store.slug)}/staff-qr.svg`;
+  $('staff-link').classList.toggle('hidden', !store.staffPinSet);
+  $('s-pin-status').textContent = store.staffPinSet ? 'יש קוד עובדים פעיל. קוד חדש ינתק את העובדים המחוברים.' : 'עוד לא נקבע קוד עובדים.';
+}
+$('staff-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/store/settings', { method: 'PUT', body: { staffPin: $('s-pin').value } });
+    store.staffPinSet = Boolean($('s-pin').value);
+    $('s-pin').value = '';
+    loadSettings();
+    $('s-pin-status').textContent = 'הקוד נשמר ✓';
+  } catch (err) { $('s-pin-status').textContent = err.message; }
+});
 $('name-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
@@ -657,6 +617,7 @@ $('export-btn').addEventListener('click', async () => {
 // ---------- init ----------
 (async () => {
   store = await api('/api/me');
+  if (store.role === 'staff') { location.href = '/staff.html'; return; }
   map = structuredClone(store.map);
   $('store-name').textContent = store.name;
   document.title = `${store.name} — ניהול`;

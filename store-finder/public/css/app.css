@@ -204,6 +204,15 @@ body.searching .search-bar { margin-top: 14px; }
 .import-box { margin-bottom: 14px; padding: 12px; border: 1px dashed var(--border); border-radius: 12px; }
 .import-box summary { cursor: pointer; font-weight: 700; }
 .price { color: var(--accent); font-weight: 800; }
+/* staff */
+.sound-btn { width: 100%; margin: 4px 0 14px; }
+.staff-bar { width: 100%; margin-top: 10px; }
+.staff-link { display: flex; gap: 14px; align-items: center; margin-top: 12px; padding: 12px; border: 1px dashed var(--border); border-radius: 14px; word-break: break-all; }
+.staff-link img { width: 120px; height: 120px; background: #fff; padding: 6px; border-radius: 10px; flex: none; }
+body.staff .alert { flex-wrap: wrap; }
+body.staff .a-actions { width: 100%; }
+body.staff .a-actions > * { flex: 1; }
+
 /* owner: product form */
 .product-item.editing { grid-template-columns: 1fr; }
 .product-item.inactive { opacity: .6; }

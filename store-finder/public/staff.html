@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1224">
+  <title>מסך עובד — מוצא המוצרים</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="staff">
+  <!-- sign in -->
+  <div class="wrap hidden" id="login-view">
+    <div class="hero">
+      <h1>👷 כניסת עובדים</h1>
+      <p class="muted">את קוד העובדים מקבלים ממנהל הסניף.</p>
+    </div>
+    <form class="card" id="staff-login">
+      <label for="s-slug">כתובת החנות</label>
+      <input id="s-slug" required dir="ltr" autocomplete="username" autocapitalize="none">
+      <label for="s-pin">קוד עובדים</label>
+      <input id="s-pin" required inputmode="numeric" pattern="\d{4,8}" autocomplete="current-password" type="password">
+      <p class="error" id="s-error"></p>
+      <button class="primary" type="submit" style="width:100%">כניסה</button>
+    </form>
+  </div>
+
+  <!-- worker app -->
+  <div class="hidden" id="app-view">
+    <header class="topbar">
+      <div class="brand"><svg class="brand-pin" viewBox="0 0 160 200" aria-hidden="true"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/><circle cx="80" cy="72" r="26" fill="#0b1224"/></svg><span id="store-name">…</span></div>
+      <button id="logout">יציאה</button>
+    </header>
+    <nav class="tabs" id="tabs">
+      <button data-tab="alerts" class="active">🔔 התראות<span class="count hidden" id="alert-count"></span></button>
+      <button data-tab="products">📦 מוצרים</button>
+    </nav>
+    <main class="wrap">
+      <section id="tab-alerts">
+        <button type="button" id="sound-btn" class="primary sound-btn">🔔 הפעלת צליל והתראות בטלפון</button>
+        <div id="alert-list" class="alert-list"></div>
+      </section>
+
+      <section id="tab-products" class="hidden">
+        <div id="move-banner" class="here-banner hidden"></div>
+        <input id="p-search" type="search" placeholder="🔍 חיפוש מוצר…" autocomplete="off" style="margin-top:12px">
+        <div id="p-list" class="product-list" style="margin-top:12px"></div>
+        <p class="muted" style="font-size:.88rem;margin-top:14px">💡 מוצר עבר מקום? סרקו עם המצלמה את מדבקת "אתה כאן" של המעבר החדש, ובחרו את המוצר.</p>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/js/staff.js"></script>
+</body>
+</html>

@@ -209,6 +209,20 @@
           <p class="muted" style="font-size:.85rem;margin:8px 0 0">אחרי ההחלפה, כל מכשיר אחר שמחובר לחנות ינותק.</p>
         </form>
       </div>
+      <form class="card" id="staff-form">
+        <h2>👷 עובדים</h2>
+        <p class="muted">עובדים נכנסים מהטלפון עם קוד עובדים. הם רואים את ההתראות (קריאות לעזרה, מדפים ריקים) ויכולים להעביר מוצר למעבר אחר או לסמן שאזל. הם לא יכולים למחוק, לשנות מפה או לראות דוחות.</p>
+        <label for="s-pin">קוד עובדים (4–8 ספרות)</label>
+        <div class="row">
+          <input id="s-pin" class="grow" inputmode="numeric" pattern="\d{4,8}" autocomplete="off" placeholder="למשל 2468">
+          <button class="primary" type="submit">שמירת קוד</button>
+        </div>
+        <p class="muted" id="s-pin-status" style="margin-top:8px"></p>
+        <div id="staff-link" class="staff-link hidden">
+          <img id="staff-qr" alt="QR לכניסת עובדים">
+          <div><b>כניסת עובדים:</b><br><span dir="ltr" id="staff-url"></span><br><span class="muted" style="font-size:.85rem">שלחו לעובדים את הקישור ואת הקוד. אחרי כניסה, סריקת מדבקת מעבר בטלפון של עובד פותחת "העברת מוצר לכאן".</span></div>
+        </div>
+      </form>
       <div class="card">
         <h2>📤 גיבוי הקטלוג</h2>
         <p class="muted">כל המוצרים בקובץ שנפתח באקסל. אפשר לערוך אותו ולייבא בחזרה בלשונית "מוצרים".</p>
