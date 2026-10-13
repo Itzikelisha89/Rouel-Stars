@@ -18,11 +18,15 @@ function recentProductId() {
 }
 
 function shelfOf(p) { return store.map.shelves.find((s) => s.id === p.shelfId); }
+// "מעבר 4 · פחים" -> "מעבר 4" for compact chips
+function shortShelf(shelf) { return (shelf?.name ?? '').split('·')[0].trim(); }
+function chip(text, cls = '') { return `<span class="chip ${cls}">${escapeHtml(text)}</span>`; }
 
 async function runSearch(q) {
   q = q.trim();
   if (!q) return;
   showList();
+  document.body.classList.add('searching');
   $('status').innerHTML = '<span class="row"><span class="spinner"></span> מחפש…</span>';
   $('results').innerHTML = '';
   try {
@@ -41,7 +45,8 @@ async function runSearch(q) {
       const shelf = shelfOf(p);
       const info = document.createElement('div');
       info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
-        <div class="meta">📍 ${escapeHtml(shelf?.name ?? '')}${p.level ? ` · ${escapeHtml(p.level)}` : ''}</div>${p.price ? `<div class="price">${escapeHtml(formatPrice(p.price))}</div>` : ''}`;
+        <div class="meta">${p.level ? escapeHtml(p.level) : ''}</div>
+        <div class="row" style="margin-top:8px;gap:8px"><span class="chip o">📍 ${escapeHtml(shortShelf(shelf))}</span>${p.price ? `<span class="price">${escapeHtml(formatPrice(p.price))}</span>` : ''}</div>`;
       item.append(canvas, info);
       item.addEventListener('click', () => showDetail(p));
       $('results').appendChild(item);
@@ -57,6 +62,7 @@ function showList() {
 }
 
 function showDetail(p) {
+  document.body.classList.add('searching');
   const shelf = shelfOf(p);
   $('results').classList.add('hidden');
   $('status').classList.add('hidden');
@@ -64,14 +70,17 @@ function showDetail(p) {
   drawCrop($('detail-crop'), p.photo, p.box, 480);
   $('detail-name').textContent = p.name;
   $('detail-desc').textContent = p.description;
-  $('detail-where').textContent = `📍 ${shelf?.name ?? ''}${p.level ? ` · ${p.level}` : ''}${p.price ? ` · ${formatPrice(p.price)}` : ''}`;
+  $('detail-chips').innerHTML = [shelf && chip(`📍 ${shelf.name}`, 'o'), p.level && chip(p.level)].filter(Boolean).join('');
+  $('detail-price').textContent = p.price ? formatPrice(p.price) : '';
+  $('detail-meters').textContent = '';
   if (shelf) {
     const here = hereShelf && aisleSpot(store.map, hereShelf);
     const path = findPath(store.map, shelf, here || store.map.entrance);
     const loc = describeLocation(store.map, shelf, path, Boolean(here));
     $('detail-how').textContent = hereShelf?.id === shelf.id
       ? `המוצר נמצא במעבר שבו אתה עומד${p.level ? ` · ${p.level}` : ''}`
-      : [loc.side, loc.depth, loc.meters].filter(Boolean).join(' · ');
+      : [loc.side, loc.depth].filter(Boolean).join(' · ');
+    if (path && hereShelf?.id !== shelf.id) $('detail-meters').textContent = `🚶 ${path.length - 1} מ׳ ${here ? 'מכאן' : 'מהכניסה'}`;
     renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here });
   }
   rememberProduct(p);
@@ -107,6 +116,9 @@ if (Recognition) {
   try {
     store = await api(`/api/public/${encodeURIComponent(slug)}`);
     $('store-name').textContent = store.name;
+    const cats = store.map.shelves.map((s) => s.name.split('·')[1]?.trim()).filter(Boolean);
+    $('quick').innerHTML = [...new Set(cats)].slice(0, 8).map((c) => `<button type="button" class="chip" data-q="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
+    $('quick').addEventListener('click', (e) => { const q = e.target.dataset.q; if (q) { $('q').value = q; runSearch(q); } });
     document.title = `${store.name} — איפה זה בחנות?`;
     const params = new URLSearchParams(location.search);
     hereShelf = store.map.shelves.find((s) => s.id === params.get('at')) || null;

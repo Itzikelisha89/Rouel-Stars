@@ -3,37 +3,56 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1224">
   <title>איפה זה בחנות?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
   <div class="wrap">
-    <div class="hero">
-      <h1 id="store-name">…</h1>
-      <p class="muted">מה אתה מחפש? נראה לך בדיוק איפה זה נמצא.</p>
+    <div class="c-top">
+      <div class="c-brand">
+        <svg class="brand-pin" viewBox="0 0 160 200" aria-hidden="true"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/><circle cx="80" cy="72" r="26" fill="#0b1224"/></svg>
+        <span id="store-name">…</span>
+      </div>
     </div>
+
+    <div class="hero">
+      <h1>שלום <span class="wave">👋</span></h1>
+      <p class="muted" style="font-size:1.1rem">מה מחפשים היום? נראה לך בדיוק איפה זה נמצא.</p>
+    </div>
+
     <form class="search-bar" id="search-form">
+      <span class="s-ico" aria-hidden="true">🔍</span>
       <input id="q" type="search" placeholder="למשל: סיר קטן" autocomplete="off" enterkeyhint="search" aria-label="חיפוש מוצר">
       <button type="button" id="mic" class="hidden" aria-label="חיפוש קולי">🎤</button>
       <button class="primary" type="submit">חיפוש</button>
     </form>
+    <div class="quick" id="quick"></div>
+
     <div id="here-banner" class="here-banner hidden"></div>
-    <p id="status" class="muted" style="margin-top:12px"></p>
+    <p id="status" class="muted" style="margin-top:14px"></p>
 
     <div id="results" class="product-list"></div>
 
     <div id="detail" class="hidden">
-      <button id="back" style="margin-bottom:12px">→ חזרה לתוצאות</button>
+      <button id="back">→ חזרה לתוצאות</button>
       <div class="card">
         <canvas id="detail-crop" class="detail-img"></canvas>
-        <h2 id="detail-name" style="margin-top:12px"></h2>
-        <p id="detail-desc" class="muted"></p>
-        <p class="directions" id="detail-where"></p>
-        <p id="detail-how"></p>
-        <div class="map-box"><svg id="detail-map"></svg></div>
+        <h2 id="detail-name" class="d-name"></h2>
+        <p id="detail-desc" class="muted" style="margin:0"></p>
+        <div class="d-chips" id="detail-chips"></div>
+        <div class="d-price" id="detail-price"></div>
+        <div class="route-card">
+          <div class="route-head"><span>🧭 הדרך אל המוצר</span><span class="chip o" id="detail-meters"></span></div>
+          <p id="detail-how" class="muted" style="margin-bottom:10px"></p>
+          <div class="map-box"><svg id="detail-map"></svg></div>
+          <p class="muted" style="font-size:.85rem;margin:10px 0 0">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
+        </div>
         <details style="margin-top:12px">
-          <summary>הצג את תמונת המדף המלאה</summary>
-          <img id="detail-photo" alt="תמונת המדף" style="width:100%;border-radius:12px;margin-top:8px">
+          <summary class="muted">הצג את תמונת המדף המלאה</summary>
+          <img id="detail-photo" alt="תמונת המדף" style="width:100%;border-radius:16px;margin-top:8px">
         </details>
       </div>
     </div>

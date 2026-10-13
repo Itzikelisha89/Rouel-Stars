@@ -19,7 +19,7 @@ if (old) db.prepare('DELETE FROM stores WHERE id = ?').run(old.id);
 const salt = crypto.randomBytes(16).toString('hex');
 const map = {
   cols: 40, rows: 25, entrance: { x: 20, y: 24 },
-  shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'פחים', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר']
+  shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר']
     .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4][i], y: 4, w: 2, h: 15 })),
 };
 const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
