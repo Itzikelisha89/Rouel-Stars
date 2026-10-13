@@ -84,3 +84,13 @@ export function extractFrames(file, { every = 1.5, max = 40, maxSide = 1024, onP
     };
   });
 }
+
+// WhatsApp link with a ready message (free, opens the manager's own WhatsApp). 05X-XXXXXXX -> 9725XXXXXXXX.
+export function whatsappLink(phone, text) {
+  let digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith('0')) digits = `972${digits.slice(1)}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+export function arrivedMessage(storeName, query) {
+  return `שלום! כאן ${storeName} 👋\nרצינו לעדכן שהמוצר שביקשת, "${query}", הגיע לסניף.\nמחכים לך! 🛍️`;
+}

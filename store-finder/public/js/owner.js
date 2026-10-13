@@ -1,4 +1,4 @@
-import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames } from '/js/api.js';
+import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames, whatsappLink, arrivedMessage } from '/js/api.js';
 import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
 
 if (!getToken()) location.href = '/';
@@ -564,11 +564,17 @@ async function loadAlerts() {
       <div class="a-ico">${ico}</div>
       <div class="a-main"><div class="a-title">${escapeHtml(title)}</div>
         <div class="a-meta">${meta.filter(Boolean).map((m) => (m.startsWith('<a ') ? m : escapeHtml(m))).join(' · ')} · ${ago(a.createdAt)}</div></div>
-      ${a.resolvedAt ? '<span class="muted">✓ טופל</span>' : `<button type="button" class="primary" data-resolve="${a.id}">טופל ✓</button>`}
+      <div class="a-actions">
+        ${a.type === 'request' && a.phone && !a.resolvedAt ? `<a class="btn wa-btn" target="_blank" rel="noopener" data-wa="${a.id}" href="${escapeHtml(whatsappLink(a.phone, arrivedMessage(store.name, a.query)))}">💬 הגיע! שליחה בוואטסאפ</a>` : ''}
+        ${a.resolvedAt ? '<span class="muted">✓ טופל</span>' : `<button type="button" class="primary" data-resolve="${a.id}">טופל ✓</button>`}
+      </div>
     </div>`;
   }).join('') || '<p class="muted">אין התראות פתוחות 👌</p>';
 }
 $('alert-list').addEventListener('click', async (e) => {
+  // Sending the WhatsApp message also closes the request.
+  const wa = e.target.closest('[data-wa]')?.dataset.wa;
+  if (wa) { setTimeout(() => api(`/api/alerts/${wa}/resolve`, { method: 'POST' }).then(loadAlerts).catch(() => {}), 500); return; }
   const id = e.target.dataset.resolve;
   if (!id) return;
   e.target.disabled = true;

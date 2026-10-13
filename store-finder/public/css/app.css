@@ -275,6 +275,10 @@ body:has(.list-bar:not(.hidden)) .wrap { padding-bottom: 96px; }
 .alert .a-title { font-weight: 800; }
 .alert .a-meta { font-size: .88rem; color: var(--muted); }
 .alert.done { opacity: .55; }
+.a-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: none; }
+.wa-btn { background: #25d366; border-color: transparent; color: #fff; }
+.wa-btn:hover { background: #1fb457; }
+@media (max-width: 720px) { .alert { flex-wrap: wrap; } .a-actions { width: 100%; } }
 .report-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .kpis.k4 { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 720px) { .kpis, .kpis.k4 { grid-template-columns: repeat(2, 1fr); } }
