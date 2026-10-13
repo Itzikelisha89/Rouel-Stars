@@ -18,7 +18,8 @@
     <button data-tab="map" class="active">1. מפת החנות</button>
     <button data-tab="photo">2. צילום מדף</button>
     <button data-tab="products">3. מוצרים</button>
-    <button data-tab="share">4. QR ונתונים</button>
+    <button data-tab="share">4. שלטי QR</button>
+    <button data-tab="demand">5. ביקושים</button>
   </nav>
 
   <main class="wrap">
@@ -94,20 +95,35 @@
           <p dir="ltr" id="qr-url" class="muted" style="word-break:break-all"></p>
           <button class="no-print" onclick="window.print()">🖨️ הדפסת שלט לכניסה</button>
         </div>
-        <div class="card no-print">
-          <h2>מה הלקוחות מחפשים</h2>
-          <p class="muted" id="insights-total"></p>
-          <h3>חיפשו ולא מצאו</h3>
-          <p class="muted" style="font-size:.9rem">אולי חסר במלאי, או שצריך להוסיף מילות חיפוש למוצר.</p>
-          <ul id="insights-missing"></ul>
-          <h3>החיפושים הנפוצים</h3>
-          <ul id="insights-top"></ul>
-        </div>
       </div>
       <div class="card">
         <h2>מדבקות "אתה כאן" למעברים</h2>
         <p class="muted no-print">מדביקים אחת בקצה של כל מעבר, בצד הקרוב לכניסה. לקוח שסורק אותה רואה את המסלול מהמקום שבו הוא עומד, ואם כבר בחר מוצר, הוא ממשיך ישר אליו.</p>
         <div id="aisle-stickers" class="sticker-grid"></div>
+      </div>
+    </section>
+    <!-- DEMAND -->
+    <section id="tab-demand" class="hidden">
+      <div class="kpis" id="kpis"></div>
+      <div class="card">
+        <h2>📅 הזדמנויות בעונות הקרובות</h2>
+        <p class="muted">מוצרים שהלקוחות חיפשו ולא מצאו לקראת כל חג. כדאי להזמין מלאי ולהתחיל לשווק כ-4 שבועות לפני.</p>
+        <div id="upcoming" class="upcoming"></div>
+      </div>
+      <div class="card">
+        <h2>🔎 חיפשו ולא מצאו</h2>
+        <p class="muted">מקובצים לפי מוצר (כולל צורות כתיבה שונות). הקו מראה חיפושים ב-12 השבועות האחרונים.</p>
+        <div id="missing" class="demand-list"></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h2>חיפושים שלא נמצאו לפי חודש</h2>
+          <div id="months-chart"></div>
+        </div>
+        <div class="card">
+          <h2>⭐ המבוקשים ביותר שנמצאו</h2>
+          <div id="popular" class="demand-list"></div>
+        </div>
       </div>
     </section>
   </main>

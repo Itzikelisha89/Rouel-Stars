@@ -13,10 +13,11 @@ let mode = 'draw';
 // ---------- tabs ----------
 function showTab(name) {
   for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === name);
-  for (const t of ['map', 'photo', 'products', 'share']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
+  for (const t of ['map', 'photo', 'products', 'share', 'demand']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
   if (name === 'photo') renderPicker();
   if (name === 'products') loadProducts();
   if (name === 'share') loadShare();
+  if (name === 'demand') loadDemand();
 }
 $('tabs').addEventListener('click', (e) => { if (e.target.dataset.tab) showTab(e.target.dataset.tab); });
 
@@ -255,11 +256,57 @@ async function loadShare() {
       <img src="/api/public/${encodeURIComponent(store.slug)}/qr.svg?at=${encodeURIComponent(s.id)}" alt="QR ${escapeHtml(s.name)}">
       <div class="muted" style="font-size:.85rem">סרקו כדי לראות את הדרך מכאן</div>
     </div>`).join('') || '<p class="muted">קודם צייר מדפים במפה.</p>';
-  const data = await api('/api/insights');
-  $('insights-total').textContent = `סה״כ ${data.total} חיפושים`;
-  const li = (r) => `<li>${escapeHtml(r.query)} <span class="badge">${r.count}</span></li>`;
-  $('insights-missing').innerHTML = data.missing.map(li).join('') || '<li class="muted">אין עדיין</li>';
-  $('insights-top').innerHTML = data.top.map(li).join('') || '<li class="muted">אין עדיין</li>';
+}
+
+// ---------- demand insights ----------
+function sparkline(weeks) {
+  const w = 120, h = 34, max = Math.max(1, ...weeks);
+  const pts = weeks.map((v, i) => [i * (w / (weeks.length - 1)), h - 3 - (v / max) * (h - 8)]);
+  const dots = pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="7" fill="transparent"><title>לפני ${weeks.length - 1 - i} שבועות: ${weeks[i]} חיפושים</title></circle>`).join('');
+  return `<svg class="spark" viewBox="-2 0 ${w + 4} ${h}" width="${w}" height="${h}" role="img" aria-label="חיפושים לפי שבוע">
+    <polyline points="${pts.map((p) => p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${pts[pts.length - 1][0]}" cy="${pts[pts.length - 1][1]}" r="3" fill="var(--accent)"/>${dots}</svg>`;
+}
+const TREND = { up: '<span class="trend up">▲ עולה</span>', down: '<span class="trend down">▼ יורד</span>', flat: '<span class="trend">● יציב</span>' };
+const dateHe = (iso) => { const [y, m, d] = iso.split('-'); return `${+d}.${+m}.${y}`; };
+
+async function loadDemand() {
+  const d = await api('/api/insights');
+  $('kpis').innerHTML = [
+    ['חיפושים', d.total.toLocaleString('he-IL')],
+    ['נמצאו', d.foundRate === null ? '—' : `${d.foundRate}%`],
+    ['לא נמצאו', (d.notFound || 0).toLocaleString('he-IL')],
+  ].map(([k, v]) => `<div class="card kpi"><div class="kpi-v">${v}</div><div class="muted">${k}</div></div>`).join('');
+
+  $('upcoming').innerHTML = d.upcoming.map((u) => `
+    <div class="up-item${u.items.length ? ' has' : ''}">
+      <div class="up-name">${escapeHtml(u.name)}</div>
+      <div class="muted">${dateHe(u.date)} · בעוד ${u.daysLeft} ימים</div>
+      ${u.items.length ? `<div class="up-start">קמפיין מ-${dateHe(u.campaignStart)}</div>
+      <div class="chips">${u.items.map((i) => `<span class="badge">${escapeHtml(i)}</span>`).join('')}</div>` : '<div class="muted" style="font-size:.85rem">אין ביקוש עונתי חסר</div>'}
+    </div>`).join('');
+
+  $('missing').innerHTML = d.missing.length ? d.missing.map((m) => `
+    <div class="demand-row">
+      <div class="dr-main">
+        <div class="name">${escapeHtml(m.label)} <span class="badge">${m.count} חיפושים</span>${m.variants > 1 ? ` <span class="muted" style="font-size:.85rem">(${m.variants} צורות כתיבה)</span>` : ''}</div>
+        <div class="meta">${TREND[m.trend]} · ${m.holiday ? `🗓️ שיא לפני ${escapeHtml(m.holiday.name)}` : `שיא בחודש ${escapeHtml(m.peakMonth)}`} · ${m.last30} בחודש האחרון</div>
+        <div class="advice">💡 ${m.advice.map(escapeHtml).join(' ')}</div>
+      </div>
+      ${sparkline(m.weeks)}
+    </div>`).join('') : '<p class="muted">עדיין אין חיפושים שלא נמצאו.</p>';
+
+  $('popular').innerHTML = d.popular.map((p) => `
+    <div class="demand-row"><div class="dr-main"><div class="name">${escapeHtml(p.label)} <span class="badge">${p.count}</span></div><div class="meta">${TREND[p.trend]}</div></div>${sparkline(p.weeks)}</div>`).join('') || '<p class="muted">אין עדיין</p>';
+
+  // one series: unfound searches per month (no legend needed; the title names it)
+  const max = Math.max(1, ...d.months.map((m) => m.notFound));
+  $('months-chart').innerHTML = `<div class="bars">${d.months.map((m) => `
+    <div class="bar-col" title="${m.month}: ${m.notFound} חיפושים שלא נמצאו מתוך ${m.searches}">
+      <div class="bar-v">${m.notFound || ''}</div>
+      <div class="bar" style="height:${(m.notFound / max) * 100}%"></div>
+      <div class="bar-l">${m.month.slice(0, 3)}</div>
+    </div>`).join('')}</div>`;
 }
 
 // ---------- init ----------

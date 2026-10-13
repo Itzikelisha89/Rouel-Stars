@@ -73,7 +73,9 @@ test('full owner -> customer flow', async () => {
 
   r = await call('GET', '/api/insights', { token });
   assert.equal(r.data.total, 2);
-  assert.equal(r.data.missing[0].query, 'אופניים');
+  assert.equal(r.data.missing[0].label, 'אופניים');
+  assert.equal(r.data.foundRate, 50);
+  assert.ok(Array.isArray(r.data.upcoming) && r.data.upcoming.length >= 5);
 
   r = await call('GET', `/api/public/kli-bait/products/${potId}`);
   assert.equal(r.data.name, 'סיר נירוסטה 16 ס"מ');

@@ -7,6 +7,7 @@ const path = require('node:path');
 const { db, UPLOAD_DIR, DEFAULT_MAP } = require('./db');
 const { search } = require('./search');
 const ai = require('./ai');
+const insights = require('./insights');
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -202,12 +203,9 @@ app.delete('/api/products/:id', requireOwner, (req, res) => {
 });
 
 app.get('/api/insights', requireOwner, (req, res) => {
-  const missing = db.prepare(`SELECT query, COUNT(*) AS count FROM searches
-    WHERE store_id = ? AND result_count = 0 GROUP BY query ORDER BY count DESC LIMIT 20`).all(req.store.id);
-  const top = db.prepare(`SELECT query, COUNT(*) AS count FROM searches
-    WHERE store_id = ? AND result_count > 0 GROUP BY query ORDER BY count DESC LIMIT 20`).all(req.store.id);
-  const total = db.prepare('SELECT COUNT(*) AS n FROM searches WHERE store_id = ?').get(req.store.id).n;
-  res.json({ total, missing, top });
+  const rows = db.prepare(`SELECT query, result_count, created_at FROM searches
+    WHERE store_id = ? AND created_at >= datetime('now', '-400 days')`).all(req.store.id);
+  res.json(insights.analyze(rows));
 });
 
 // ---------- public (customers) ----------
