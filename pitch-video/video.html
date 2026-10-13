@@ -258,11 +258,16 @@
 
           <!-- 4 product -->
           <div class="abs ph" id="ph-product" style="left:0;right:0;top:110px;opacity:0">
-            <div style="width:340px;height:250px;margin:6px auto 0;border-radius:26px;overflow:hidden;background:#fff"><img src="assets/orient-small.jpg" style="width:100%;height:100%;object-fit:cover"></div>
-            <div style="padding:14px 26px 0;font-size:27px;font-weight:800">סיר ORIENT 20 ס״מ</div>
+            <div style="width:340px;height:150px;margin:2px auto 0;border-radius:22px;overflow:hidden;background:#fff"><img src="assets/orient-small.jpg" style="width:100%;height:100%;object-fit:cover"></div>
+            <div style="padding:10px 26px 0;font-size:25px;font-weight:800">סיר ORIENT 20 ס״מ</div>
             <div style="padding:2px 26px;font-size:18px;color:#8f9bc0">food appeal · לבישול איטי ותבשילי קדירה · <b style="color:#ffb36b">₪99.90</b></div>
-            <div style="padding:12px 26px;display:flex;gap:8px;flex-wrap:wrap"><span class="chip o">📍 מעבר 4</span><span class="chip">תצוגת סירים</span><span class="chip">🚶 14 מ׳</span></div>
-            <div id="go-btn" style="margin:14px 22px 0;height:70px;border-radius:22px;background:linear-gradient(135deg,#ff8a2a,#ff5a36);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;box-shadow:0 14px 30px rgba(255,90,54,.35)">🧭 קח אותי לשם</div>
+            <div style="padding:12px 26px;display:flex;gap:8px;flex-wrap:wrap"><span class="chip o">📍 מעבר 4</span><span class="chip">מדף תחתון</span><span class="chip">🚶 14 מ׳</span></div>
+            <div style="margin:2px 22px 0;padding:10px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)">
+              <div style="font-size:15px;font-weight:700;margin-bottom:6px">📷 כך נראה המדף</div>
+              <div style="position:relative;border-radius:14px;overflow:hidden"><img src="assets/shelf-a4.jpg" style="display:block;width:100%">
+                <div id="shelf-mark-v" style="position:absolute;left:15.6%;top:76%;width:18.7%;height:17.1%;border:3px solid #ff7a1a;border-radius:9px;box-shadow:0 0 0 400px rgba(11,18,36,.35),0 0 12px rgba(255,122,26,.9)"></div></div>
+            </div>
+            <div id="go-btn" style="margin:10px 22px 0;height:60px;border-radius:20px;background:linear-gradient(135deg,#ff8a2a,#ff5a36);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;box-shadow:0 14px 30px rgba(255,90,54,.35)">🧭 קח אותי לשם</div>
           </div>
 
           <!-- 5 navigation -->
@@ -285,7 +290,7 @@
           <div class="abs ph" id="ph-arrived" style="left:0;right:0;top:140px;text-align:center;opacity:0">
             <div id="arr-check" style="width:150px;height:150px;border-radius:50%;margin:30px auto 0;background:linear-gradient(135deg,#34d399,#16a34a);display:flex;align-items:center;justify-content:center;font-size:84px;color:#fff;box-shadow:0 0 0 18px rgba(34,197,94,.15)">✓</div>
             <div style="font-size:40px;font-weight:900;margin-top:30px">הגעת!</div>
-            <div style="font-size:23px;color:#c7cff0;margin-top:10px;line-height:1.5">המוצר משמאלך<br><b style="color:#ffb36b">בתצוגת הסירים</b></div>
+            <div style="font-size:23px;color:#c7cff0;margin-top:10px;line-height:1.5">המוצר משמאלך<br><b style="color:#ffb36b">מדף תחתון</b></div>
             <div style="margin:26px 40px 0" class="chip">⏱️ 31 שניות מהכניסה</div>
           </div>
 
@@ -698,8 +703,9 @@ function placeNav(L, f, t) {
 const SH = {};
 (() => {
   const v = $('v-shelf');
-  svg('image', { href: 'assets/pots-display.jpg', x: 0, y: 0, width: 1130, height: 700 }, v);
-  const d = { x: 434, y: 276, w: 300, h: 280 };
+  svg('rect', { x: 0, y: 0, width: 1130, height: 700, fill: '#e9e2d6' }, v);
+  svg('image', { href: 'assets/shelf-a4.jpg', x: 79, y: 0, width: 972, height: 700 }, v);
+  const d = { x: 231, y: 532, w: 182, h: 120 };
   SH.ring = svg('rect', { x: d.x - 14, y: d.y - 14, width: d.w + 28, height: d.h + 28, rx: 22, fill: '#ff7a1a', 'fill-opacity': 0.08, stroke: '#ff7a1a', 'stroke-width': 7 }, v);
   SH.tag = svg('g', {}, v);
   svg('rect', { x: d.x + d.w / 2 - 180, y: d.y - 100, width: 360, height: 64, rx: 32, fill: '#ff7a1a' }, SH.tag);
@@ -965,6 +971,7 @@ const UPDATE = {
     $('say-bubble').style.opacity = say;
     $('say-bubble').style.transform = `translateX(${(1 - prog(t, 22.3, 0.5)) * -30}px)`;
     sayBars.forEach((b, i) => { b.style.height = `${6 + (t > 22.4 && t < 25.8 ? 30 : 2) * Math.abs(Math.sin(t * 10 + i * 0.8))}px`; });
+    $('shelf-mark-v').style.borderColor = Math.sin(t * 5) > 0 ? '#ff7a1a' : '#ffc27a';
     $('go-btn').style.transform = `scale(${t > 25.8 && t < 26.2 ? 0.95 : 1})`;
     // finger taps: mic (9.0), option 2 (21.0), go button (25.8)
     const ui = document.querySelector('#cust-phone .ui').getBoundingClientRect();
@@ -1050,7 +1057,7 @@ const UPDATE = {
 
 window.render = render;
 window.DURATION = DURATION;
-const ASSETS = ['shelf-camera', 'pots-display', 'prestige', 'orient-small', 'velare'].map((n) => `assets/${n}.jpg`);
+const ASSETS = ['shelf-camera', 'pots-display', 'shelf-a4', 'prestige', 'orient-small', 'velare'].map((n) => `assets/${n}.jpg`);
 window.ready = Promise.all([document.fonts.ready, ...ASSETS.map((src) => { const i = new Image(); i.src = src; return i.decode(); }),
   ...[...document.images].map((i) => i.decode().catch(() => {}))]).then(() => true);
 // live preview when opened directly in a browser

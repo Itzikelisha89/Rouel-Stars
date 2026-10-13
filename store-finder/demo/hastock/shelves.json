@@ -1,0 +1,592 @@
+{
+ "fairy": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 82,
+   "y0": 76,
+   "x1": 251,
+   "y1": 324
+  }
+ },
+ "vanish": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 411,
+   "y0": 76,
+   "x1": 589,
+   "y1": 324
+  }
+ },
+ "palmolive": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 693,
+   "y0": 81,
+   "x1": 973,
+   "y1": 324
+  }
+ },
+ "always": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 47,
+   "y0": 448,
+   "x1": 287,
+   "y1": 638
+  }
+ },
+ "ariel-pods": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 360,
+   "y0": 442,
+   "x1": 640,
+   "y1": 638
+  }
+ },
+ "listerine": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 760,
+   "y0": 390,
+   "x1": 907,
+   "y1": 638
+  }
+ },
+ "vanish-powder": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 160,
+   "y0": 719,
+   "x1": 340,
+   "y1": 952
+  }
+ },
+ "g200": {
+  "shelfPhoto": "a1-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 703,
+   "y0": 705,
+   "x1": 796,
+   "y1": 952
+  }
+ },
+ "oxford": {
+  "shelfPhoto": "a2-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 27,
+   "y0": 210,
+   "x1": 307,
+   "y1": 472
+  }
+ },
+ "urban": {
+  "shelfPhoto": "a2-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 372,
+   "y0": 111,
+   "x1": 627,
+   "y1": 472
+  }
+ },
+ "urban-rainbow": {
+  "shelfPhoto": "a2-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 757,
+   "y0": 153,
+   "x1": 910,
+   "y1": 472
+  }
+ },
+ "urban-hearts": {
+  "shelfPhoto": "a2-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 173,
+   "y0": 611,
+   "x1": 327,
+   "y1": 931
+  }
+ },
+ "tetra": {
+  "shelfPhoto": "a2-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 533,
+   "y0": 597,
+   "x1": 967,
+   "y1": 931
+  }
+ },
+ "laundry-special": {
+  "shelfPhoto": "a3-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 119,
+   "y0": 111,
+   "x1": 215,
+   "y1": 472
+  }
+ },
+ "laundry-divided": {
+  "shelfPhoto": "a3-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 450,
+   "y0": 111,
+   "x1": 550,
+   "y1": 472
+  }
+ },
+ "towel-gloria": {
+  "shelfPhoto": "a3-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 740,
+   "y0": 250,
+   "x1": 927,
+   "y1": 472
+  }
+ },
+ "towel-royal": {
+  "shelfPhoto": "a3-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 157,
+   "y0": 681,
+   "x1": 343,
+   "y1": 931
+  }
+ },
+ "laundry-vero": {
+  "shelfPhoto": "a3-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 657,
+   "y0": 757,
+   "x1": 843,
+   "y1": 931
+  }
+ },
+ "prestige": {
+  "shelfPhoto": "a4-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 83,
+   "y0": 111,
+   "x1": 416,
+   "y1": 472
+  }
+ },
+ "velare": {
+  "shelfPhoto": "a4-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 635,
+   "y0": 111,
+   "x1": 865,
+   "y1": 472
+  }
+ },
+ "orient": {
+  "shelfPhoto": "a4-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 156,
+   "y0": 760,
+   "x1": 343,
+   "y1": 931
+  }
+ },
+ "orient-28": {
+  "shelfPhoto": "a4-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 610,
+   "y0": 569,
+   "x1": 889,
+   "y1": 931
+  }
+ },
+ "vase-venus": {
+  "shelfPhoto": "a5-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 97,
+   "y0": 205,
+   "x1": 402,
+   "y1": 872
+  }
+ },
+ "vase-twist": {
+  "shelfPhoto": "a5-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 611,
+   "y0": 205,
+   "x1": 888,
+   "y1": 872
+  }
+ },
+ "bravo": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 96,
+   "y0": 76,
+   "x1": 237,
+   "y1": 324
+  }
+ },
+ "eko-rect": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 437,
+   "y0": 76,
+   "x1": 563,
+   "y1": 324
+  }
+ },
+ "dublin": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 775,
+   "y0": 76,
+   "x1": 892,
+   "y1": 324
+  }
+ },
+ "max": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 109,
+   "y0": 390,
+   "x1": 223,
+   "y1": 638
+  }
+ },
+ "jars-acrylic": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 360,
+   "y0": 451,
+   "x1": 640,
+   "y1": 638
+  }
+ },
+ "spice-prestige": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 747,
+   "y0": 390,
+   "x1": 919,
+   "y1": 638
+  }
+ },
+ "spice-rock": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 40,
+   "y0": 714,
+   "x1": 293,
+   "y1": 952
+  }
+ },
+ "jars-glass": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 383,
+   "y0": 800,
+   "x1": 617,
+   "y1": 952
+  }
+ },
+ "snack-3": {
+  "shelfPhoto": "a6-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 705,
+   "y0": 705,
+   "x1": 961,
+   "y1": 952
+  }
+ },
+ "snack-8": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 59,
+   "y0": 76,
+   "x1": 274,
+   "y1": 324
+  }
+ },
+ "snack-4": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 360,
+   "y0": 85,
+   "x1": 640,
+   "y1": 324
+  }
+ },
+ "lunch-tritan": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 705,
+   "y0": 76,
+   "x1": 961,
+   "y1": 324
+  }
+ },
+ "lunch-fresh": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 27,
+   "y0": 429,
+   "x1": 307,
+   "y1": 638
+  }
+ },
+ "salad-box": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 363,
+   "y0": 429,
+   "x1": 637,
+   "y1": 638
+  }
+ },
+ "lunch-fresh-2": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 713,
+   "y0": 433,
+   "x1": 953,
+   "y1": 638
+  }
+ },
+ "moosh-print": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 82,
+   "y0": 705,
+   "x1": 251,
+   "y1": 952
+  }
+ },
+ "moosh-nude": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 376,
+   "y0": 705,
+   "x1": 623,
+   "y1": 952
+  }
+ },
+ "moosh-pastel": {
+  "shelfPhoto": "a6-2.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 715,
+   "y0": 705,
+   "x1": 951,
+   "y1": 952
+  }
+ },
+ "scooter-maxi-blue": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 103,
+   "y0": 76,
+   "x1": 230,
+   "y1": 324
+  }
+ },
+ "scooter-maxi-red": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 445,
+   "y0": 76,
+   "x1": 555,
+   "y1": 324
+  }
+ },
+ "scooter-stunt": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 771,
+   "y0": 76,
+   "x1": 895,
+   "y1": 324
+  }
+ },
+ "jok": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 93,
+   "y0": 410,
+   "x1": 240,
+   "y1": 638
+  }
+ },
+ "lamp-pastel": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 397,
+   "y0": 390,
+   "x1": 603,
+   "y1": 638
+  }
+ },
+ "pens": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 750,
+   "y0": 390,
+   "x1": 917,
+   "y1": 638
+  }
+ },
+ "alarm-clock": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 47,
+   "y0": 752,
+   "x1": 287,
+   "y1": 952
+  }
+ },
+ "fan-mini": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 387,
+   "y0": 714,
+   "x1": 613,
+   "y1": 952
+  }
+ },
+ "calculator": {
+  "shelfPhoto": "a7-1.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 778,
+   "y0": 752,
+   "x1": 888,
+   "y1": 952
+  }
+ },
+ "backpack": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 27,
+   "y0": 199,
+   "x1": 307,
+   "y1": 324
+  }
+ },
+ "backpack-check": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 360,
+   "y0": 209,
+   "x1": 640,
+   "y1": 324
+  }
+ },
+ "backpack-quilt": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף עליון",
+  "box": {
+   "x0": 739,
+   "y0": 76,
+   "x1": 928,
+   "y1": 324
+  }
+ },
+ "backpack-king": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 61,
+   "y0": 390,
+   "x1": 272,
+   "y1": 638
+  }
+ },
+ "paw-marshall": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 402,
+   "y0": 390,
+   "x1": 598,
+   "y1": 638
+  }
+ },
+ "paw-playset": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף אמצעי",
+  "box": {
+   "x0": 747,
+   "y0": 390,
+   "x1": 920,
+   "y1": 638
+  }
+ },
+ "paw-8": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 133,
+   "y0": 714,
+   "x1": 367,
+   "y1": 952
+  }
+ },
+ "paw-figure": {
+  "shelfPhoto": "a7-2.jpg",
+  "level": "מדף תחתון",
+  "box": {
+   "x0": 640,
+   "y0": 733,
+   "x1": 860,
+   "y1": 952
+  }
+ }
+}

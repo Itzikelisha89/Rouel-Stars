@@ -25,15 +25,23 @@ const map = {
 const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
   .run(SLUG, 'הסטוק · סניף הדגמה', `${salt}:${crypto.scryptSync('demo1234', salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);
 
-// Real products from the chain's catalog (demo/hastock), each with its photo.
+// Real products from the chain's catalog (demo/hastock), placed on shelf photos built by
+// demo/build-shelves.py: each product points at its shelf photo plus its box inside it,
+// exactly like products detected from a photographed shelf.
 const CAT = path.join(__dirname, '..', 'demo', 'hastock');
 const products = JSON.parse(fs.readFileSync(path.join(CAT, 'catalog.json'), 'utf8'));
+const placement = JSON.parse(fs.readFileSync(path.join(CAT, 'shelves.json'), 'utf8'));
+const shelfPhotoIds = {};
 for (const p of products) {
-  const file = `${storeId}-demo-${p.image}`;
-  fs.copyFileSync(path.join(CAT, p.image), path.join(UPLOAD_DIR, file));
-  const photoId = db.prepare('INSERT INTO photos (store_id, shelf_id, file) VALUES (?, ?, ?)').run(storeId, p.aisle, file).lastInsertRowid;
-  db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(storeId, p.aisle, photoId, p.name, `${p.brand} · ${p.category}`, p.keywords, p.level, p.price);
+  const place = placement[p.id];
+  if (!shelfPhotoIds[place.shelfPhoto]) {
+    const file = `${storeId}-demo-shelf-${place.shelfPhoto}`;
+    fs.copyFileSync(path.join(CAT, 'shelves', place.shelfPhoto), path.join(UPLOAD_DIR, file));
+    shelfPhotoIds[place.shelfPhoto] = db.prepare('INSERT INTO photos (store_id, shelf_id, file) VALUES (?, ?, ?)').run(storeId, p.aisle, file).lastInsertRowid;
+  }
+  db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price, box_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(storeId, p.aisle, shelfPhotoIds[place.shelfPhoto], p.name, `${p.brand} · ${p.category}`,
+    p.keywords, place.level, p.price, JSON.stringify(place.box));
 }
 
 const now = new Date();

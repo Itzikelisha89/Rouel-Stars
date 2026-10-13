@@ -107,8 +107,15 @@ function showDetail(p) {
   rememberProduct(p);
   $('speak').classList.toggle('hidden', !canSpeak);
   if (voiceMode) speak(spokenAnswer);
+  // The shelf photo with the product outlined, so the shopper recognises the spot when they get there.
+  $('shelf-card').classList.toggle('hidden', !p.photo);
   if (p.photo) $('detail-photo').src = p.photo;
-  $('detail-photo').closest('details').classList.toggle('hidden', !p.photo);
+  $('shelf-level').textContent = p.level || '';
+  const mark = $('shelf-mark');
+  mark.classList.toggle('hidden', !p.box);
+  if (p.box) Object.assign(mark.style, {
+    left: `${p.box.x0 / 10}%`, top: `${p.box.y0 / 10}%`, width: `${(p.box.x1 - p.box.x0) / 10}%`, height: `${(p.box.y1 - p.box.y0) / 10}%`,
+  });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
