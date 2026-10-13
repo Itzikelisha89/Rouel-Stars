@@ -200,6 +200,18 @@
       <div class="abs" id="stage-chip" style="top:24px;right:24px"><span class="chip" style="font-size:22px;padding:8px 18px;background:rgba(11,18,36,.85);color:#eef2ff" id="stage-chip-t">🚪 בכניסה לסניף</span></div>
     </div>
 
+    <!-- the phone answers out loud -->
+    <div class="abs" id="say-bubble" style="left:600px;top:250px;width:470px;opacity:0;z-index:6">
+      <div style="background:#fff;color:#1c2233;border-radius:28px;padding:22px 26px;box-shadow:0 24px 60px rgba(0,0,0,.45);position:relative">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+          <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#ff9a3c,#ff5a36);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none">🔊</div>
+          <div id="say-wave" style="display:flex;gap:5px;align-items:center;height:40px"></div>
+        </div>
+        <div style="font-size:30px;font-weight:800;line-height:1.35">"סיר ORIENT 20 ס״מ.<br>מעבר 4, מדף תחתון."</div>
+        <div style="position:absolute;left:-18px;top:60px;width:0;height:0;border-top:16px solid transparent;border-bottom:16px solid transparent;border-right:20px solid #fff"></div>
+      </div>
+    </div>
+
     <!-- phone -->
     <div class="phone" id="cust-phone" style="left:150px;top:110px">
       <div class="notch"></div>
@@ -710,6 +722,7 @@ const optEls = OPTS.map((o) => {
   $('opts').appendChild(d);
   return d;
 });
+const sayBars = [...Array(16)].map(() => { const b = document.createElement('div'); b.style.cssText = 'width:6px;border-radius:3px;background:linear-gradient(#ffb36b,#ff5a36)'; $('say-wave').appendChild(b); return b; });
 const waveBars = [...Array(24)].map(() => { const b = document.createElement('div'); b.style.cssText = 'width:6px;border-radius:3px;background:linear-gradient(#ffb36b,#ff5a36)'; $('wave').appendChild(b); return b; });
 
 // data bars
@@ -888,7 +901,7 @@ const UPDATE = {
     const next = HEADS[hi + 1] ? HEADS[hi + 1][0] : 1e9;
     head.style.opacity = hi === 0 ? 1 : Math.min(prog(t, HEADS[hi][0], 0.5), 1 - prog(t, next - 0.4, 0.4));
     if (hi === 0) head.style.opacity = 1 - prog(t, next - 0.4, 0.4);
-    const CHIPS = [[0, '🚪 בכניסה לסניף'], [5, '📱 סורק את הקוד'], [9, '🎙️ אומר מה הוא מחפש'], [14.5, '👆 בוחר מוצר'], [26.5, '🧭 בדרך למוצר'], [31.4, '📱 סורק מדבקת "אתה כאן"'], [35.2, '🧭 ממשיך למוצר'], [45.5, '✅ הגיע למדף']];
+    const CHIPS = [[0, '🚪 בכניסה לסניף'], [5, '📱 סורק את הקוד'], [9, '🎙️ אומר מה הוא מחפש'], [14.5, '👆 בוחר מוצר'], [22.2, '🔊 המערכת עונה בקול'], [26.5, '🧭 בדרך למוצר'], [31.4, '📱 סורק מדבקת "אתה כאן"'], [35.2, '🧭 ממשיך למוצר'], [45.5, '✅ הגיע למדף']];
     let ci = 0; CHIPS.forEach((c, i) => { if (t >= c[0]) ci = i; });
     $('stage-chip-t').textContent = CHIPS[ci][1];
     $('stage-chip').style.opacity = Math.min(1, prog(t, CHIPS[ci][0], 0.4) + (ci === 0 ? 1 : 0));
@@ -948,6 +961,10 @@ const UPDATE = {
       el.style.boxShadow = sel ? '0 0 0 2px #ff7a1a, 0 0 30px rgba(255,122,26,.35)' : 'none';
       if (sel) el.style.transform = `scale(${1 + 0.03 * (1 - prog(t, 21, 0.4))})`;
     });
+    const say = Math.min(prog(t, 22.3, 0.5), 1 - prog(t, 26.0, 0.4));
+    $('say-bubble').style.opacity = say;
+    $('say-bubble').style.transform = `translateX(${(1 - prog(t, 22.3, 0.5)) * -30}px)`;
+    sayBars.forEach((b, i) => { b.style.height = `${6 + (t > 22.4 && t < 25.8 ? 30 : 2) * Math.abs(Math.sin(t * 10 + i * 0.8))}px`; });
     $('go-btn').style.transform = `scale(${t > 25.8 && t < 26.2 ? 0.95 : 1})`;
     // finger taps: mic (9.0), option 2 (21.0), go button (25.8)
     const ui = document.querySelector('#cust-phone .ui').getBoundingClientRect();

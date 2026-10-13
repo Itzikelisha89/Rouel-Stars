@@ -6,6 +6,24 @@ const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
 let store = null;
 let results = [];
 let hereShelf = null; // set when the page was opened from an aisle QR sticker
+let voiceMode = false; // the shopper searched by voice, so we answer by voice too
+let spokenAnswer = '';
+
+// Spoken answers use the phone's built-in Hebrew voice (free, no server involved).
+const canSpeak = 'speechSynthesis' in window;
+function forSpeech(text) {
+  return text.replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/[·|/]/g, ',');
+}
+function speak(text) {
+  if (!canSpeak || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(forSpeech(text));
+  u.lang = 'he-IL';
+  const voice = speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('he'));
+  if (voice) u.voice = voice;
+  u.rate = 1;
+  speechSynthesis.speak(u);
+}
 const LAST_KEY = `storeFinder:last:${slug}`;
 function rememberProduct(p) {
   try { localStorage.setItem(LAST_KEY, JSON.stringify({ id: p.id, ts: Date.now() })); } catch { /* private mode */ }
@@ -52,6 +70,7 @@ async function runSearch(q) {
       $('results').appendChild(item);
     }
     if (results.length === 1) showDetail(results[0]);
+    else if (voiceMode) speak(`מצאתי ${results.length} תוצאות. בחר מוצר מהרשימה.`);
   } catch (err) { $('status').textContent = err.message; }
 }
 
@@ -81,14 +100,19 @@ function showDetail(p) {
       ? `המוצר נמצא במעבר שבו אתה עומד${p.level ? ` · ${p.level}` : ''}`
       : [loc.side, loc.depth].filter(Boolean).join(' · ');
     if (path && hereShelf?.id !== shelf.id) $('detail-meters').textContent = `🚶 ${path.length - 1} מ׳ ${here ? 'מכאן' : 'מהכניסה'}`;
+    spokenAnswer = [p.name, shelf.name, p.level, path && hereShelf?.id !== shelf.id ? `${path.length - 1} מטר ${here ? 'מכאן' : 'מהכניסה'}` : '']
+      .filter(Boolean).join('. ');
     renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here });
   }
   rememberProduct(p);
+  $('speak').classList.toggle('hidden', !canSpeak);
+  if (voiceMode) speak(spokenAnswer);
   if (p.photo) $('detail-photo').src = p.photo;
   $('detail-photo').closest('details').classList.toggle('hidden', !p.photo);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+$('speak').addEventListener('click', () => speak(spokenAnswer));
 $('back').addEventListener('click', () => { showList(); if (results.length === 1) $('q').focus(); });
 $('search-form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -106,7 +130,7 @@ if (Recognition) {
     rec.lang = 'he-IL';
     rec.interimResults = false;
     $('mic').textContent = '🔴';
-    rec.onresult = (e) => { $('q').value = e.results[0][0].transcript; runSearch($('q').value); };
+    rec.onresult = (e) => { voiceMode = true; $('q').value = e.results[0][0].transcript; runSearch($('q').value); };
     rec.onend = () => { $('mic').textContent = '🎤'; };
     rec.start();
   });
