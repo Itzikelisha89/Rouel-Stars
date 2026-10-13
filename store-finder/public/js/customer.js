@@ -1,4 +1,4 @@
-import { api, escapeHtml, formatPrice } from '/js/api.js';
+import { api, escapeHtml, formatPrice, resizeImage } from '/js/api.js';
 import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute } from '/js/map.js';
 
 const $ = (id) => document.getElementById(id);
@@ -74,25 +74,63 @@ async function runSearch(q) {
       if (voiceMode) speak(`לא מצאנו ${q} בחנות. אפשר לבקש שנביא את זה.`);
       return;
     }
-    $('status').textContent = data.expanded ? `לא מצאנו בדיוק "${q}", אבל אולי התכוונת לזה:` : `נמצאו ${results.length} תוצאות`;
-    for (const p of results) {
-      const item = document.createElement('div');
-      item.className = 'product-item result';
-      const canvas = document.createElement('canvas');
-      drawCrop(canvas, p.image || p.photo, p.image ? null : p.box, 168);
-      const shelf = shelfOf(p);
-      const info = document.createElement('div');
-      info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
-        <div class="meta">${p.level ? escapeHtml(p.level) : ''}</div>
-        <div class="row" style="margin-top:8px;gap:8px"><span class="chip o">📍 ${escapeHtml(shortShelf(shelf))}</span>${p.price ? `<span class="price">${escapeHtml(formatPrice(p.price))}</span>` : ''}</div>`;
-      item.append(canvas, info);
-      item.addEventListener('click', () => showDetail(p));
-      $('results').appendChild(item);
-    }
-    if (results.length === 1) showDetail(results[0]);
-    else if (voiceMode) speak(`מצאתי ${results.length} תוצאות. בחר מוצר מהרשימה.`);
+    showResults(data.expanded ? `לא מצאנו בדיוק "${q}", אבל אולי התכוונת לזה:` : `נמצאו ${results.length} תוצאות`);
   } catch (err) { $('status').textContent = err.message; }
 }
+
+function showResults(statusText) {
+  $('status').textContent = statusText;
+  for (const p of results) {
+    const item = document.createElement('div');
+    item.className = 'product-item result';
+    const canvas = document.createElement('canvas');
+    drawCrop(canvas, p.image || p.photo, p.image ? null : p.box, 168);
+    const shelf = shelfOf(p);
+    const info = document.createElement('div');
+    info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
+      <div class="meta">${p.level ? escapeHtml(p.level) : ''}</div>
+      <div class="row" style="margin-top:8px;gap:8px"><span class="chip o">📍 ${escapeHtml(shortShelf(shelf))}</span>${p.price ? `<span class="price">${escapeHtml(formatPrice(p.price))}</span>` : ''}</div>`;
+    item.append(canvas, info);
+    item.addEventListener('click', () => showDetail(p));
+    $('results').appendChild(item);
+  }
+  if (results.length === 1) showDetail(results[0]);
+  else if (voiceMode) speak(`מצאתי ${results.length} תוצאות. בחר מוצר מהרשימה.`);
+}
+
+// Search by photo: snap the product (or a flyer / WhatsApp picture) and we find it in the store.
+async function photoSearch(file) {
+  showList();
+  document.body.classList.add('searching');
+  $('results').innerHTML = '';
+  $('status').innerHTML = '<span class="row"><span class="spinner"></span> מזהה את המוצר בתמונה…</span>';
+  try {
+    const form = new FormData();
+    form.append('image', await resizeImage(file, 1024), 'photo.jpg');
+    form.append('visitor', visitor);
+    const data = await api(`/api/public/${encodeURIComponent(slug)}/photo-search`, { method: 'POST', form });
+    results = data.results;
+    if (!data.identified.found) {
+      $('status').textContent = 'לא הצלחנו לזהות מוצר בתמונה. נסו לצלם קרוב יותר, או לכתוב מה מחפשים 🙂';
+      return;
+    }
+    lastQuery = data.identified.name;
+    $('q').value = data.identified.name;
+    if (!results.length) {
+      $('status').textContent = `זיהינו: "${data.identified.name}", אבל אין לנו את זה בחנות כרגע.`;
+      $('request-done').classList.add('hidden');
+      $('request-form').classList.remove('hidden');
+      $('no-results').classList.remove('hidden');
+      return;
+    }
+    showResults(`📷 זיהינו: "${data.identified.name}". הנה מה שיש לנו:`);
+  } catch (err) { $('status').textContent = err.message; }
+}
+$('cam-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (file) photoSearch(file);
+});
 
 function showList() {
   $('detail').classList.add('hidden');
@@ -331,6 +369,7 @@ if (Recognition) {
   try {
     store = await api(`/api/public/${encodeURIComponent(slug)}`);
     $('store-name').textContent = store.name;
+    $('cam').classList.toggle('hidden', !store.photoSearch);
     const cats = store.map.shelves.map((s) => s.name.split('·')[1]?.trim()).filter(Boolean);
     $('quick').innerHTML = [...new Set(cats)].slice(0, 8).map((c) => `<button type="button" class="chip" data-q="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
     $('quick').addEventListener('click', (e) => { const q = e.target.dataset.q; if (q) { $('q').value = q; runSearch(q); } });

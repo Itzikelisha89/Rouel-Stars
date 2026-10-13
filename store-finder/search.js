@@ -47,7 +47,7 @@ function editDistanceAtMost1(a, b) {
   return edits + (a.length - i) + (b.length - j) <= 1;
 }
 
-function tokenScore(queryToken, fieldTokens) {
+function tokenScore(queryToken, fieldTokens, fuzzy = true) {
   let best = 0;
   const qv = variants(queryToken);
   for (const ft of fieldTokens) {
@@ -56,7 +56,7 @@ function tokenScore(queryToken, fieldTokens) {
         if (q === fv) return 3;
         if (q.length >= 2 && fv.startsWith(q)) best = Math.max(best, 2);
         else if (q.length >= 3 && fv.includes(q)) best = Math.max(best, 1.5);
-        else if (q.length >= 4 && editDistanceAtMost1(q, fv)) best = Math.max(best, 1);
+        else if (fuzzy && q.length >= 4 && editDistanceAtMost1(q, fv)) best = Math.max(best, 1);
       }
     }
   }
@@ -65,7 +65,7 @@ function tokenScore(queryToken, fieldTokens) {
 
 const FIELD_WEIGHTS = { name: 2, keywords: 1.5, description: 1 };
 
-function scoreProduct(queryTokens, product) {
+function scoreProduct(queryTokens, product, fuzzy) {
   const fields = {
     name: tokenize(product.name),
     keywords: tokenize(product.keywords),
@@ -75,7 +75,7 @@ function scoreProduct(queryTokens, product) {
   for (const q of queryTokens) {
     let best = 0;
     for (const [field, weight] of Object.entries(FIELD_WEIGHTS)) {
-      best = Math.max(best, tokenScore(q, fields[field]) * weight);
+      best = Math.max(best, tokenScore(q, fields[field], fuzzy) * weight);
     }
     if (best > 0) matched++;
     total += best;
@@ -85,11 +85,13 @@ function scoreProduct(queryTokens, product) {
   return total * (matched / queryTokens.length) + (matched === queryTokens.length ? 5 : 0);
 }
 
-function search(query, products, limit = 10) {
+// fuzzy=false for terms we generated ourselves (synonyms, AI): they are spelled right, and typo
+// tolerance would turn "מחבת" into "מגבת".
+function search(query, products, limit = 10, { fuzzy = true } = {}) {
   const queryTokens = tokenize(query);
   if (!queryTokens.length) return [];
   return products
-    .map((p) => ({ product: p, score: scoreProduct(queryTokens, p) }))
+    .map((p) => ({ product: p, score: scoreProduct(queryTokens, p, fuzzy) }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score)
     .filter((r, _, all) => r.score >= all[0].score * 0.15) // drop stray fuzzy matches far below the best one

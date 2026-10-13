@@ -154,6 +154,8 @@ button:disabled { opacity: .55; cursor: default; }
 .search-bar input { flex: 1; border: none; background: transparent; font-size: 1.15rem; padding: 10px 4px; box-shadow: none !important; }
 .search-bar button { height: 46px; border-radius: 14px; padding: 0 16px; }
 .search-bar #mic { width: 46px; padding: 0; background: var(--primary-grad); border: none; }
+.cam-btn { display: inline-grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 14px; background: rgba(255,255,255,.1); border: 1px solid var(--border); cursor: pointer; font-size: 1.2rem; }
+.cam-btn:hover { background: rgba(255,255,255,.16); }
 .quick { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .quick .chip { cursor: pointer; border: 1px solid transparent; }
 .quick .chip:hover { border-color: rgba(255,138,42,.5); }
@@ -283,3 +285,4 @@ body:has(.list-bar:not(.hidden)) .wrap { padding-bottom: 96px; }
 /* the editor needs room for precise dragging on phones */
 #map-editor, #map-picker { min-width: 640px; }
 #detail-desc { white-space: pre-line; }
+.pf-ai { font-size: .88rem; }

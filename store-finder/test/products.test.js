@@ -95,3 +95,27 @@ test('Gemini (free tier) is used when only GEMINI_API_KEY is set', async () => {
     delete process.env.GEMINI_API_KEY;
   }
 });
+
+test('photo of a single product -> name, description and many search words', async () => {
+  process.env.GEMINI_API_KEY = 'test-key';
+  const realFetch = global.fetch;
+  let body;
+  global.fetch = async (_url, opts) => {
+    body = JSON.parse(opts.body);
+    return new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({
+      found: true, name: 'סיר יצקת 20 ס"מ', description: 'סיר שחור עם מכסה',
+      keywords: ['סיר', 'סירים', 'סיר קטן', 'סיר למרק', 'סיר', 'כלים לפסח', 'pot'],
+    }) }] } }] }), { status: 200 });
+  };
+  try {
+    const r = await ai.identifyProduct(JPEG, 'image/jpeg');
+    assert.equal(r.found, true);
+    assert.equal(r.name, 'סיר יצקת 20 ס"מ');
+    assert.deepEqual(r.keywords, ['סיר', 'סירים', 'סיר קטן', 'סיר למרק', 'כלים לפסח', 'pot']); // de-duplicated
+    assert.match(body.systemInstruction.parts[0].text, /שימושים/);
+    assert.ok(body.generationConfig.responseSchema.required.includes('keywords'));
+  } finally {
+    global.fetch = realFetch;
+    delete process.env.GEMINI_API_KEY;
+  }
+});

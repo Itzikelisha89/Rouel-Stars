@@ -207,6 +207,8 @@ function productForm(container, p, { onSaved, onCancel }) {
           <label class="btn" style="margin:0">📷 ${p.image ? 'החלפת תמונה' : 'הוספת תמונה'}<input type="file" accept="image/*" data-img class="hidden"></label>
           <button type="button" data-a="rmimg" class="danger${p.image ? '' : ' hidden'}">הסרה</button>
         </div>
+        ${store.aiEnabled ? `<button type="button" data-a="identify" class="${p.image ? '' : 'hidden'}">✨ מילוי פרטים מהתמונה</button>
+        <span class="muted pf-ai" data-ai></span>` : ''}
       </div>
       <div class="pf-fields">
         <label>שם המוצר *</label>
@@ -236,13 +238,44 @@ function productForm(container, p, { onSaved, onCancel }) {
     pendingImage = file; removeImage = false;
     preview.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="">`;
     form.querySelector('[data-a=rmimg]').classList.remove('hidden');
+    form.querySelector('[data-a=identify]')?.classList.remove('hidden');
+    // A new product with no name yet: fill it straight from the photo.
+    if (store.aiEnabled && !form.querySelector('[data-f=name]').value.trim()) identify();
   });
+
+  // AI reads the photo and suggests name, description and search words; the manager reviews them.
+  async function identify() {
+    const out = form.querySelector('[data-ai]');
+    const btn = form.querySelector('[data-a=identify]');
+    btn.disabled = true;
+    out.innerHTML = '<span class="row"><span class="spinner"></span> מזהה…</span>';
+    try {
+      const blob = pendingImage ? await resizeImage(pendingImage, 1024) : await (await fetch(p.image)).blob();
+      const f = new FormData();
+      f.append('image', blob, 'product.jpg');
+      const r = await api('/api/products/identify', { method: 'POST', form: f });
+      if (!r.found) { out.textContent = 'לא זוהה מוצר ברור בתמונה'; return; }
+      const field = (name) => form.querySelector(`[data-f=${name}]`);
+      if (!field('name').value.trim()) field('name').value = r.name;
+      if (!field('description').value.trim()) field('description').value = r.description;
+      const words = new Set(field('keywords').value.split(',').map((w) => w.trim()).filter(Boolean));
+      r.keywords.forEach((w) => words.add(w));
+      field('keywords').value = [...words].join(', ');
+      out.textContent = `✨ זוהה: ${r.name}. בדקו ותקנו לפני שמירה.`;
+    } catch (err) {
+      out.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
   form.addEventListener('click', (e) => {
     if (e.target.dataset.a === 'cancel') onCancel();
+    if (e.target.dataset.a === 'identify') identify();
     if (e.target.dataset.a === 'rmimg') {
       pendingImage = null; removeImage = true;
       preview.innerHTML = '<span class="muted">אין תמונה</span>';
       e.target.classList.add('hidden');
+      form.querySelector('[data-a=identify]')?.classList.add('hidden');
     }
   });
   form.addEventListener('submit', async (e) => {

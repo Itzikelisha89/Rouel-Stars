@@ -88,7 +88,7 @@ const PRODUCTS_SCHEMA = {
 const SYSTEM = `אתה מערכת קטלוג לחנות קמעונאית. מקבלים תמונה של מדף אחד בחנות.
 זהה כל סוג מוצר נפרד שנראה במדף (מוצרים זהים שעומדים זה לצד זה = פריט אחד, עם מלבן שמקיף את כולם).
 לכל מוצר כתוב שם בעברית כפי שלקוח היה מחפש אותו, וכלול גודל אם הוא ניכר (קטן/בינוני/גדול, ס"מ, ליטר).
-במילות המפתח כלול: קטגוריה כללית (למשל "כלי בישול"), צורות רבים ויחיד, כינויים נפוצים, תיאור גודל, ושם באנגלית.
+במילות המפתח (15-30 לכל מוצר) כלול כל מה שלקוח עשוי לבקש: סוג המוצר ביחיד וברבים, שמות נרדפים וסלנג, גודל במילים (קטן/גדול), חומר וצבע, שימושים ("סיר למרק"), אירועים ועונות ("כלים לפסח"), קטגוריה בחנות ("כלי בישול"), שגיאות כתיב נפוצות, ושם באנגלית.
 אם התמונה לא מכילה מוצרים, החזר רשימה ריקה. אל תמציא מוצרים שלא רואים.`;
 
 function clampBox(box) {
@@ -134,6 +134,74 @@ async function detectProducts(imageBuffer, mediaType, shelfName) {
   return parsed.products.map((p) => ({ ...p, box: clampBox(p.box) }));
 }
 
+// One product in a photo (a product the manager is adding, or a shopper's "find this" picture).
+const IDENTIFY_SCHEMA = {
+  type: 'object',
+  properties: {
+    found: { type: 'boolean', description: 'האם רואים בתמונה מוצר ברור' },
+    name: { type: 'string', description: 'שם קצר וברור של המוצר בעברית, כולל מותג וגודל אם נראים' },
+    description: { type: 'string', description: 'תיאור קצר ללקוח: חומר, צבע, מידות, שימוש' },
+    keywords: {
+      type: 'array',
+      items: { type: 'string' },
+      description: '25-40 מילות חיפוש: כל דרך שבה לקוח עשוי לבקש את המוצר. מהכללי לספציפי',
+    },
+  },
+  required: ['found', 'name', 'description', 'keywords'],
+  additionalProperties: false,
+};
+const IDENTIFY_SYSTEM = `אתה עוזר בחנות כלי בית. מקבלים תמונה של מוצר אחד (צילום, מודעה או צילום מסך).
+זהה מה המוצר וכתוב בעברית כפי שלקוח היה מחפש אותו. אם יש כמה מוצרים, התייחס למרכזי שבהם.
+
+מילות החיפוש הן הדבר הכי חשוב: המטרה שכל לקוח, בכל ניסוח, ימצא את המוצר. חשוב על כל מה שבן אדם יכול לבקש:
+1. סוג המוצר הכללי קודם (למשל "סיר"), ביחיד וברבים ("סירים").
+2. שמות נרדפים וסלנג ("קדרה", "סיר בישול", "סיר לחץ" רק אם זה באמת סיר לחץ).
+3. גודל ונפח במילים ("סיר קטן", "סיר גדול", "20 ס"מ", "5 ליטר").
+4. חומר, צבע וציפוי ("סיר נירוסטה", "סיר יצקת", "סיר שחור", "נון סטיק").
+5. שימושים, מה מבשלים בו ולמה הוא טוב ("סיר למרק", "סיר לפסטה", "סיר לאורז", "סיר לתבשיל", "צ'ולנט").
+6. אירועים ועונות ("כלים לפסח", "סיר לחג", "מתנה לבית חדש").
+7. הקטגוריה בחנות ("כלי בישול", "כלי מטבח").
+8. שגיאות כתיב נפוצות וכתיב חסר/מלא ("סר", "סיירים").
+9. שם באנגלית ובמותג אם נראה ("pot", "cooking pot", "casserole").
+כתוב 25-40 מילים וצירופים קצרים (מילה עד שלוש מילים כל אחד). אל תוסיף מוצרים אחרים שלא קשורים (לא "מחבת" לסיר).
+אם אין בתמונה מוצר ברור, החזר found=false. אל תמציא פרטים שלא רואים בתמונה (מותג, מידה).`;
+
+async function identifyProduct(imageBuffer, mediaType) {
+  let parsed;
+  if (provider() === 'gemini') {
+    parsed = await gemini({
+      system: IDENTIFY_SYSTEM,
+      schema: IDENTIFY_SCHEMA,
+      parts: [{ inline_data: { mime_type: mediaType, data: imageBuffer.toString('base64') } }, { text: 'מה המוצר בתמונה?' }],
+    });
+  } else {
+    const response = await getClient().beta.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: IDENTIFY_SCHEMA } },
+      system: IDENTIFY_SYSTEM,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBuffer.toString('base64') } },
+          { type: 'text', text: 'מה המוצר בתמונה?' },
+        ],
+      }],
+    });
+    if (response.stop_reason === 'refusal') throw new Error('המודל סירב לעבד את התמונה');
+    parsed = JSON.parse(response.content.filter((b) => b.type === 'text').map((b) => b.text).join(''));
+  }
+  const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+  return {
+    found: parsed.found !== false && Boolean(str(parsed.name, 120)),
+    name: str(parsed.name, 120),
+    description: str(parsed.description, 500),
+    keywords: [...new Set((Array.isArray(parsed.keywords) ? parsed.keywords : []).map((k) => str(k, 40)).filter(Boolean))].slice(0, 40),
+  };
+}
+
 // When plain keyword search finds nothing, ask Claude for alternative search terms.
 const expansionCache = new Map();
 async function expandQuery(query) {
@@ -177,4 +245,4 @@ async function expandQuery(query) {
   return terms;
 }
 
-module.exports = { aiEnabled, provider, detectProducts, expandQuery, toGeminiSchema };
+module.exports = { aiEnabled, provider, detectProducts, identifyProduct, expandQuery, toGeminiSchema };

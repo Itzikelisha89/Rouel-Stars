@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { db, UPLOAD_DIR, DEFAULT_MAP } = require('./db');
 const { search } = require('./search');
+const synonyms = require('./synonyms');
 const ai = require('./ai');
 const insights = require('./insights');
 const pilot = require('./pilot');
@@ -41,7 +42,7 @@ function getStoreBySlug(slug) {
   return db.prepare('SELECT * FROM stores WHERE slug = ?').get(slug);
 }
 function publicStore(store) {
-  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json) };
+  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled() };
 }
 function productRow(p) {
   return {
@@ -172,6 +173,18 @@ app.post('/api/photos', requireOwner, upload.single('photo'), async (req, res) =
   } catch (err) {
     console.error('detectProducts failed:', err);
     res.json({ photo: { id: photoId, url: `/uploads/${file}` }, products: [], aiError: `הזיהוי האוטומטי נכשל: ${err.message}` });
+  }
+});
+
+// Manager photographs a product, AI suggests name, description and search words for the form.
+app.post('/api/products/identify', requireOwner, upload.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'צריך תמונה (JPG/PNG/WEBP עד 8MB)' });
+  if (!ai.aiEnabled()) return res.status(503).json({ error: 'זיהוי מתמונה כבוי: צריך מפתח GEMINI_API_KEY (חינמי) בשרת' });
+  try {
+    res.json(await ai.identifyProduct(req.file.buffer, req.file.mimetype));
+  } catch (err) {
+    console.error('identifyProduct failed:', err.message);
+    res.status(502).json({ error: `הזיהוי נכשל: ${err.message}` });
   }
 });
 
@@ -351,15 +364,16 @@ app.get('/api/public/:slug/search', async (req, res) => {
   const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1`).all(store.id);
   let results = search(q, products);
   let expanded = false;
+  // Few or no direct matches: the built-in synonym dictionary ("קדרה" / "לבשל מרק" -> סיר), free and instant.
+  if (results.length < 3) {
+    const seen = new Set(results.map((r) => r.product.id));
+    const extra = searchTerms(synonyms.expand(q), products).filter((r) => !seen.has(r.product.id));
+    if (!results.length && extra.length) expanded = true;
+    results = [...results, ...extra].slice(0, 10);
+  }
   if (!results.length && products.length && ai.aiEnabled()) {
     try {
-      const best = new Map();
-      for (const term of await ai.expandQuery(q)) {
-        for (const r of search(term, products)) {
-          if ((best.get(r.product.id)?.score ?? 0) < r.score) best.set(r.product.id, r);
-        }
-      }
-      results = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 10);
+      results = searchTerms(await ai.expandQuery(q), products);
       expanded = results.length > 0;
     } catch (err) {
       console.error('expandQuery failed:', err.message);
@@ -368,6 +382,39 @@ app.get('/api/public/:slug/search', async (req, res) => {
   db.prepare('INSERT INTO searches (store_id, query, result_count, visitor) VALUES (?, ?, ?, ?)')
     .run(store.id, q, results.length, cleanVisitor(req.query.v));
   res.json({ expanded, results: results.map((r) => productRow(r.product)) });
+});
+
+// Shopper photographs a product (or a flyer / screenshot) and we find it in this store.
+function searchTerms(terms, products) {
+  const best = new Map();
+  for (const term of terms) {
+    for (const r of search(term, products, 10, { fuzzy: false })) {
+      if ((best.get(r.product.id)?.score ?? 0) < r.score) best.set(r.product.id, r);
+    }
+  }
+  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, 10);
+}
+app.post('/api/public/:slug/photo-search', upload.single('image'), async (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (!req.file) return res.status(400).json({ error: 'צריך תמונה' });
+  if (!ai.aiEnabled()) return res.status(503).json({ error: 'חיפוש בתמונה לא זמין כרגע. אפשר לכתוב מה מחפשים 🙂' });
+  if (rateLimited(`photo:${req.ip}`, 6)) return res.status(429).json({ error: 'יותר מדי תמונות, נסו שוב בעוד דקה' });
+  let identified;
+  try {
+    identified = await ai.identifyProduct(req.file.buffer, req.file.mimetype);
+  } catch (err) {
+    console.error('photo search failed:', err.message);
+    return res.status(502).json({ error: 'לא הצלחנו לזהות את התמונה כרגע. אפשר לכתוב מה מחפשים 🙂' });
+  }
+  if (!identified.found) return res.json({ identified, results: [] });
+  const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1`).all(store.id);
+  // The full name first (brand + size), then the general product type and nicknames.
+  // Only the most general words: the long tail ("כלי מטבח") would match half the store.
+  const results = searchTerms([identified.name, ...identified.keywords.slice(0, 6)], products);
+  db.prepare('INSERT INTO searches (store_id, query, result_count, visitor) VALUES (?, ?, ?, ?)')
+    .run(store.id, identified.name.slice(0, 100), results.length, cleanVisitor(req.body.visitor));
+  res.json({ identified, results: results.map((r) => productRow(r.product)) });
 });
 
 app.get('/api/public/:slug/products/:id', (req, res) => {
