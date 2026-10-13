@@ -33,6 +33,11 @@
     </form>
     <div class="quick" id="quick"></div>
 
+    <section id="deals" class="deals hidden">
+      <h2 class="deals-title">🔥 מבצעים בחנות</h2>
+      <div class="deals-row" id="deals-row"></div>
+    </section>
+
     <div id="here-banner" class="here-banner hidden"></div>
     <p id="status" class="muted" style="margin-top:14px"></p>
 
@@ -54,6 +59,7 @@
         <canvas id="detail-crop" class="detail-img"></canvas>
         <h2 id="detail-name" class="d-name"></h2>
         <p id="detail-desc" class="muted" style="margin:0"></p>
+        <div id="detail-promo" class="promo-banner hidden"></div>
         <div class="d-chips" id="detail-chips"></div>
         <div class="row" style="justify-content:space-between;margin-top:6px"><div class="d-price" id="detail-price"></div><button type="button" id="speak" class="hidden" aria-label="השמע את המיקום">🔊 השמע</button></div>
         <button type="button" id="list-toggle" class="list-toggle">➕ הוספה לרשימת הקניות</button>
@@ -69,6 +75,10 @@
           <p id="detail-how" class="muted" style="margin-bottom:10px"></p>
           <div class="map-box"><svg id="detail-map"></svg></div>
           <p class="muted" style="font-size:.85rem;margin:10px 0 0">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
+        </div>
+        <div class="route-card hidden" id="related">
+          <div class="route-head"><span id="related-title"></span></div>
+          <div class="related-row" id="related-row"></div>
         </div>
         <div class="route-card feedback" id="feedback">
           <div id="fb-ask">

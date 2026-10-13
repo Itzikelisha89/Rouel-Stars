@@ -67,6 +67,7 @@ function productRow(p) {
     photo: p.file ? `/uploads/${p.file}` : null,
     photoId: p.photo_id,
     image: p.image ? `/uploads/${p.image}` : null,
+    promo: p.promo || '',
     active: p.active !== 0,
   };
 }
@@ -104,7 +105,7 @@ function validateMap(map) {
 function cleanProduct(body) {
   const str = (v, max) => String(v ?? '').trim().slice(0, max);
   const keywords = Array.isArray(body.keywords) ? body.keywords.join(', ') : body.keywords;
-  return { name: str(body.name, 120), description: str(body.description, 500), keywords: str(keywords, 1000), level: str(body.level, 60), price: str(body.price, 30) };
+  return { name: str(body.name, 120), description: str(body.description, 500), keywords: str(keywords, 1000), level: str(body.level, 60), price: str(body.price, 30), promo: str(body.promo, 60) };
 }
 
 function shelfExists(store, shelfId) {
@@ -167,9 +168,9 @@ app.get('/api/products/export.csv', requireOwner, (req, res) => {
   const shelves = JSON.parse(req.store.map_json).shelves;
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = db.prepare('SELECT * FROM products WHERE store_id = ? ORDER BY shelf_id, name').all(req.store.id).map((p) =>
-    [p.name, shelves.find((s) => s.id === p.shelf_id)?.name ?? '', p.level, p.price, p.keywords, p.description, p.active ? 'כן' : 'לא'].map(cell).join(','));
+    [p.name, shelves.find((s) => s.id === p.shelf_id)?.name ?? '', p.level, p.price, p.promo, p.keywords, p.description, p.active ? 'כן' : 'לא'].map(cell).join(','));
   res.type('text/csv; charset=utf-8').attachment(`${req.store.slug}-products.csv`)
-    .send(`\ufeff${['שם', 'מעבר', 'מדף', 'מחיר', 'מילות חיפוש', 'תיאור', 'מוצג'].join(',')}\n${rows.join('\n')}\n`);
+    .send(`\ufeff${['שם', 'מעבר', 'מדף', 'מחיר', 'מבצע', 'מילות חיפוש', 'תיאור', 'מוצג'].join(',')}\n${rows.join('\n')}\n`);
 });
 
 app.get('/api/me', requireOwner, (req, res) => {
@@ -281,8 +282,8 @@ app.post('/api/products', requireOwner, (req, res) => {
   if (!p.name) return res.status(400).json({ error: 'צריך שם מוצר' });
   if (!shelfExists(req.store, req.body.shelfId)) return res.status(400).json({ error: 'בחר מדף' });
   const photoId = req.body.photoId && db.prepare('SELECT id FROM photos WHERE id = ? AND store_id = ?').get(req.body.photoId, req.store.id)?.id;
-  const { lastInsertRowid } = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.store.id, req.body.shelfId, photoId || null, p.name, p.description, p.keywords, p.level, p.price, req.body.active === false ? 0 : 1);
+  const { lastInsertRowid } = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price, promo, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.store.id, req.body.shelfId, photoId || null, p.name, p.description, p.keywords, p.level, p.price, p.promo, req.body.active === false ? 0 : 1);
   res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, lastInsertRowid)));
 });
 
@@ -297,8 +298,8 @@ app.post('/api/products/import', requireOwner, (req, res) => {
     return shelves.find((s) => s.name === t) || shelves.find((s) => s.name.startsWith(t)) ||
       (/^\d+$/.test(t) ? shelves.find((s) => new RegExp(`(^|\\D)${t}(\\D|$)`).test(s.name)) : null);
   };
-  const insert = db.prepare(`INSERT INTO products (store_id, shelf_id, name, description, keywords, level, price)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const insert = db.prepare(`INSERT INTO products (store_id, shelf_id, name, description, keywords, level, price, promo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
   const skipped = [];
   let added = 0;
   rows.forEach((r, i) => {
@@ -306,7 +307,7 @@ app.post('/api/products/import', requireOwner, (req, res) => {
     const shelf = findShelf(r.shelf);
     if (!p.name) return skipped.push({ row: i + 2, reason: 'חסר שם מוצר' });
     if (!shelf) return skipped.push({ row: i + 2, reason: `לא נמצא מדף "${r.shelf ?? ''}"` });
-    insert.run(req.store.id, shelf.id, p.name, p.description, p.keywords, p.level, p.price);
+    insert.run(req.store.id, shelf.id, p.name, p.description, p.keywords, p.level, p.price, p.promo);
     added++;
   });
   res.json({ added, skipped: skipped.slice(0, 50), skippedCount: skipped.length });
@@ -320,8 +321,8 @@ app.put('/api/products/:id', requireOwner, (req, res) => {
   const shelfId = req.body.shelfId ?? existing.shelf_id;
   if (!shelfExists(req.store, shelfId)) return res.status(400).json({ error: 'בחר מדף' });
   const active = req.body.active === undefined ? existing.active : (req.body.active === false || req.body.active === 'false' ? 0 : 1);
-  db.prepare('UPDATE products SET name = ?, description = ?, keywords = ?, level = ?, price = ?, shelf_id = ?, active = ? WHERE id = ?')
-    .run(p.name, p.description, p.keywords, p.level, p.price, shelfId, active, existing.id);
+  db.prepare('UPDATE products SET name = ?, description = ?, keywords = ?, level = ?, price = ?, promo = ?, shelf_id = ?, active = ? WHERE id = ?')
+    .run(p.name, p.description, p.keywords, p.level, p.price, p.promo, shelfId, active, existing.id);
   res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, existing.id)));
 });
 
@@ -499,6 +500,34 @@ app.post('/api/public/:slug/photo-search', upload.single('image'), async (req, r
   db.prepare('INSERT INTO searches (store_id, query, result_count, visitor) VALUES (?, ?, ?, ?)')
     .run(store.id, identified.name.slice(0, 100), results.length, cleanVisitor(req.body.visitor));
   res.json({ identified, results: results.map((r) => productRow(r.product)) });
+});
+
+// Deals for the shopper's home screen.
+app.get('/api/public/:slug/deals', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  const rows = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 AND products.promo != '' ORDER BY products.id DESC LIMIT 12`).all(store.id);
+  res.json(rows.map(productRow));
+});
+
+// "Shoppers who looked at this also looked at": other products the same shoppers opened or found
+// (at least 2 different shoppers, last 90 days). Without enough data: more products from the same aisle.
+app.get('/api/public/:slug/products/:id/related', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  const p = store && db.prepare('SELECT id, shelf_id FROM products WHERE id = ? AND store_id = ? AND active = 1').get(req.params.id, store.id);
+  if (!p) return res.status(404).json({ error: 'המוצר לא נמצא' });
+  const together = db.prepare(`
+    SELECT b.product_id AS id, COUNT(DISTINCT b.visitor) AS shoppers
+    FROM events a JOIN events b ON b.store_id = a.store_id AND b.visitor = a.visitor AND b.product_id != a.product_id
+    JOIN products ON products.id = b.product_id AND products.active = 1
+    WHERE a.store_id = ? AND a.product_id = ? AND a.visitor != '' AND a.type IN ('view', 'found') AND b.type IN ('view', 'found')
+      AND a.created_at >= datetime('now', '-90 days') AND abs(julianday(b.created_at) - julianday(a.created_at)) < 1
+    GROUP BY b.product_id HAVING shoppers >= 2 ORDER BY shoppers DESC LIMIT 4`).all(store.id, p.id);
+  const byId = (id) => productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(store.id, id));
+  if (together.length) return res.json({ kind: 'together', products: together.map((r) => byId(r.id)) });
+  const aisle = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 AND products.shelf_id = ? AND products.id != ? ORDER BY products.promo = '', random() LIMIT 4`)
+    .all(store.id, p.shelf_id, p.id);
+  res.json({ kind: 'aisle', products: aisle.map(productRow) });
 });
 
 app.get('/api/public/:slug/products/:id', (req, res) => {

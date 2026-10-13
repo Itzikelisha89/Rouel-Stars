@@ -64,6 +64,8 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
   CREATE INDEX IF NOT EXISTS idx_events_store ON events(store_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_events_product ON events(store_id, product_id);
+  CREATE INDEX IF NOT EXISTS idx_events_visitor ON events(store_id, visitor);
   CREATE INDEX IF NOT EXISTS idx_searches_store ON searches(store_id);
 `);
 
@@ -73,6 +75,7 @@ if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'pri
 }
 const productCols = db.prepare('PRAGMA table_info(products)').all().map((c) => c.name);
 if (!productCols.includes('image')) db.exec('ALTER TABLE products ADD COLUMN image TEXT'); // the product's own photo, uploaded by the manager
+if (!productCols.includes('promo')) db.exec("ALTER TABLE products ADD COLUMN promo TEXT NOT NULL DEFAULT ''"); // deal text, e.g. "2 ב-50 ₪"
 if (!productCols.includes('active')) db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1'); // 0 = hidden from shoppers
 if (!db.prepare('PRAGMA table_info(searches)').all().some((c) => c.name === 'visitor')) {
   db.exec("ALTER TABLE searches ADD COLUMN visitor TEXT NOT NULL DEFAULT ''");

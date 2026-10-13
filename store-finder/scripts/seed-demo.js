@@ -94,6 +94,13 @@ const srch = db.prepare('INSERT INTO searches (store_id, query, result_count, vi
 const HOURS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 7, 8, 6, 4, 4, 5, 8, 9, 8, 5, 2, 0, 0]; // store opens 9:00, evening rush
 const pickHour = () => { let r = rnd() * HOURS.reduce((a, b) => a + b); for (let h = 0; h < 24; h++) { r -= HOURS[h]; if (r < 0) return h; } return 18; };
 const foundQueries = DEMAND.filter((d) => d[1]).flatMap((d) => d[0]);
+// What people tend to look for next, so "shoppers also looked at" has real patterns to find.
+const COMPANION = {
+  'תיק גב': 'קופסת אוכל', 'ילקוט': 'קופסת אוכל', 'קופסת אוכל לילדים': 'תיק גב',
+  'סל כביסה': 'קפסולות לכביסה', 'מצעים': 'מגבת', 'סט מצעים': 'מגבת', 'מצעים לילדים': 'מפרץ ההרפתקאות',
+  'סיר קטן': 'צנצנות תבלינים', 'סירים': 'צנצנות תבלינים', 'סיר': 'צנצנות תבלינים', 'פח למטבח': 'נוזל כלים',
+  'קורקינט': 'בימבה', 'קורקינט לילדים': 'בימבה',
+};
 const missingQueries = DEMAND.filter((d) => !d[1]).flatMap((d) => d[0]);
 const regulars = [];
 const pilot = { visitors: 0, found: 0, problems: 0, help: 0, requests: 0 };
@@ -107,6 +114,7 @@ for (let day = 30; day >= 1; day--) {
     const v = returning ? regulars[Math.floor(rnd() * regulars.length)] : visitorId();
     if (!returning) { regulars.push(v); pilot.visitors++; }
     let t = new Date(date); t.setUTCHours(pickHour() - 3, Math.floor(rnd() * 60), Math.floor(rnd() * 60)); // Israel is UTC+3
+    let prevQ = null;
     for (let s = 1 + (rnd() < 0.35) + (rnd() < 0.1); s > 0; s--) {
       t = new Date(t.getTime() + (20 + rnd() * 200) * 1000);
       if (rnd() < 0.12) { // looking for something the store doesn't carry
@@ -118,7 +126,8 @@ for (let day = 30; day >= 1; day--) {
         }
         continue;
       }
-      const q = foundQueries[Math.floor(rnd() * foundQueries.length)];
+      const q = prevQ && COMPANION[prevQ] && rnd() < 0.7 ? COMPANION[prevQ] : foundQueries[Math.floor(rnd() * foundQueries.length)];
+      prevQ = q;
       const hits = search(q, rows);
       srch.run(storeId, q, hits.length, v, sqlTime(t));
       if (!hits.length) continue;
@@ -142,6 +151,12 @@ for (let day = 30; day >= 1; day--) {
     }
   }
 }
+// Deals the manager marked, for the shopper's home screen.
+for (const [match, promo] of [['ORIENT 20', '20% הנחה השבוע'], ['תיק גב Marshmelo', '2 ב-150 ₪'], ['MOOSH בצבעי פסטל', '3 ב-60 ₪'],
+  ['סט מצעים URBAN לילדים', 'מחיר מבצע'], ['פח סנסור DUBLIN', 'השני ב-50%'], ['קורקינט MAXI 3 גלגלים ידית מתקפלת', 'מבצע חגים']]) {
+  db.prepare("UPDATE products SET promo = ? WHERE store_id = ? AND name LIKE '%' || ? || '%'").run(promo, storeId, match);
+}
+
 // A few open alerts from the last minutes, so the live alert screen has something on it.
 const orient = rows.find((p) => p.name.includes('ORIENT'));
 const ago = (m) => sqlTime(new Date(now.getTime() - m * 60000));

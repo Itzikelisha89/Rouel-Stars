@@ -247,6 +247,8 @@ function productForm(container, p, { onSaved, onCancel }) {
           <div><label>מיקום במדף</label><input data-f="level" list="levels" value="${escapeHtml(p.level || '')}" placeholder="מדף תחתון"></div>
           <div><label>מחיר</label><input data-f="price" value="${escapeHtml(p.price || '')}" placeholder="99.90" inputmode="decimal"></div>
         </div>
+        <label>🏷️ מבצע (לא חובה)</label>
+        <input data-f="promo" value="${escapeHtml(p.promo || '')}" maxlength="60" placeholder="למשל: 2 ב-50 ₪ · 20% הנחה · השני ב-50%">
         <label>מילות חיפוש</label>
         <input data-f="keywords" value="${escapeHtml(p.keywords || '')}" placeholder="סיר קטן, סיר בישול, pot — מילים שלקוחות עשויים לחפש">
         <label class="pf-check"><input type="checkbox" data-f="active"${p.active === false ? '' : ' checked'}> מוצג ללקוחות (בטלו כשהמוצר אזל או הוצא מהמבצע)</label>
@@ -341,7 +343,7 @@ function productItem(p) {
     item.innerHTML = '';
     const body = document.createElement('div');
     body.innerHTML = `
-      <div class="name">${escapeHtml(p.name)}${p.active === false ? ' <span class="badge">🙈 מוסתר מלקוחות</span>' : ''}</div>
+      <div class="name">${escapeHtml(p.name)}${p.promo ? ` <span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : ''}${p.active === false ? ' <span class="badge">🙈 מוסתר מלקוחות</span>' : ''}</div>
       <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}${p.price ? ` · ${escapeHtml(formatPrice(p.price))}` : ''}</div>
       ${p.description ? `<div class="meta pf-desc">${escapeHtml(p.description)}</div>` : ''}
       <div class="meta">${escapeHtml(p.keywords)}</div>
@@ -423,7 +425,7 @@ function parseCsv(text) {
 }
 const COLUMNS = {
   name: ['שם', 'שם מוצר', 'מוצר', 'name'], shelf: ['מעבר', 'מיקום', 'aisle', 'shelf'], keywords: ['מילות חיפוש', 'מילים נרדפות', 'keywords'],
-  level: ['מדף', 'קומת מדף', 'level'], price: ['מחיר', 'price'], description: ['תיאור', 'description'],
+  level: ['מדף', 'קומת מדף', 'level'], price: ['מחיר', 'price'], description: ['תיאור', 'description'], promo: ['מבצע', 'promo'],
 };
 $('import-template').href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿שם,מעבר,מדף,מחיר,מילות חיפוש\nפח סנסור DUBLIN 30 ליטר,4,מדף תחתון,199.90,"פח אשפה, פח חכם, פח למטבח"\n');
 $('import-file').addEventListener('change', async (e) => {

@@ -89,7 +89,8 @@ function showResults(statusText) {
     const info = document.createElement('div');
     info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
       <div class="meta">${p.level ? escapeHtml(p.level) : ''}</div>
-      <div class="row" style="margin-top:8px;gap:8px"><span class="chip o">📍 ${escapeHtml(shortShelf(shelf))}</span>${p.price ? `<span class="price">${escapeHtml(formatPrice(p.price))}</span>` : ''}</div>`;
+      <div class="row" style="margin-top:8px;gap:8px"><span class="chip o">📍 ${escapeHtml(shortShelf(shelf))}</span>${p.price ? `<span class="price">${escapeHtml(formatPrice(p.price))}</span>` : ''}</div>
+      ${p.promo ? `<div class="promo-tag" style="margin-top:6px">🏷️ ${escapeHtml(p.promo)}</div>` : ''}`;
     item.append(canvas, info);
     item.addEventListener('click', () => showDetail(p));
     $('results').appendChild(item);
@@ -155,6 +156,9 @@ function showDetail(p) {
   $('detail-desc').textContent = p.description;
   $('detail-chips').innerHTML = [shelf && chip(`📍 ${shelf.name}`, 'o'), p.level && chip(p.level)].filter(Boolean).join('');
   $('detail-price').textContent = p.price ? formatPrice(p.price) : '';
+  $('detail-promo').textContent = p.promo ? `🏷️ מבצע: ${p.promo}` : '';
+  $('detail-promo').classList.toggle('hidden', !p.promo);
+  loadRelated(p);
   $('detail-meters').textContent = '';
   if (shelf) {
     const here = hereShelf && aisleSpot(store.map, hereShelf);
@@ -195,6 +199,37 @@ $('search-form').addEventListener('submit', (e) => {
   history.replaceState(null, '', `?q=${encodeURIComponent($('q').value.trim())}`);
   runSearch($('q').value);
 });
+
+// ---------- deals and "shoppers also looked at" ----------
+function miniCard(p) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'mini-card';
+  const canvas = document.createElement('canvas');
+  drawCrop(canvas, p.image || p.photo, p.image ? null : p.box, 240);
+  const shelf = shelfOf(p);
+  card.innerHTML = `${p.promo ? `<span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : ''}
+    <span class="mc-name">${escapeHtml(p.name)}</span>
+    <span class="mc-meta">📍 ${escapeHtml(shortShelf(shelf))}${p.price ? ` · ${escapeHtml(formatPrice(p.price))}` : ''}</span>`;
+  card.prepend(canvas);
+  card.addEventListener('click', () => { results = [p]; showDetail(p); });
+  return card;
+}
+async function loadDeals() {
+  const deals = await api(`/api/public/${encodeURIComponent(slug)}/deals`).catch(() => []);
+  $('deals-row').replaceChildren(...deals.map(miniCard));
+  $('deals').classList.toggle('hidden', !deals.length);
+}
+let relatedFor = null;
+async function loadRelated(p) {
+  relatedFor = p.id;
+  $('related').classList.add('hidden');
+  const r = await api(`/api/public/${encodeURIComponent(slug)}/products/${p.id}/related`).catch(() => null);
+  if (!r || relatedFor !== p.id || !r.products.length) return;
+  $('related-title').textContent = r.kind === 'together' ? '🛒 לקוחות שחיפשו את זה, חיפשו גם' : '📍 עוד באותו מעבר';
+  $('related-row').replaceChildren(...r.products.map(miniCard));
+  $('related').classList.remove('hidden');
+}
 
 // ---------- "found it?" feedback: every answer is a shelf check done by a shopper ----------
 function resetFeedback() {
@@ -381,6 +416,7 @@ if (Recognition) {
       $('here-banner').classList.remove('hidden');
     }
     renderListBar();
+    loadDeals();
     const q = params.get('q');
     const lastId = hereShelf && !q ? recentProductId() : null;
     if (q) { $('q').value = q; runSearch(q); }
