@@ -43,3 +43,11 @@ test('no match returns empty', () => {
   assert.deepEqual(search('אופניים', products), []);
   assert.deepEqual(search('   ', products), []);
 });
+
+test('stray fuzzy matches are dropped when a strong match exists', () => {
+  const items = [
+    { id: 1, name: 'נוזל כלים Fairy', keywords: 'סבון כלים, נוזל לשטיפת כלים', description: '' },
+    { id: 2, name: 'קורקינט 3 גלגלים', keywords: 'קורקינט לילדים', description: '' },
+  ];
+  assert.deepEqual(search('סבון כלים', items).map((r) => r.product.id), [1]);
+});

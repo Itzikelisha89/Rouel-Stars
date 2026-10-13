@@ -53,6 +53,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_searches_store ON searches(store_id);
 `);
 
+// Migrations for databases created by earlier versions.
+if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'price')) {
+  db.exec("ALTER TABLE products ADD COLUMN price TEXT NOT NULL DEFAULT ''");
+}
+
 // Each grid cell is roughly 1m x 1m, so 40x25 fits a ~1000m² store.
 const DEFAULT_MAP = { cols: 40, rows: 25, entrance: { x: 20, y: 24 }, shelves: [] };
 

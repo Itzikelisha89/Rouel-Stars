@@ -92,6 +92,7 @@ function search(query, products, limit = 10) {
     .map((p) => ({ product: p, score: scoreProduct(queryTokens, p) }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score)
+    .filter((r, _, all) => r.score >= all[0].score * 0.15) // drop stray fuzzy matches far below the best one
     .slice(0, limit);
 }
 

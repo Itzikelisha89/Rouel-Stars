@@ -1,4 +1,4 @@
-import { api, getToken, setToken, escapeHtml, resizeImage } from '/js/api.js';
+import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice } from '/js/api.js';
 import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
 
 if (!getToken()) location.href = '/';
@@ -190,7 +190,7 @@ function productItem(p) {
   const view = () => {
     body.innerHTML = `
       <div class="name">${escapeHtml(p.name)}</div>
-      <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}</div>
+      <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}${p.price ? ` · ${escapeHtml(formatPrice(p.price))}` : ''}</div>
       <div class="meta">${escapeHtml(p.keywords)}</div>
       <div class="row" style="margin-top:6px"><button data-a="edit">עריכה</button><button data-a="del" class="danger">מחיקה</button></div>`;
   };
@@ -201,6 +201,7 @@ function productItem(p) {
       <div class="row" style="margin-top:6px">
         <select data-f="shelfId" class="grow">${store.map.shelves.map((s) => `<option value="${escapeHtml(s.id)}"${s.id === p.shelfId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}</select>
         <input data-f="level" value="${escapeHtml(p.level)}" placeholder="קומת מדף" class="grow">
+        <input data-f="price" value="${escapeHtml(p.price || '')}" placeholder="מחיר" class="grow">
       </div>
       <div class="row" style="margin-top:6px"><button data-a="save" class="primary">שמירה</button><button data-a="cancel">ביטול</button></div>`;
   };
@@ -242,6 +243,54 @@ function renderProducts() {
   $('product-count').textContent = products.length;
 }
 $('product-filter').addEventListener('input', renderProducts);
+
+// ---------- catalog import ----------
+function parseCsv(text) {
+  text = text.replace(/^﻿/, '');
+  const delim = (text.split('\n')[0].match(/\t/g) || []).length > (text.split('\n')[0].match(/,/g) || []).length ? '\t' : ',';
+  const rows = []; let row = [], field = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') quoted = false;
+      else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === delim) { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some((f) => f.trim())) rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.some((f) => f.trim())) rows.push(row);
+  return rows;
+}
+const COLUMNS = {
+  name: ['שם', 'שם מוצר', 'מוצר', 'name'], shelf: ['מעבר', 'מיקום', 'aisle', 'shelf'], keywords: ['מילות חיפוש', 'מילים נרדפות', 'keywords'],
+  level: ['מדף', 'קומת מדף', 'level'], price: ['מחיר', 'price'], description: ['תיאור', 'description'],
+};
+$('import-template').href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿שם,מעבר,מדף,מחיר,מילות חיפוש\nפח סנסור DUBLIN 30 ליטר,4,מדף תחתון,199.90,"פח אשפה, פח חכם, פח למטבח"\n');
+$('import-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const [header, ...data] = parseCsv(await file.text());
+  const idx = {};
+  header.forEach((h, i) => {
+    for (const [key, names] of Object.entries(COLUMNS)) if (!(key in idx) && names.includes(h.trim().toLowerCase())) idx[key] = i;
+  });
+  if (!('name' in idx) || !('shelf' in idx)) return ($('import-status').textContent = 'חסרות עמודות "שם" ו"מעבר" בשורה הראשונה של הקובץ.');
+  const rows = data.map((r) => Object.fromEntries(Object.entries(idx).map(([k, i]) => [k, r[i] ?? ''])));
+  $('import-status').textContent = `מייבא ${rows.length} מוצרים…`;
+  try {
+    const res = await api('/api/products/import', { method: 'POST', body: { rows } });
+    $('import-status').textContent = `נוספו ${res.added} מוצרים.` + (res.skippedCount ? ` ${res.skippedCount} שורות דולגו: ${res.skipped.slice(0, 5).map((s) => `שורה ${s.row} (${s.reason})`).join(', ')}` : '');
+    loadProducts();
+  } catch (err) { $('import-status').textContent = err.message; }
+});
 
 // ---------- share / insights ----------
 async function loadShare() {

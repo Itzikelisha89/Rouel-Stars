@@ -82,6 +82,15 @@
           <h2 class="grow" style="margin:0">מוצרים <span class="badge" id="product-count">0</span></h2>
           <input class="grow" id="product-filter" placeholder="סינון…">
         </div>
+        <details class="import-box">
+          <summary>📥 ייבוא קטלוג מקובץ (Excel / CSV)</summary>
+          <p class="muted" style="margin-top:8px">שומרים את קובץ האקסל בפורמט CSV ובוחרים אותו כאן. עמודות: <b>שם</b>, <b>מעבר</b> (שם המדף כמו במפה, או רק המספר שלו), ואם יש: <b>מילות חיפוש</b>, <b>מדף</b>, <b>מחיר</b>, <b>תיאור</b>.</p>
+          <div class="row">
+            <label class="btn primary" style="margin:0">בחירת קובץ<input type="file" id="import-file" accept=".csv,text/csv,.txt" class="hidden"></label>
+            <a class="btn" id="import-template" download="תבנית-קטלוג.csv">הורדת תבנית</a>
+          </div>
+          <p id="import-status" class="muted" style="margin-top:8px"></p>
+        </details>
         <div class="product-list" id="product-list"></div>
       </div>
     </section>

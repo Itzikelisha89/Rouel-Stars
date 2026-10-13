@@ -50,6 +50,7 @@ function productRow(p) {
     description: p.description,
     keywords: p.keywords,
     level: p.level,
+    price: p.price || '',
     box: p.box_json ? JSON.parse(p.box_json) : null,
     photo: p.file ? `/uploads/${p.file}` : null,
     photoId: p.photo_id,
@@ -87,7 +88,7 @@ function validateMap(map) {
 function cleanProduct(body) {
   const str = (v, max) => String(v ?? '').trim().slice(0, max);
   const keywords = Array.isArray(body.keywords) ? body.keywords.join(', ') : body.keywords;
-  return { name: str(body.name, 120), description: str(body.description, 500), keywords: str(keywords, 1000), level: str(body.level, 60) };
+  return { name: str(body.name, 120), description: str(body.description, 500), keywords: str(keywords, 1000), level: str(body.level, 60), price: str(body.price, 30) };
 }
 
 function shelfExists(store, shelfId) {
@@ -180,9 +181,35 @@ app.post('/api/products', requireOwner, (req, res) => {
   if (!p.name) return res.status(400).json({ error: 'צריך שם מוצר' });
   if (!shelfExists(req.store, req.body.shelfId)) return res.status(400).json({ error: 'בחר מדף' });
   const photoId = req.body.photoId && db.prepare('SELECT id FROM photos WHERE id = ? AND store_id = ?').get(req.body.photoId, req.store.id)?.id;
-  const { lastInsertRowid } = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(req.store.id, req.body.shelfId, photoId || null, p.name, p.description, p.keywords, p.level);
+  const { lastInsertRowid } = db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(req.store.id, req.body.shelfId, photoId || null, p.name, p.description, p.keywords, p.level, p.price);
   res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, lastInsertRowid)));
+});
+
+// Bulk import from a catalog file (parsed to rows in the browser). `shelf` is matched by name,
+// or by aisle number ("4" matches "מעבר 4 · פחים").
+app.post('/api/products/import', requireOwner, (req, res) => {
+  const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 5000) : [];
+  const shelves = JSON.parse(req.store.map_json).shelves;
+  const findShelf = (v) => {
+    const t = String(v ?? '').trim();
+    if (!t) return null;
+    return shelves.find((s) => s.name === t) || shelves.find((s) => s.name.startsWith(t)) ||
+      (/^\d+$/.test(t) ? shelves.find((s) => new RegExp(`(^|\\D)${t}(\\D|$)`).test(s.name)) : null);
+  };
+  const insert = db.prepare(`INSERT INTO products (store_id, shelf_id, name, description, keywords, level, price)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const skipped = [];
+  let added = 0;
+  rows.forEach((r, i) => {
+    const p = cleanProduct(r);
+    const shelf = findShelf(r.shelf);
+    if (!p.name) return skipped.push({ row: i + 2, reason: 'חסר שם מוצר' });
+    if (!shelf) return skipped.push({ row: i + 2, reason: `לא נמצא מדף "${r.shelf ?? ''}"` });
+    insert.run(req.store.id, shelf.id, p.name, p.description, p.keywords, p.level, p.price);
+    added++;
+  });
+  res.json({ added, skipped: skipped.slice(0, 50), skippedCount: skipped.length });
 });
 
 app.put('/api/products/:id', requireOwner, (req, res) => {
@@ -192,8 +219,8 @@ app.put('/api/products/:id', requireOwner, (req, res) => {
   if (!p.name) return res.status(400).json({ error: 'צריך שם מוצר' });
   const shelfId = req.body.shelfId ?? existing.shelf_id;
   if (!shelfExists(req.store, shelfId)) return res.status(400).json({ error: 'בחר מדף' });
-  db.prepare('UPDATE products SET name = ?, description = ?, keywords = ?, level = ?, shelf_id = ? WHERE id = ?')
-    .run(p.name, p.description, p.keywords, p.level, shelfId, existing.id);
+  db.prepare('UPDATE products SET name = ?, description = ?, keywords = ?, level = ?, price = ?, shelf_id = ? WHERE id = ?')
+    .run(p.name, p.description, p.keywords, p.level, p.price, shelfId, existing.id);
   res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, existing.id)));
 });
 

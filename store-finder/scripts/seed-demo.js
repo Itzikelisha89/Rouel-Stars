@@ -2,7 +2,9 @@
 // simulated searches with seasonal demand, so the demand dashboard has something to show.
 //   node scripts/seed-demo.js
 const crypto = require('node:crypto');
-const { db } = require('../db');
+const fs = require('node:fs');
+const path = require('node:path');
+const { db, UPLOAD_DIR } = require('../db');
 const { holidayDates } = require('../insights');
 
 const SLUG = 'demo';
@@ -17,18 +19,21 @@ if (old) db.prepare('DELETE FROM stores WHERE id = ?').run(old.id);
 const salt = crypto.randomBytes(16).toString('hex');
 const map = {
   cols: 40, rows: 25, entrance: { x: 20, y: 24 },
-  shelves: [34, 29, 24, 19, 14, 9, 4].map((x, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1}`, x, y: 4, w: 2, h: 15 })),
+  shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'פחים', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים']
+    .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4][i], y: 4, w: 2, h: 15 })),
 };
 const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
-  .run(SLUG, 'כלי בית · סניף הדגמה', `${salt}:${crypto.scryptSync('demo1234', salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);
+  .run(SLUG, 'הסטוק · סניף הדגמה', `${salt}:${crypto.scryptSync('demo1234', salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);
 
-const products = [
-  ['סיר נירוסטה 16 ס"מ', 'סיר קטן, סירים, כלי בישול', 'a4'], ['סיר נירוסטה 24 ס"מ', 'סיר גדול, סירים', 'a4'],
-  ['מחבת נון-סטיק 28 ס"מ', 'מחבת, טיגון', 'a4'], ['קומקום חשמלי', 'קומקום, מים חמים', 'a2'],
-  ['סט סכינים', 'סכין, סכינים', 'a3'], ['צלחות הגשה', 'צלחת, הגשה', 'a5'], ['כוסות זכוכית', 'כוס, כוסות', 'a5'],
-];
-for (const [name, keywords, shelf] of products) {
-  db.prepare('INSERT INTO products (store_id, shelf_id, name, keywords, level) VALUES (?, ?, ?, ?, ?)').run(storeId, shelf, name, keywords, 'מדף אמצעי');
+// Real products from the chain's catalog (demo/hastock), each with its photo.
+const CAT = path.join(__dirname, '..', 'demo', 'hastock');
+const products = JSON.parse(fs.readFileSync(path.join(CAT, 'catalog.json'), 'utf8'));
+for (const p of products) {
+  const file = `${storeId}-demo-${p.image}`;
+  fs.copyFileSync(path.join(CAT, p.image), path.join(UPLOAD_DIR, file));
+  const photoId = db.prepare('INSERT INTO photos (store_id, shelf_id, file) VALUES (?, ?, ?)').run(storeId, p.aisle, file).lastInsertRowid;
+  db.prepare(`INSERT INTO products (store_id, shelf_id, photo_id, name, description, keywords, level, price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(storeId, p.aisle, photoId, p.name, `${p.brand} · ${p.category}`, p.keywords, p.level, p.price);
 }
 
 const now = new Date();
@@ -38,9 +43,11 @@ const near = (d, key, days = 28) => holidays.some((h) => h.key === key && h.date
 
 // [queries (spelling variants), found?, base daily rate, seasonal boost(day) -> multiplier]
 const DEMAND = [
-  [['סיר קטן', 'סיר קטנ', 'סירים קטנים'], true, 1.6, () => 1],
-  [['מחבת', 'מחבת טפלון'], true, 1.2, () => 1],
-  [['קומקום'], true, 0.6, (d) => ([10, 11, 0, 1].includes(d.getUTCMonth()) ? 2 : 1)],
+  [['פח למטבח', 'פח אשפה', 'פח עם חיישן'], true, 1.4, () => 1],
+  [['מצעים', 'מצעים לילדים', 'סט מצעים'], true, 1.0, (d) => (near(d, 'rosh', 21) ? 2.5 : 1)],
+  [['צנצנות תבלינים', 'צנצנות'], true, 0.7, () => 1],
+  [['קורקינט', 'קורקינט לילדים'], true, 0.6, (d) => (near(d, 'sukkot', 21) ? 3 : 1)],
+  [['סל כביסה'], true, 0.5, () => 1],
   [['כלים לפסח', 'סט כלים לפסח', 'סירים לפסח'], false, 0.05, (d) => (near(d, 'pesach') ? 40 : 1)],
   [['סיר לחץ חשמלי', 'סיר לחץ', 'מולטיקוקר'], false, 0.15, (d) => 1 + 4 * Math.max(0, 1 - (now - d) / (60 * DAY))],
   [['מחבת לסופגניות', 'סיר לטיגון עמוק', 'פריטוז'], false, 0.03, (d) => (near(d, 'hanukkah') ? 45 : 1)],

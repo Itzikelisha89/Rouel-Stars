@@ -1,4 +1,4 @@
-import { api, escapeHtml } from '/js/api.js';
+import { api, escapeHtml, formatPrice } from '/js/api.js';
 import { renderMap, findPath, describeLocation, drawCrop, aisleSpot } from '/js/map.js';
 
 const $ = (id) => document.getElementById(id);
@@ -41,7 +41,7 @@ async function runSearch(q) {
       const shelf = shelfOf(p);
       const info = document.createElement('div');
       info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
-        <div class="meta">📍 ${escapeHtml(shelf?.name ?? '')}${p.level ? ` · ${escapeHtml(p.level)}` : ''}</div>`;
+        <div class="meta">📍 ${escapeHtml(shelf?.name ?? '')}${p.level ? ` · ${escapeHtml(p.level)}` : ''}</div>${p.price ? `<div class="price">${escapeHtml(formatPrice(p.price))}</div>` : ''}`;
       item.append(canvas, info);
       item.addEventListener('click', () => showDetail(p));
       $('results').appendChild(item);
@@ -64,7 +64,7 @@ function showDetail(p) {
   drawCrop($('detail-crop'), p.photo, p.box, 480);
   $('detail-name').textContent = p.name;
   $('detail-desc').textContent = p.description;
-  $('detail-where').textContent = `📍 ${shelf?.name ?? ''}${p.level ? ` · ${p.level}` : ''}`;
+  $('detail-where').textContent = `📍 ${shelf?.name ?? ''}${p.level ? ` · ${p.level}` : ''}${p.price ? ` · ${formatPrice(p.price)}` : ''}`;
   if (shelf) {
     const here = hereShelf && aisleSpot(store.map, hereShelf);
     const path = findPath(store.map, shelf, here || store.map.entrance);

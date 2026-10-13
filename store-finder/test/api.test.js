@@ -100,3 +100,23 @@ test('full owner -> customer flow', async () => {
   r = await call('PUT', '/api/store/map', { token, body: { ...MAP, shelves: [MAP.shelves[0]] } });
   assert.equal(r.data.removedProducts, 1);
 });
+
+test('catalog import matches shelves by name or aisle number', async () => {
+  let r = await call('POST', '/api/stores', { body: { name: 'יבוא', slug: 'import-test', password: 'secret1' } });
+  const token = r.data.token;
+  await call('PUT', '/api/store/map', { token, body: { cols: 10, rows: 8, entrance: { x: 5, y: 7 },
+    shelves: [{ id: 's4', name: 'מעבר 4 · פחים', x: 1, y: 1, w: 1, h: 5 }, { id: 's14', name: 'מעבר 14', x: 4, y: 1, w: 1, h: 5 }] } });
+  r = await call('POST', '/api/products/import', { token, body: { rows: [
+    { name: 'פח סנסור DUBLIN', shelf: '4', price: '199.90', keywords: 'פח אשפה' },
+    { name: 'סל כביסה', shelf: 'מעבר 14' },
+    { name: 'ואזה', shelf: '9' },
+    { name: '', shelf: '4' },
+  ] } });
+  assert.equal(r.data.added, 2);
+  assert.equal(r.data.skippedCount, 2);
+  r = await call('GET', '/api/products', { token });
+  const bin = r.data.find((p) => p.name === 'פח סנסור DUBLIN');
+  assert.equal(bin.shelfId, 's4');
+  assert.equal(bin.price, '199.90');
+  assert.equal(r.data.find((p) => p.name === 'סל כביסה').shelfId, 's14');
+});

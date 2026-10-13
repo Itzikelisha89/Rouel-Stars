@@ -22,6 +22,11 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   return data;
 }
 
+// "199.90" -> "₪199.90"; deals like "2 ב-25" are shown as written
+export function formatPrice(p) {
+  return /^[\d.,\s-]+$/.test(p) ? `₪${p}` : p;
+}
+
 export function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
