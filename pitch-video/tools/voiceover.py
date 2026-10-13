@@ -49,6 +49,7 @@ def duration(path):
     return float(out.stdout)
 
 
+MUSIC_VOLUME = float(os.environ.get('MUSIC_VOLUME', '0.38'))  # music level under and between the narration
 CLIPS = os.environ.get('VOICE_CLIPS_DIR')  # pre-generated seg{i}.wav files (e.g. from f5_hebrew_tts.py) instead of the API
 
 
@@ -70,7 +71,7 @@ def main():
             clip = os.path.join(CLIPS, f'seg{i}.wav')
         else:
             clip = os.path.join(tmp, f'seg{i}.mp3')
-            audio = request(f'/text-to-speech/{VOICE}?output_format=mp3_44100_192', {
+            audio = request(f'/text-to-speech/{VOICE}?output_format=mp3_44100_128', {
                 'text': text, 'model_id': MODEL, 'language_code': 'he',
                 'voice_settings': {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.25, 'use_speaker_boost': True},
             })
@@ -83,7 +84,7 @@ def main():
     n = len(SEGMENTS)
     filters.append(''.join(f'[v{i}]' for i in range(n)) + f'amix=inputs={n}:normalize=0,loudnorm=I=-16:TP=-1.5,apad[voice]')
     filters.append('[voice]asplit=2[vo][sc]')
-    filters.append('[1:a]volume=0.28[mus]')
+    filters.append(f'[1:a]volume={MUSIC_VOLUME}[mus]')
     filters.append('[mus][sc]sidechaincompress=threshold=0.02:ratio=8:attack=20:release=400[duck]')
     filters.append('[vo][duck]amix=inputs=2:normalize=0[mix]')
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', video, '-i', music, *inputs,
