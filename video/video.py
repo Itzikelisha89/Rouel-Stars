@@ -228,6 +228,30 @@ def build_assets():
     A['c_anx'] = circ_src('2021_08_דף-פנימי-אודות_45.jpg', 40)
     A['c_prod'] = circ_src('2022_09_מוצרים.jpg', 40)
 
+    PH = os.environ.get('PHOTOS', os.path.join(HERE, 'photos'))
+    def polaroid(name, crop, size, enhance=1.0):
+        from PIL import ImageEnhance, ImageOps
+        im = Image.open(os.path.join(PH, name)).convert('RGB').crop(crop)
+        im = ImageOps.fit(im, size, Image.LANCZOS, centering=(0.5, 0.35))
+        if enhance != 1.0:
+            im = ImageEnhance.Contrast(im).enhance(enhance); im = ImageEnhance.Brightness(im).enhance(0.93)
+        im = ImageEnhance.Color(im).enhance(1.1)
+        b, bb = 18, 70
+        fw, fh = size[0] + 2 * b, size[1] + b + bb
+        sh = 40
+        out = Image.new('RGBA', (fw + 2 * sh, fh + 2 * sh), (0, 0, 0, 0))
+        m = Image.new('L', out.size, 0); ImageDraw.Draw(m).rectangle((sh + 6, sh + 12, sh + fw + 6, sh + fh + 12), fill=170)
+        shadow = Image.new('RGBA', out.size, (0, 0, 0, 0)); shadow.putalpha(m.filter(ImageFilter.GaussianBlur(16)))
+        out = Image.alpha_composite(out, shadow)
+        frame_ = Image.new('RGBA', (fw, fh), (250, 247, 238, 255))
+        frame_.paste(im, (b, b))
+        ImageDraw.Draw(frame_).rectangle((b - 1, b - 1, b + size[0], b + size[1]), outline=(200, 190, 170, 255), width=1)
+        out.alpha_composite(frame_, (sh, sh))
+        return out
+    A['pol'] = [polaroid('1_sunny.jpg', (0, 98, 1320, 1800), (470, 600), 1.15),
+                polaroid('2_party.jpg', (0, 0, 1320, 974), (640, 470)),
+                polaroid('3_costume.jpg', (0, 0, 1320, 1700), (470, 600)),
+                polaroid('4_family.jpg', (0, 31, 1320, 770), (700, 392))]
     T = {}
     def tx(key, s, fname, size, style='gold', **kw): T[key] = text_sprite(s, fname, size, style, **kw)
     tx('intro1', 'יום מיוחד', F_TITLE, 120)
@@ -250,10 +274,10 @@ def build_assets():
     tx('je2', 'מוצרים טבעיים · קורסים · סדנאות', F_BODY, 58, 'white')
     tx('grow', 'שהקליניקה תמשיך לפרוח ולצמוח!', F_TITLE, 96, 'mint')
     tx('w0', 'שוקי היקר,', F_TITLE, 92)
-    tx('w1', 'מאחלים לך בריאות, אושר ושפע', F_BODY, 72, 'white')
-    tx('w2', 'הצלחה גדולה בכל מה שאתה עושה', F_BODY, 72, 'white')
-    tx('w3', 'שתמשיך לרפא ולהאיר', F_BODY, 72, 'mint')
-    tx('w4', 'לכל כך הרבה אנשים', F_BODY, 72, 'mint')
+    tx('w1', 'מאחלים לך בריאות, אושר ושפע', F_BODY, 64, 'white')
+    tx('w2', 'הצלחה גדולה בכל מה שאתה עושה', F_BODY, 64, 'white')
+    tx('w3', 'שתמשיך לרפא ולהאיר', F_BODY, 64, 'mint')
+    tx('w4', 'לכל כך הרבה אנשים', F_BODY, 64, 'mint')
     tx('fin1', 'מזל טוב שוקי!', F_TITLE, 170)
     tx('fin2', 'עד 120!', F_TITLE, 130)
     tx('fin3', 'יהושע אלישע · הקליניקה לרפואה טבעית', F_BODY, 50, 'white')
@@ -476,12 +500,26 @@ def frame(fi):
     if t >= T_V3 - 0.1:
         draw_fireworks(c, t, 1.0)
         fin = 53.9
-        pa = window(t, T_V3, 60, 0.6, 0.01)
-        pin = ease_back((t - T_V3) / 1.0)
-        pr = portrait(t, 520, 1.12, 0.95, T_V3, 59)
-        px = 1440 if t < fin else 1440 + (1460 - 1440) * ease_in_out((t - fin) / 1)
-        paste(c, pr, px, 520, (0.7 + 0.3 * pin), pa)
-        # rotating sparkle ring around portrait
+        # polaroid memories pile (until finale)
+        PT = [T_V3 + 0.3 + i * 2.25 for i in range(4)]
+        ROT = [-6, 5, -4, 3]; OFF = [(-30, -10), (25, 10), (-15, 20), (0, -5)]
+        for i, (pol, ti) in enumerate(zip(A['pol'], PT)):
+            if t < ti: continue
+            p = ease_out((t - ti) / 0.9)
+            out_p = ease_in_out((t - fin + 0.1) / 0.7)
+            x = 1400 + OFF[i][0] + (1 - p) * 700 + out_p * (300 + 120 * i)
+            y = 540 + OFF[i][1] + (1 - p) * 120 * (1 if i % 2 else -1) - out_p * 80
+            rot = ROT[i] + (1 - p) * (25 if i % 2 else -25)
+            dim = 1.0 if i == 3 or t < PT[i + 1] else 0.85
+            sc = (0.8 if i == 3 else 0.86) * (1.0 + 0.04 * ease_in_out((t - ti) / 6)) * dim ** 0.3
+            paste(c, pol, x, y, sc, (1 - out_p) * clamp((t - ti) / 0.3), rot=rot)
+        # finale portrait medallion
+        pa = window(t, fin, 60, 0.6, 0.01)
+        pin = ease_back((t - fin) / 1.0)
+        pr = portrait(t, 520, 1.12, 0.98, fin, 59.5)
+        px = 1440
+        if pa > 0:
+            paste(c, pr, px + (1 - pin) * 200, 520, (0.7 + 0.3 * pin), pa)
         for k in range(12):
             ang = t * 0.9 + k * math.pi / 6
             rr = 330
@@ -491,7 +529,7 @@ def frame(fi):
         lines = [('w0', T_V3 + 0.6, 230), ('w1', T_V3 + 1.8, 400), ('w2', T_V3 + 3.6, 540), ('w3', T_V3 + 5.5, 690), ('w4', T_V3 + 6.4, 810)]
         for k, ti, y in lines:
             a = window(t, ti, fin, 0.7, 0.5)
-            paste(c, T[k], cx + 50 * (1 - ease_out((t - ti) / 0.8)), y, 1, a)
+            paste(c, T[k], 590 + 50 * (1 - ease_out((t - ti) / 0.8)), y, 1, a)
         # finale
         a = window(t, fin + 0.2, 60, 0.6, 0.01)
         paste(c, shine(T['fin1'], (t - fin - 1.4) / 1.3), cx, 330, 0.6 + 0.4 * ease_back((t - fin - 0.2) / 0.8), a)
