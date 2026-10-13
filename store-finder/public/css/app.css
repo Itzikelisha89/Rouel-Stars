@@ -245,6 +245,8 @@ body.searching .deals { display: none; }
 
 /* customer: shopping list, feedback, help */
 .help-btn { padding: 8px 14px; border-radius: 999px; font-size: .92rem; }
+.lang-select { width: auto; padding: 8px 10px; border-radius: 999px; font-size: .88rem; font-weight: 700; }
+[dir=ltr] .search-bar .s-ico { padding: 0 0 0 6px; }
 .list-toggle { width: 100%; margin-top: 12px; }
 .list-toggle.on { background: rgba(34, 197, 94, .14); border-color: rgba(34, 197, 94, .5); color: #8ff0b0; }
 .fb-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

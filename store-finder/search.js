@@ -18,11 +18,13 @@ function tokenize(text) {
   return normalize(text).split(' ').filter((t) => t && !STOP_WORDS.has(t));
 }
 
-// "והסירים" -> ["והסירימ", "הסירימ", "סירימ", "סיר"] (finals already normalized)
-function variants(token) {
+// "והסירים" -> ["והסירימ", "הסירימ", "סירימ", "סיר"] (finals already normalized).
+// minStem: shortest word left after removing a prefix letter. Product words use 4, so "מסיר" (remover)
+// doesn't turn into "סיר" (pot); a shopper's query keeps 3 ("לסיר" -> "סיר").
+function variants(token, minStem = 3) {
   const out = new Set([token]);
   let t = token;
-  for (let i = 0; i < 2 && t.length > 3 && PREFIXES.includes(t[0]); i++) {
+  for (let i = 0; i < 2 && t.length > minStem && PREFIXES.includes(t[0]); i++) {
     t = t.slice(1);
     out.add(t);
   }
@@ -51,11 +53,11 @@ function tokenScore(queryToken, fieldTokens, fuzzy = true) {
   let best = 0;
   const qv = variants(queryToken);
   for (const ft of fieldTokens) {
-    for (const fv of variants(ft)) {
+    for (const fv of variants(ft, 4)) {
       for (const q of qv) {
         if (q === fv) return 3;
         if (q.length >= 2 && fv.startsWith(q)) best = Math.max(best, 2);
-        else if (q.length >= 3 && fv.includes(q)) best = Math.max(best, 1.5);
+        else if (q.length >= 4 && fv.includes(q)) best = Math.max(best, 1.5); // 3 letters inside a word is too loose ("סיר" in "מסיר")
         else if (fuzzy && q.length >= 4 && editDistanceAtMost1(q, fv)) best = Math.max(best, 1);
       }
     }

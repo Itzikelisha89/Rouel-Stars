@@ -51,3 +51,14 @@ test('stray fuzzy matches are dropped when a strong match exists', () => {
   ];
   assert.deepEqual(search('סבון כלים', items).map((r) => r.product.id), [1]);
 });
+
+test('a prefix letter on a product word does not create a different word ("מסיר" is not "סיר")', () => {
+  const products = [
+    { id: 1, name: 'סיר נירוסטה', keywords: 'סירים', description: '' },
+    { id: 2, name: 'ספריי Vanish', keywords: 'מסיר כתמים', description: '' },
+    { id: 3, name: 'קערה', keywords: 'לבישול', description: '' },
+  ];
+  assert.deepEqual(search('סיר', products).map((r) => r.product.id), [1]);
+  assert.deepEqual(search('בישול', products).map((r) => r.product.id), [3]);
+  assert.equal(search('לסיר', products)[0].product.id, 1);
+});

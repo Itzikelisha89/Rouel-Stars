@@ -1,5 +1,6 @@
 import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js';
 import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute } from '/js/map.js';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -18,8 +19,8 @@ function speak(text) {
   if (!canSpeak || !text) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(forSpeech(text));
-  u.lang = 'he-IL';
-  const voice = speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith('he'));
+  u.lang = LANGS[lang].voice;
+  const voice = speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith(lang));
   if (voice) u.voice = voice;
   u.rate = 1;
   speechSynthesis.speak(u);
@@ -52,7 +53,7 @@ function recentProductId() {
 
 function shelfOf(p) { return store.map.shelves.find((s) => s.id === p.shelfId); }
 // "מעבר 4 · פחים" -> "מעבר 4" for compact chips
-function shortShelf(shelf) { return (shelf?.name ?? '').split('·')[0].trim(); }
+function shortShelf(shelf) { return aisleName(shelf, { short: true }); }
 function chip(text, cls = '') { return `<span class="chip ${cls}">${escapeHtml(text)}</span>`; }
 
 async function runSearch(q) {
@@ -61,20 +62,20 @@ async function runSearch(q) {
   lastQuery = q;
   showList();
   document.body.classList.add('searching');
-  $('status').innerHTML = '<span class="row"><span class="spinner"></span> מחפש…</span>';
+  $('status').innerHTML = `<span class="row"><span class="spinner"></span> ${t('searching')}</span>`;
   $('results').innerHTML = '';
   try {
     const data = await api(`/api/public/${encodeURIComponent(slug)}/search?q=${encodeURIComponent(q)}&v=${visitor}`);
     results = data.results;
     if (!results.length) {
-      $('status').textContent = `לא מצאנו "${q}". אפשר לנסות מילה אחרת 🙂`;
+      $('status').textContent = t('not_found', { q });
       $('request-done').classList.add('hidden');
       $('request-form').classList.remove('hidden');
       $('no-results').classList.remove('hidden');
-      if (voiceMode) speak(`לא מצאנו ${q} בחנות. אפשר לבקש שנביא את זה.`);
+      if (voiceMode) speak(t('voice_not_found', { q }));
       return;
     }
-    showResults(data.expanded ? `לא מצאנו בדיוק "${q}", אבל אולי התכוונת לזה:` : `נמצאו ${results.length} תוצאות`);
+    showResults(data.expanded ? t('maybe_meant', { q }) : t('n_results', { n: results.length }));
   } catch (err) { $('status').textContent = err.message; }
 }
 
@@ -88,7 +89,7 @@ function showResults(statusText) {
     const shelf = shelfOf(p);
     const info = document.createElement('div');
     info.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
-      <div class="meta">${p.level ? escapeHtml(p.level) : ''}</div>
+      <div class="meta">${p.level ? escapeHtml(levelName(p.level)) : ''}</div>
       <div class="row" style="margin-top:8px;gap:8px"><span class="chip o">📍 ${escapeHtml(shortShelf(shelf))}</span>${p.price ? `<span class="price">${escapeHtml(formatPrice(p.price))}</span>` : ''}</div>
       ${p.promo ? `<div class="promo-tag" style="margin-top:6px">🏷️ ${escapeHtml(p.promo)}</div>` : ''}`;
     item.append(canvas, info);
@@ -96,7 +97,7 @@ function showResults(statusText) {
     $('results').appendChild(item);
   }
   if (results.length === 1) showDetail(results[0]);
-  else if (voiceMode) speak(`מצאתי ${results.length} תוצאות. בחר מוצר מהרשימה.`);
+  else if (voiceMode) speak(t('voice_n_results', { n: results.length }));
 }
 
 // Search by photo: snap the product (or a flyer / WhatsApp picture) and we find it in the store.
@@ -104,7 +105,7 @@ async function photoSearch(file) {
   showList();
   document.body.classList.add('searching');
   $('results').innerHTML = '';
-  $('status').innerHTML = '<span class="row"><span class="spinner"></span> מזהה את המוצר בתמונה…</span>';
+  $('status').innerHTML = `<span class="row"><span class="spinner"></span> ${t('identifying')}</span>`;
   try {
     const form = new FormData();
     form.append('image', await resizeImage(file, 1024), 'photo.jpg');
@@ -112,19 +113,19 @@ async function photoSearch(file) {
     const data = await api(`/api/public/${encodeURIComponent(slug)}/photo-search`, { method: 'POST', form });
     results = data.results;
     if (!data.identified.found) {
-      $('status').textContent = 'לא הצלחנו לזהות מוצר בתמונה. נסו לצלם קרוב יותר, או לכתוב מה מחפשים 🙂';
+      $('status').textContent = t('photo_unknown');
       return;
     }
     lastQuery = data.identified.name;
     $('q').value = data.identified.name;
     if (!results.length) {
-      $('status').textContent = `זיהינו: "${data.identified.name}", אבל אין לנו את זה בחנות כרגע.`;
+      $('status').textContent = t('photo_not_in_store', { name: data.identified.name });
       $('request-done').classList.add('hidden');
       $('request-form').classList.remove('hidden');
       $('no-results').classList.remove('hidden');
       return;
     }
-    showResults(`📷 זיהינו: "${data.identified.name}". הנה מה שיש לנו:`);
+    showResults(t('photo_found', { name: data.identified.name }));
   } catch (err) { $('status').textContent = err.message; }
 }
 $('cam-input').addEventListener('change', (e) => {
@@ -154,23 +155,25 @@ function showDetail(p) {
   drawCrop($('detail-crop'), p.image || p.photo, p.image ? null : p.box, 480);
   $('detail-name').textContent = p.name;
   $('detail-desc').textContent = p.description;
-  $('detail-chips').innerHTML = [shelf && chip(`📍 ${shelf.name}`, 'o'), p.level && chip(p.level)].filter(Boolean).join('');
+  $('detail-chips').innerHTML = [shelf && chip(`📍 ${aisleName(shelf)}`, 'o'), p.level && chip(levelName(p.level))].filter(Boolean).join('');
   $('detail-price').textContent = p.price ? formatPrice(p.price) : '';
-  $('detail-promo').textContent = p.promo ? `🏷️ מבצע: ${p.promo}` : '';
+  $('detail-promo').textContent = p.promo ? t('promo', { p: p.promo }) : '';
   $('detail-promo').classList.toggle('hidden', !p.promo);
   loadRelated(p);
   $('detail-meters').textContent = '';
   if (shelf) {
     const here = hereShelf && aisleSpot(store.map, hereShelf);
     const path = findPath(store.map, shelf, here || store.map.entrance);
-    const loc = describeLocation(store.map, shelf, path, Boolean(here));
+    const loc = describeLocation(store.map, shelf);
     $('detail-how').textContent = hereShelf?.id === shelf.id
-      ? `המוצר נמצא במעבר שבו אתה עומד${p.level ? ` · ${p.level}` : ''}`
-      : [loc.side, loc.depth].filter(Boolean).join(' · ');
-    if (path && hereShelf?.id !== shelf.id) $('detail-meters').textContent = `🚶 ${path.length - 1} מ׳ ${here ? 'מכאן' : 'מהכניסה'}`;
-    spokenAnswer = [p.name, shelf.name, p.level, path && hereShelf?.id !== shelf.id ? `${path.length - 1} מטר ${here ? 'מכאן' : 'מהכניסה'}` : '']
+      ? `${t('in_your_aisle')}${p.level ? ` · ${levelName(p.level)}` : ''}`
+      : [t(`side_${loc.side}`), t(`depth_${loc.depth}`)].join(' · ');
+    const n = path ? path.length - 1 : 0;
+    if (path && hereShelf?.id !== shelf.id) $('detail-meters').textContent = t(here ? 'm_from_here' : 'm_from_entrance', { n });
+    // Product names are in Hebrew, so other languages speak the aisle, shelf and distance only.
+    spokenAnswer = [lang === 'he' ? p.name : '', aisleName(shelf), levelName(p.level), path && hereShelf?.id !== shelf.id ? t(here ? 'say_from_here' : 'say_from_entrance', { n }) : '']
       .filter(Boolean).join('. ');
-    renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here });
+    renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
   }
   rememberProduct(p);
   track('view', { productId: p.id }).catch(() => {});
@@ -182,7 +185,7 @@ function showDetail(p) {
   // The shelf photo with the product outlined, so the shopper recognises the spot when they get there.
   $('shelf-card').classList.toggle('hidden', !p.photo);
   if (p.photo) $('detail-photo').src = p.photo;
-  $('shelf-level').textContent = p.level || '';
+  $('shelf-level').textContent = levelName(p.level);
   const mark = $('shelf-mark');
   mark.classList.toggle('hidden', !p.box);
   if (p.box) Object.assign(mark.style, {
@@ -226,7 +229,7 @@ async function loadRelated(p) {
   $('related').classList.add('hidden');
   const r = await api(`/api/public/${encodeURIComponent(slug)}/products/${p.id}/related`).catch(() => null);
   if (!r || relatedFor !== p.id || !r.products.length) return;
-  $('related-title').textContent = r.kind === 'together' ? '🛒 לקוחות שחיפשו את זה, חיפשו גם' : '📍 עוד באותו מעבר';
+  $('related-title').textContent = t(r.kind === 'together' ? 'related_together' : 'related_aisle');
   $('related-row').replaceChildren(...r.products.map(miniCard));
   $('related').classList.remove('hidden');
 }
@@ -245,7 +248,7 @@ $('feedback').addEventListener('click', async (e) => {
     $('fb-reasons').classList.remove('hidden');
     return;
   }
-  const thanks = { found: 'איזה כיף! תודה שעזרת לנו לדעת 🙌', empty: 'תודה! הצוות קיבל התראה למלא את המדף.', not_there: 'תודה! הצוות קיבל התראה, ועובד יכול לעזור לך למצוא אותו.' };
+  const thanks = { found: t('thanks_found'), empty: t('thanks_empty'), not_there: t('thanks_moved') };
   try {
     await track(fb, { productId: current.id });
     $('fb-done').textContent = thanks[fb];
@@ -262,8 +265,8 @@ $('request-form').addEventListener('submit', async (e) => {
   try {
     await track('request', { query: lastQuery, phone: $('request-phone').value });
     $('request-done').textContent = $('request-phone').value.trim()
-      ? `קיבלנו! נעדכן אותך כש"${lastQuery}" יגיע לסניף.`
-      : `קיבלנו! מנהל הסניף יראה שחיפשת "${lastQuery}".`;
+      ? t('req_done_phone', { q: lastQuery })
+      : t('req_done', { q: lastQuery });
     $('request-form').classList.add('hidden');
     $('request-done').classList.remove('hidden');
   } catch (err) { $('request-done').textContent = err.message; $('request-done').classList.remove('hidden'); }
@@ -280,7 +283,7 @@ function saveList(list) {
 function inList(id) { return loadList().some((i) => i.id === id); }
 function updateListToggle() {
   const on = current && inList(current.id);
-  $('list-toggle').textContent = on ? '✓ ברשימת הקניות' : '➕ הוספה לרשימת הקניות';
+  $('list-toggle').textContent = t(on ? 'in_list' : 'add_list');
   $('list-toggle').classList.toggle('on', Boolean(on));
 }
 function renderListBar() {
@@ -320,19 +323,19 @@ function renderListView() {
   const route = planRoute(store.map, shelves, here || store.map.entrance);
   const order = new Map(route.legs.map((l, n) => [l.shelf.id, n + 1]));
   const sorted = [...list].sort((a, b) => (a.picked - b.picked) || ((order.get(a.shelfId) ?? 99) - (order.get(b.shelfId) ?? 99)));
-  $('list-meters').textContent = route.legs.length ? `🚶 ${route.meters} מ׳ · ${route.legs.length} עצירות` : '';
-  $('list-hint').textContent = todo.length ? 'המסלול הקצר ביותר בחנות, לפי הסדר. סמנו כל מוצר שלקחתם.' : (list.length ? 'לקחת הכל! 🎉' : 'הרשימה ריקה. מוסיפים מוצרים מדף המוצר.');
+  $('list-meters').textContent = route.legs.length ? t('list_meters', { m: route.meters, s: route.legs.length }) : '';
+  $('list-hint').textContent = t(todo.length ? 'list_hint' : list.length ? 'list_done' : 'list_empty');
   $('list-items').innerHTML = sorted.map((i) => {
     const shelf = store.map.shelves.find((s) => s.id === i.shelfId);
     const n = order.get(i.shelfId);
     return `<li class="list-item${i.picked ? ' picked' : ''}" data-id="${i.id}">
       <span class="stop-n">${i.picked ? '✓' : (n ?? '?')}</span>
-      <span class="li-main"><span class="name">${escapeHtml(i.name)}</span><span class="meta">${escapeHtml(shortShelf(shelf))}${i.level ? ` · ${escapeHtml(i.level)}` : ''}${i.price ? ` · ${escapeHtml(formatPrice(i.price))}` : ''}</span></span>
-      <button type="button" class="li-check" aria-label="${i.picked ? 'החזרה לרשימה' : 'לקחתי'}">${i.picked ? '↩︎' : 'לקחתי'}</button>
+      <span class="li-main"><span class="name">${escapeHtml(i.name)}</span><span class="meta">${escapeHtml(shortShelf(shelf))}${i.level ? ` · ${escapeHtml(levelName(i.level))}` : ''}${i.price ? ` · ${escapeHtml(formatPrice(i.price))}` : ''}</span></span>
+      <button type="button" class="li-check" aria-label="${t(i.picked ? 'put_back' : 'taken')}">${i.picked ? '↩︎' : t('taken')}</button>
     </li>`;
   }).join('');
   const stops = route.legs.map((l, n) => ({ ...l.path[l.path.length - 1], n: n + 1 }));
-  renderMap($('list-map'), store.map, { targetShelfIds: shelves.map((s) => s.id), path: route.path, here, stops });
+  renderMap($('list-map'), store.map, { targetShelfIds: shelves.map((s) => s.id), path: route.path, here, stops, ...mapLabels() });
   routeSpeech = route.legs.map((l, n) => `${n + 1}. ${shortShelf(l.shelf)}: ${todo.filter((i) => i.shelfId === l.shelf.id).map((i) => i.name).join(', ')}`).join('. ');
   $('list-speak').classList.toggle('hidden', !canSpeak || !route.legs.length);
 }
@@ -360,9 +363,9 @@ $('list-speak').addEventListener('click', () => speak(routeSpeech));
 // ---------- call a staff member to where the shopper stands ----------
 function openHelp() {
   const guess = hereShelf || (current && !$('detail').classList.contains('hidden') ? shelfOf(current) : null);
-  $('help-shelf').innerHTML = `<option value="">ליד הכניסה / לא בטוח</option>` +
-    store.map.shelves.map((s) => `<option value="${escapeHtml(s.id)}"${guess?.id === s.id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
-  $('help-where').textContent = 'עובד יקבל התראה בטלפון ויגיע אליכם.';
+  $('help-shelf').innerHTML = `<option value="">${escapeHtml(t('entrance_unsure'))}</option>` +
+    store.map.shelves.map((s) => `<option value="${escapeHtml(s.id)}"${guess?.id === s.id ? ' selected' : ''}>${escapeHtml(aisleName(s))}</option>`).join('');
+  $('help-where').textContent = t('help_where');
   $('help-done').classList.add('hidden');
   $('help-send').disabled = false;
   $('help-sheet').classList.remove('hidden');
@@ -375,7 +378,7 @@ $('help-send').addEventListener('click', async () => {
   try {
     await track('help', { shelfId: $('help-shelf').value || null, productId: current?.id ?? null, query: lastQuery });
     const s = store.map.shelves.find((x) => x.id === $('help-shelf').value);
-    $('help-done').textContent = `✅ הקריאה נשלחה. עובד בדרך אליכם${s ? ` ל${shortShelf(s)}` : ''}.`;
+    $('help-done').textContent = t('help_sent', { at: s ? t('help_at', { a: shortShelf(s) }) : '' });
     $('help-done').classList.remove('hidden');
     setTimeout(() => $('help-sheet').classList.add('hidden'), 3500);
   } catch (err) {
@@ -385,13 +388,27 @@ $('help-send').addEventListener('click', async () => {
   }
 });
 
+// ---------- language ----------
+function mapLabels() {
+  return lang === 'he' ? {} : { label: (s) => aisleName(s), entranceLabel: t('entrance') };
+}
+$('lang').innerHTML = Object.entries(LANGS).map(([code, l]) => `<option value="${code}"${code === lang ? ' selected' : ''}>${l.name}</option>`).join('');
+$('lang').addEventListener('change', () => {
+  setLang($('lang').value);
+  // Simplest way to re-render everything in the new language, keeping the search in the URL.
+  const url = new URL(location.href);
+  url.searchParams.delete('lang');
+  location.replace(url);
+});
+translatePage();
+
 // Voice search where the browser supports it.
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (Recognition) {
   $('mic').classList.remove('hidden');
   $('mic').addEventListener('click', () => {
     const rec = new Recognition();
-    rec.lang = 'he-IL';
+    rec.lang = LANGS[lang].voice;
     rec.interimResults = false;
     $('mic').textContent = '🔴';
     rec.onresult = (e) => { voiceMode = true; $('q').value = e.results[0][0].transcript; runSearch($('q').value); };
@@ -406,13 +423,15 @@ if (Recognition) {
     $('store-name').textContent = store.name;
     $('cam').classList.toggle('hidden', !store.photoSearch);
     const cats = store.map.shelves.map((s) => s.name.split('·')[1]?.trim()).filter(Boolean);
+    // Category chips are the manager's Hebrew aisle names, so they are shown in Hebrew only.
+    if (lang !== 'he') cats.length = 0;
     $('quick').innerHTML = [...new Set(cats)].slice(0, 8).map((c) => `<button type="button" class="chip" data-q="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
     $('quick').addEventListener('click', (e) => { const q = e.target.dataset.q; if (q) { $('q').value = q; runSearch(q); } });
-    document.title = `${store.name} — איפה זה בחנות?`;
+    document.title = t('title', { name: store.name });
     const params = new URLSearchParams(location.search);
     hereShelf = store.map.shelves.find((s) => s.id === params.get('at')) || null;
     if (hereShelf) {
-      $('here-banner').textContent = `📍 אתה ליד: ${hereShelf.name}`;
+      $('here-banner').textContent = t('here', { name: aisleName(hereShelf) });
       $('here-banner').classList.remove('hidden');
       // A worker (signed in on this phone) scanning an aisle sticker: offer to move a product here.
       if (getToken()) {
@@ -430,7 +449,7 @@ if (Recognition) {
       if (p) { results = [p]; showDetail(p); }
     }
   } catch (err) {
-    $('store-name').textContent = 'החנות לא נמצאה';
+    $('store-name').textContent = t('store_missing');
     $('search-form').classList.add('hidden');
   }
 })();

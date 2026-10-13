@@ -9,7 +9,7 @@ function el(tag, attrs = {}, parent) {
   return node;
 }
 
-export function renderMap(svg, map, { targetShelfId = null, targetShelfIds = null, path = null, onShelfClick = null, here = null, stops = null } = {}) {
+export function renderMap(svg, map, { targetShelfId = null, targetShelfIds = null, path = null, onShelfClick = null, here = null, stops = null, label = (s) => s.name, entranceLabel = 'כניסה' } = {}) {
   svg.innerHTML = '';
   svg.setAttribute('viewBox', `0 0 ${map.cols * CELL} ${map.rows * CELL}`);
   const grid = el('g', { class: 'map-grid' }, svg);
@@ -21,7 +21,7 @@ export function renderMap(svg, map, { targetShelfId = null, targetShelfIds = nul
     const g = el('g', { class: `map-shelf${isTarget ? ' target' : ''}${onShelfClick ? ' selectable' : ''}`, 'data-id': s.id }, svg);
     el('rect', { x: s.x * CELL + 1, y: s.y * CELL + 1, width: s.w * CELL - 2, height: s.h * CELL - 2 }, g);
     const t = el('text', { x: (s.x + s.w / 2) * CELL, y: (s.y + s.h / 2) * CELL + 4, 'text-anchor': 'middle' }, g);
-    t.textContent = s.name;
+    t.textContent = label(s);
     if (s.h > s.w * 2 && s.h >= 3) t.setAttribute('transform', `rotate(-90 ${(s.x + s.w / 2) * CELL} ${(s.y + s.h / 2) * CELL})`);
     if (onShelfClick) g.addEventListener('click', (e) => { e.stopPropagation(); onShelfClick(s); });
   }
@@ -46,7 +46,7 @@ export function renderMap(svg, map, { targetShelfId = null, targetShelfIds = nul
   const g = el('g', { class: 'map-entrance' }, svg);
   el('circle', { cx: e.x * CELL + CELL / 2, cy: e.y * CELL + CELL / 2, r: CELL * 1.1 }, g);
   const t = el('text', { x: e.x * CELL + CELL / 2, y: e.y * CELL + CELL / 2 + 4, 'text-anchor': 'middle' }, g);
-  t.textContent = 'כניסה';
+  t.textContent = entranceLabel;
   return svg;
 }
 
@@ -132,12 +132,12 @@ export function aisleSpot(map, shelf) {
   return p ? p[p.length - 1] : null;
 }
 
-export function describeLocation(map, shelf, path, fromHere = false) {
+// Where the shelf is, as codes the caller translates: side left/right/center, depth near/mid/far.
+export function describeLocation(map, shelf) {
   const cx = shelf.x + shelf.w / 2, cy = shelf.y + shelf.h / 2;
-  const side = cx < map.cols / 3 ? 'בצד שמאל של החנות' : cx > (map.cols * 2) / 3 ? 'בצד ימין של החנות' : 'במרכז החנות';
-  const depth = Math.abs(cy - map.entrance.y) < map.rows / 3 ? 'קרוב לכניסה' : Math.abs(cy - map.entrance.y) > (map.rows * 2) / 3 ? 'בחלק הרחוק מהכניסה' : 'באמצע הדרך';
-  const meters = path ? `כ-${path.length - 1} מטר הליכה ${fromHere ? 'מהמקום שלך' : 'מהכניסה'}` : '';
-  return { side, depth, meters };
+  const side = cx < map.cols / 3 ? 'left' : cx > (map.cols * 2) / 3 ? 'right' : 'center';
+  const depth = Math.abs(cy - map.entrance.y) < map.rows / 3 ? 'near' : Math.abs(cy - map.entrance.y) > (map.rows * 2) / 3 ? 'far' : 'mid';
+  return { side, depth };
 }
 
 // Draw the product's bounding box from its shelf photo onto a canvas.

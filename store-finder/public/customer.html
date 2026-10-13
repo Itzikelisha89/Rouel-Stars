@@ -16,25 +16,25 @@
         <svg class="brand-pin" viewBox="0 0 160 200" aria-hidden="true"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/><circle cx="80" cy="72" r="26" fill="#0b1224"/></svg>
         <span id="store-name">…</span>
       </div>
-      <button type="button" id="help-btn" class="help-btn">🙋 קריאה לעובד</button>
+      <div class="row" style="gap:6px"><select id="lang" class="lang-select" aria-label="שפה / language"></select><button type="button" id="help-btn" class="help-btn" data-i18n="help_btn">🙋 קריאה לעובד</button></div>
     </div>
 
     <div class="hero">
-      <h1>שלום <span class="wave">👋</span></h1>
-      <p class="muted" style="font-size:1.1rem">מה מחפשים היום? נראה לך בדיוק איפה זה נמצא.</p>
+      <h1><span data-i18n="hello">שלום</span> <span class="wave">👋</span></h1>
+      <p class="muted" style="font-size:1.1rem" data-i18n="hero_sub">מה מחפשים היום? נראה לך בדיוק איפה זה נמצא.</p>
     </div>
 
     <form class="search-bar" id="search-form">
       <span class="s-ico" aria-hidden="true">🔍</span>
-      <input id="q" type="search" placeholder="למשל: סיר קטן" autocomplete="off" enterkeyhint="search" aria-label="חיפוש מוצר">
-      <label id="cam" class="cam-btn hidden" aria-label="חיפוש לפי תמונה">📷<input type="file" id="cam-input" accept="image/*" capture="environment" class="hidden"></label>
-      <button type="button" id="mic" class="hidden" aria-label="חיפוש קולי">🎤</button>
-      <button class="primary" type="submit">חיפוש</button>
+      <input id="q" type="search" placeholder="למשל: סיר קטן" data-i18n-ph="search_ph" data-i18n-aria="search_aria" autocomplete="off" enterkeyhint="search" aria-label="חיפוש מוצר">
+      <label id="cam" class="cam-btn hidden" aria-label="חיפוש לפי תמונה" data-i18n-aria="photo_aria">📷<input type="file" id="cam-input" accept="image/*" capture="environment" class="hidden"></label>
+      <button type="button" id="mic" class="hidden" aria-label="חיפוש קולי" data-i18n-aria="voice_aria">🎤</button>
+      <button class="primary" type="submit" data-i18n="search_btn">חיפוש</button>
     </form>
     <div class="quick" id="quick"></div>
 
     <section id="deals" class="deals hidden">
-      <h2 class="deals-title">🔥 מבצעים בחנות</h2>
+      <h2 class="deals-title" data-i18n="deals_title">🔥 מבצעים בחנות</h2>
       <div class="deals-row" id="deals-row"></div>
     </section>
 
@@ -44,37 +44,37 @@
     <div id="results" class="product-list"></div>
 
     <div id="no-results" class="card hidden">
-      <h3>לא מצאנו את זה בחנות 😕</h3>
-      <p class="muted">רוצים שנביא? נעביר את הבקשה למנהל הסניף. אם תשאירו טלפון, נעדכן אתכם כשזה מגיע.</p>
+      <h3 data-i18n="nr_title">לא מצאנו את זה בחנות 😕</h3>
+      <p class="muted" data-i18n="nr_text">רוצים שנביא? נעביר את הבקשה למנהל הסניף. אם תשאירו טלפון, נעדכן אתכם כשזה מגיע.</p>
       <form id="request-form" class="row">
-        <input class="grow" id="request-phone" type="tel" inputmode="tel" placeholder="טלפון (לא חובה)" autocomplete="tel">
-        <button class="primary" type="submit">📣 בקשו שנביא</button>
+        <input class="grow" id="request-phone" type="tel" inputmode="tel" placeholder="טלפון (לא חובה)" data-i18n-ph="phone_ph" autocomplete="tel">
+        <button class="primary" type="submit" data-i18n="request_btn">📣 בקשו שנביא</button>
       </form>
       <p id="request-done" class="ok hidden"></p>
     </div>
 
     <div id="detail" class="hidden">
-      <button id="back">→ חזרה לתוצאות</button>
+      <button id="back" data-i18n="back_results">→ חזרה לתוצאות</button>
       <div class="card">
         <canvas id="detail-crop" class="detail-img"></canvas>
         <h2 id="detail-name" class="d-name"></h2>
         <p id="detail-desc" class="muted" style="margin:0"></p>
         <div id="detail-promo" class="promo-banner hidden"></div>
         <div class="d-chips" id="detail-chips"></div>
-        <div class="row" style="justify-content:space-between;margin-top:6px"><div class="d-price" id="detail-price"></div><button type="button" id="speak" class="hidden" aria-label="השמע את המיקום">🔊 השמע</button></div>
+        <div class="row" style="justify-content:space-between;margin-top:6px"><div class="d-price" id="detail-price"></div><button type="button" id="speak" class="hidden" aria-label="השמע את המיקום" data-i18n-aria="speak_aria" data-i18n="speak_btn">🔊 השמע</button></div>
         <button type="button" id="list-toggle" class="list-toggle">➕ הוספה לרשימת הקניות</button>
         <div class="route-card" id="shelf-card">
-          <div class="route-head"><span>📷 כך נראה המדף</span><span class="chip" id="shelf-level"></span></div>
+          <div class="route-head"><span data-i18n="shelf_looks">📷 כך נראה המדף</span><span class="chip" id="shelf-level"></span></div>
           <div class="shelf-shot">
-            <img id="detail-photo" alt="תמונת המדף שבו נמצא המוצר">
+            <img id="detail-photo" alt="תמונת המדף שבו נמצא המוצר" data-i18n-alt="shelf_photo_alt">
             <div class="shelf-mark" id="shelf-mark"></div>
           </div>
         </div>
         <div class="route-card">
-          <div class="route-head"><span>🧭 הדרך אל המוצר</span><span class="chip o" id="detail-meters"></span></div>
+          <div class="route-head"><span data-i18n="route_title">🧭 הדרך אל המוצר</span><span class="chip o" id="detail-meters"></span></div>
           <p id="detail-how" class="muted" style="margin-bottom:10px"></p>
           <div class="map-box"><svg id="detail-map"></svg></div>
-          <p class="muted" style="font-size:.85rem;margin:10px 0 0">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
+          <p class="muted" style="font-size:.85rem;margin:10px 0 0" data-i18n="lost_hint">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
         </div>
         <div class="route-card hidden" id="related">
           <div class="route-head"><span id="related-title"></span></div>
@@ -82,17 +82,17 @@
         </div>
         <div class="route-card feedback" id="feedback">
           <div id="fb-ask">
-            <div class="route-head"><span>הגעת למדף?</span></div>
+            <div class="route-head"><span data-i18n="fb_question">הגעת למדף?</span></div>
             <div class="fb-buttons">
-              <button type="button" class="fb-yes" data-fb="found">✅ מצאתי</button>
-              <button type="button" class="fb-no" data-fb="no">❌ לא מצאתי</button>
+              <button type="button" class="fb-yes" data-fb="found" data-i18n="fb_found">✅ מצאתי</button>
+              <button type="button" class="fb-no" data-fb="no" data-i18n="fb_not_found">❌ לא מצאתי</button>
             </div>
           </div>
           <div id="fb-reasons" class="hidden">
-            <div class="route-head"><span>מה קרה?</span></div>
+            <div class="route-head"><span data-i18n="fb_what">מה קרה?</span></div>
             <div class="fb-buttons">
-              <button type="button" data-fb="empty">📭 המדף ריק</button>
-              <button type="button" data-fb="not_there">🔀 המוצר לא במקום</button>
+              <button type="button" data-fb="empty" data-i18n="fb_empty">📭 המדף ריק</button>
+              <button type="button" data-fb="not_there" data-i18n="fb_moved">🔀 המוצר לא במקום</button>
             </div>
           </div>
           <p id="fb-done" class="ok hidden" style="margin:0"></p>
@@ -101,31 +101,31 @@
     </div>
 
     <div id="list-view" class="hidden">
-      <button id="list-back">→ חזרה לחיפוש</button>
+      <button id="list-back" data-i18n="back_search">→ חזרה לחיפוש</button>
       <div class="card">
-        <div class="route-head"><h2 style="margin:0">🛒 רשימת הקניות שלי</h2><span class="chip o" id="list-meters"></span></div>
+        <div class="route-head"><h2 style="margin:0" data-i18n="list_title">🛒 רשימת הקניות שלי</h2><span class="chip o" id="list-meters"></span></div>
         <p class="muted" id="list-hint">המסלול הקצר ביותר בחנות, לפי הסדר. סמנו כל מוצר שלקחתם.</p>
         <ol id="list-items" class="list-items"></ol>
         <div class="map-box" style="margin-top:12px"><svg id="list-map"></svg></div>
         <div class="row" style="margin-top:12px;justify-content:space-between">
-          <button type="button" id="list-speak" class="hidden">🔊 הקרא מסלול</button>
-          <button type="button" id="list-clear" class="danger">🗑️ ניקוי הרשימה</button>
+          <button type="button" id="list-speak" class="hidden" data-i18n="list_speak">🔊 הקרא מסלול</button>
+          <button type="button" id="list-clear" class="danger" data-i18n="list_clear">🗑️ ניקוי הרשימה</button>
         </div>
       </div>
     </div>
   </div>
 
-  <button type="button" id="list-bar" class="list-bar hidden"><span>🛒 הרשימה שלי · <b id="list-count">0</b></span><span>למסלול ←</span></button>
+  <button type="button" id="list-bar" class="list-bar hidden"><span><span data-i18n="list_bar">🛒 הרשימה שלי ·</span> <b id="list-count">0</b></span><span data-i18n="to_route">למסלול ←</span></button>
 
   <div id="help-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
     <div class="sheet-card">
-      <h2 id="help-title">🙋 לקרוא לעובד?</h2>
+      <h2 id="help-title" data-i18n="help_title">🙋 לקרוא לעובד?</h2>
       <p id="help-where" class="muted"></p>
-      <label for="help-shelf">איפה אתם עומדים?</label>
+      <label for="help-shelf" data-i18n="help_where_label">איפה אתם עומדים?</label>
       <select id="help-shelf"></select>
       <div class="row" style="margin-top:14px">
-        <button type="button" class="primary grow" id="help-send">כן, שיגיע עובד</button>
-        <button type="button" id="help-cancel">ביטול</button>
+        <button type="button" class="primary grow" id="help-send" data-i18n="help_send">כן, שיגיע עובד</button>
+        <button type="button" id="help-cancel" data-i18n="cancel">ביטול</button>
       </div>
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>

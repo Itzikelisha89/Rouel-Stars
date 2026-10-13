@@ -1,0 +1,153 @@
+// Customer screen in Hebrew, Arabic, Russian and English. Product names stay as the store wrote them;
+// everything around them (buttons, directions, aisle numbers, shelf levels, voice) is translated.
+export const LANGS = {
+  he: { name: 'עברית', dir: 'rtl', voice: 'he-IL' },
+  ar: { name: 'العربية', dir: 'rtl', voice: 'ar-SA' },
+  ru: { name: 'Русский', dir: 'ltr', voice: 'ru-RU' },
+  en: { name: 'English', dir: 'ltr', voice: 'en-US' },
+};
+
+const T = {
+  help_btn: { he: '🙋 קריאה לעובד', ar: '🙋 نداء لموظف', ru: '🙋 Позвать сотрудника', en: '🙋 Call staff' },
+  hello: { he: 'שלום', ar: 'أهلاً', ru: 'Здравствуйте', en: 'Hello' },
+  hero_sub: { he: 'מה מחפשים היום? נראה לך בדיוק איפה זה נמצא.', ar: 'عن ماذا تبحث اليوم؟ سنريك مكانه بالضبط.', ru: 'Что ищете сегодня? Покажем, где именно это лежит.', en: "What are you looking for? We'll show you exactly where it is." },
+  search_ph: { he: 'למשל: סיר קטן', ar: 'مثلاً: طنجرة صغيرة', ru: 'Например: кастрюля', en: 'e.g. small pot' },
+  search_aria: { he: 'חיפוש מוצר', ar: 'البحث عن منتج', ru: 'Поиск товара', en: 'Search for a product' },
+  photo_aria: { he: 'חיפוש לפי תמונה', ar: 'البحث بالصورة', ru: 'Поиск по фото', en: 'Search by photo' },
+  voice_aria: { he: 'חיפוש קולי', ar: 'البحث بالصوت', ru: 'Голосовой поиск', en: 'Voice search' },
+  search_btn: { he: 'חיפוש', ar: 'بحث', ru: 'Найти', en: 'Search' },
+  deals_title: { he: '🔥 מבצעים בחנות', ar: '🔥 عروض في المتجر', ru: '🔥 Акции в магазине', en: '🔥 Deals in store' },
+  nr_title: { he: 'לא מצאנו את זה בחנות 😕', ar: 'لم نجد هذا في المتجر 😕', ru: 'Мы не нашли это в магазине 😕', en: "We couldn't find it in the store 😕" },
+  nr_text: { he: 'רוצים שנביא? נעביר את הבקשה למנהל הסניף. אם תשאירו טלפון, נעדכן אתכם כשזה מגיע.', ar: 'تريدون أن نوفّره؟ سننقل الطلب لمدير الفرع. اتركوا رقم هاتف ونخبركم عند وصوله.', ru: 'Хотите, чтобы мы это привезли? Передадим просьбу управляющему. Оставьте телефон, и мы сообщим, когда товар поступит.', en: "Want us to stock it? We'll pass it to the branch manager. Leave a phone number and we'll let you know when it arrives." },
+  phone_ph: { he: 'טלפון (לא חובה)', ar: 'هاتف (اختياري)', ru: 'Телефон (необязательно)', en: 'Phone (optional)' },
+  request_btn: { he: '📣 בקשו שנביא', ar: '📣 اطلبوا توفيره', ru: '📣 Попросить привезти', en: '📣 Request it' },
+  back_results: { he: '→ חזרה לתוצאות', ar: '→ العودة للنتائج', ru: '← К результатам', en: '← Back to results' },
+  speak_aria: { he: 'השמע את המיקום', ar: 'اسمع المكان', ru: 'Озвучить место', en: 'Read the location aloud' },
+  speak_btn: { he: '🔊 השמע', ar: '🔊 استمع', ru: '🔊 Озвучить', en: '🔊 Listen' },
+  shelf_looks: { he: '📷 כך נראה המדף', ar: '📷 هكذا يبدو الرف', ru: '📷 Так выглядит полка', en: '📷 This is the shelf' },
+  shelf_photo_alt: { he: 'תמונת המדף שבו נמצא המוצר', ar: 'صورة الرف الذي فيه المنتج', ru: 'Фото полки с товаром', en: 'Photo of the shelf with the product' },
+  route_title: { he: '🧭 הדרך אל המוצר', ar: '🧭 الطريق إلى المنتج', ru: '🧭 Как пройти к товару', en: '🧭 How to get there' },
+  lost_hint: { he: 'הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.', ar: 'تُهت؟ امسح ملصق "أنت هنا" في طرف الممر.', ru: 'Заблудились? Отсканируйте наклейку «Вы здесь» в конце прохода.', en: 'Lost? Scan the "You are here" sticker at the end of the aisle.' },
+  fb_question: { he: 'הגעת למדף?', ar: 'وصلت إلى الرف؟', ru: 'Вы у полки?', en: 'At the shelf?' },
+  fb_found: { he: '✅ מצאתי', ar: '✅ وجدته', ru: '✅ Нашёл', en: '✅ Found it' },
+  fb_not_found: { he: '❌ לא מצאתי', ar: '❌ لم أجده', ru: '❌ Не нашёл', en: "❌ Didn't find it" },
+  fb_what: { he: 'מה קרה?', ar: 'ماذا حدث؟', ru: 'Что случилось?', en: 'What happened?' },
+  fb_empty: { he: '📭 המדף ריק', ar: '📭 الرف فارغ', ru: '📭 Полка пустая', en: '📭 Shelf is empty' },
+  fb_moved: { he: '🔀 המוצר לא במקום', ar: '🔀 المنتج ليس في مكانه', ru: '🔀 Товара нет на месте', en: "🔀 It's not there" },
+  back_search: { he: '→ חזרה לחיפוש', ar: '→ العودة للبحث', ru: '← К поиску', en: '← Back to search' },
+  list_title: { he: '🛒 רשימת הקניות שלי', ar: '🛒 قائمة مشترياتي', ru: '🛒 Мой список покупок', en: '🛒 My shopping list' },
+  list_speak: { he: '🔊 הקרא מסלול', ar: '🔊 اقرأ المسار', ru: '🔊 Озвучить маршрут', en: '🔊 Read the route' },
+  list_clear: { he: '🗑️ ניקוי הרשימה', ar: '🗑️ مسح القائمة', ru: '🗑️ Очистить список', en: '🗑️ Clear list' },
+  list_bar: { he: '🛒 הרשימה שלי ·', ar: '🛒 قائمتي ·', ru: '🛒 Мой список ·', en: '🛒 My list ·' },
+  to_route: { he: 'למסלול ←', ar: 'إلى المسار ←', ru: 'Маршрут →', en: 'Route →' },
+  help_title: { he: '🙋 לקרוא לעובד?', ar: '🙋 نداء لموظف؟', ru: '🙋 Позвать сотрудника?', en: '🙋 Call a staff member?' },
+  help_where_label: { he: 'איפה אתם עומדים?', ar: 'أين تقفون؟', ru: 'Где вы находитесь?', en: 'Where are you standing?' },
+  help_send: { he: 'כן, שיגיע עובד', ar: 'نعم، ليأتِ موظف', ru: 'Да, позовите', en: 'Yes, send someone' },
+  cancel: { he: 'ביטול', ar: 'إلغاء', ru: 'Отмена', en: 'Cancel' },
+
+  searching: { he: 'מחפש…', ar: 'جارٍ البحث…', ru: 'Ищем…', en: 'Searching…' },
+  not_found: { he: 'לא מצאנו "{q}". אפשר לנסות מילה אחרת 🙂', ar: 'لم نجد "{q}". جرّب كلمة أخرى 🙂', ru: 'Не нашли «{q}». Попробуйте другое слово 🙂', en: 'No results for "{q}". Try another word 🙂' },
+  voice_not_found: { he: 'לא מצאנו {q} בחנות. אפשר לבקש שנביא את זה.', ar: 'لم نجد {q} في المتجر. يمكنك طلب توفيره.', ru: '{q} в магазине не нашли. Можно попросить привезти.', en: "We couldn't find {q}. You can ask us to stock it." },
+  maybe_meant: { he: 'לא מצאנו בדיוק "{q}", אבל אולי התכוונת לזה:', ar: 'لم نجد "{q}" بالضبط، ربما قصدت:', ru: 'Точно «{q}» не нашли, возможно, вы имели в виду:', en: 'No exact match for "{q}", maybe you meant:' },
+  n_results: { he: 'נמצאו {n} תוצאות', ar: 'وجدنا {n} نتائج', ru: 'Найдено: {n}', en: '{n} results' },
+  voice_n_results: { he: 'מצאתי {n} תוצאות. בחר מוצר מהרשימה.', ar: 'وجدت {n} نتائج. اختر منتجاً من القائمة.', ru: 'Нашлось {n}. Выберите товар из списка.', en: 'I found {n} results. Pick one from the list.' },
+  identifying: { he: 'מזהה את המוצר בתמונה…', ar: 'نتعرّف على المنتج في الصورة…', ru: 'Распознаём товар на фото…', en: 'Recognising the product…' },
+  photo_unknown: { he: 'לא הצלחנו לזהות מוצר בתמונה. נסו לצלם קרוב יותר, או לכתוב מה מחפשים 🙂', ar: 'لم نتعرّف على منتج في الصورة. صوّر من قرب أو اكتب ما تبحث عنه 🙂', ru: 'Не удалось распознать товар. Снимите ближе или напишите, что ищете 🙂', en: "Couldn't recognise a product. Try a closer photo, or type what you need 🙂" },
+  photo_not_in_store: { he: 'זיהינו: "{name}", אבל אין לנו את זה בחנות כרגע.', ar: 'تعرّفنا على: "{name}"، لكنه غير متوفر حالياً.', ru: 'Это «{name}», но сейчас в магазине такого нет.', en: 'That\'s "{name}", but we don\'t have it right now.' },
+  photo_found: { he: '📷 זיהינו: "{name}". הנה מה שיש לנו:', ar: '📷 تعرّفنا على: "{name}". هذا ما لدينا:', ru: '📷 Это «{name}». Вот что есть у нас:', en: '📷 That\'s "{name}". Here\'s what we have:' },
+  promo: { he: '🏷️ מבצע: {p}', ar: '🏷️ عرض: {p}', ru: '🏷️ Акция: {p}', en: '🏷️ Deal: {p}' },
+  in_your_aisle: { he: 'המוצר נמצא במעבר שבו אתה עומד', ar: 'المنتج في الممر الذي تقف فيه', ru: 'Товар в проходе, где вы стоите', en: "It's in the aisle you're standing in" },
+  m_from_here: { he: '🚶 {n} מ׳ מכאן', ar: '🚶 {n} م من هنا', ru: '🚶 {n} м отсюда', en: '🚶 {n} m from here' },
+  m_from_entrance: { he: '🚶 {n} מ׳ מהכניסה', ar: '🚶 {n} م من المدخل', ru: '🚶 {n} м от входа', en: '🚶 {n} m from the entrance' },
+  say_from_here: { he: '{n} מטר מכאן', ar: '{n} متر من هنا', ru: '{n} метров отсюда', en: '{n} meters from here' },
+  say_from_entrance: { he: '{n} מטר מהכניסה', ar: '{n} متر من المدخل', ru: '{n} метров от входа', en: '{n} meters from the entrance' },
+  side_left: { he: 'בצד שמאל של החנות', ar: 'في الجهة اليسرى من المتجر', ru: 'в левой части магазина', en: 'on the left side of the store' },
+  side_right: { he: 'בצד ימין של החנות', ar: 'في الجهة اليمنى من المتجر', ru: 'в правой части магазина', en: 'on the right side of the store' },
+  side_center: { he: 'במרכז החנות', ar: 'في وسط المتجر', ru: 'в центре магазина', en: 'in the middle of the store' },
+  depth_near: { he: 'קרוב לכניסה', ar: 'قريب من المدخل', ru: 'недалеко от входа', en: 'near the entrance' },
+  depth_mid: { he: 'באמצע הדרך', ar: 'في منتصف الطريق', ru: 'на полпути', en: 'halfway in' },
+  depth_far: { he: 'בחלק הרחוק מהכניסה', ar: 'في الجزء البعيد عن المدخل', ru: 'в дальней части от входа', en: 'at the far end from the entrance' },
+  related_together: { he: '🛒 לקוחות שחיפשו את זה, חיפשו גם', ar: '🛒 من بحث عن هذا بحث أيضاً عن', ru: '🛒 С этим также ищут', en: '🛒 Shoppers who looked at this also looked at' },
+  related_aisle: { he: '📍 עוד באותו מעבר', ar: '📍 المزيد في نفس الممر', ru: '📍 Ещё в этом проходе', en: '📍 More in this aisle' },
+  thanks_found: { he: 'איזה כיף! תודה שעזרת לנו לדעת 🙌', ar: 'رائع! شكراً لأنك أخبرتنا 🙌', ru: 'Отлично! Спасибо, что сообщили 🙌', en: 'Great! Thanks for letting us know 🙌' },
+  thanks_empty: { he: 'תודה! הצוות קיבל התראה למלא את המדף.', ar: 'شكراً! أبلغنا الطاقم لملء الرف.', ru: 'Спасибо! Сотрудники получили сигнал пополнить полку.', en: 'Thanks! The team was alerted to restock the shelf.' },
+  thanks_moved: { he: 'תודה! הצוות קיבל התראה, ועובד יכול לעזור לך למצוא אותו.', ar: 'شكراً! أبلغنا الطاقم، ويمكن لموظف مساعدتك في إيجاده.', ru: 'Спасибо! Сотрудники получили сигнал и помогут найти товар.', en: 'Thanks! The team was alerted, and someone can help you find it.' },
+  req_done_phone: { he: 'קיבלנו! נעדכן אותך כש"{q}" יגיע לסניף.', ar: 'استلمنا! سنخبرك عندما يصل "{q}" إلى الفرع.', ru: 'Принято! Сообщим, когда «{q}» поступит в магазин.', en: 'Got it! We\'ll let you know when "{q}" arrives.' },
+  req_done: { he: 'קיבלנו! מנהל הסניף יראה שחיפשת "{q}".', ar: 'استلمنا! سيرى مدير الفرع أنك بحثت عن "{q}".', ru: 'Принято! Управляющий увидит, что вы искали «{q}».', en: 'Got it! The branch manager will see you looked for "{q}".' },
+  in_list: { he: '✓ ברשימת הקניות', ar: '✓ في قائمة المشتريات', ru: '✓ В списке покупок', en: '✓ On your shopping list' },
+  add_list: { he: '➕ הוספה לרשימת הקניות', ar: '➕ أضف إلى قائمة المشتريات', ru: '➕ В список покупок', en: '➕ Add to shopping list' },
+  list_meters: { he: '🚶 {m} מ׳ · {s} עצירות', ar: '🚶 {m} م · {s} محطات', ru: '🚶 {m} м · остановок: {s}', en: '🚶 {m} m · {s} stops' },
+  list_hint: { he: 'המסלול הקצר ביותר בחנות, לפי הסדר. סמנו כל מוצר שלקחתם.', ar: 'أقصر مسار في المتجر بالترتيب. علّموا كل منتج أخذتموه.', ru: 'Самый короткий маршрут по магазину. Отмечайте взятые товары.', en: 'The shortest route through the store, in order. Tick each item you pick up.' },
+  list_done: { he: 'לקחת הכל! 🎉', ar: 'أخذت كل شيء! 🎉', ru: 'Всё взяли! 🎉', en: 'You got everything! 🎉' },
+  list_empty: { he: 'הרשימה ריקה. מוסיפים מוצרים מדף המוצר.', ar: 'القائمة فارغة. أضف منتجات من صفحة المنتج.', ru: 'Список пуст. Добавляйте товары со страницы товара.', en: 'Your list is empty. Add items from a product page.' },
+  put_back: { he: 'החזרה לרשימה', ar: 'إرجاع للقائمة', ru: 'Вернуть в список', en: 'Put back on list' },
+  taken: { he: 'לקחתי', ar: 'أخذته', ru: 'Взял', en: 'Got it' },
+  entrance_unsure: { he: 'ליד הכניסה / לא בטוח', ar: 'قرب المدخل / غير متأكد', ru: 'У входа / не знаю', en: 'Near the entrance / not sure' },
+  help_where: { he: 'עובד יקבל התראה בטלפון ויגיע אליכם.', ar: 'سيصل تنبيه لموظف على هاتفه وسيأتي إليكم.', ru: 'Сотрудник получит уведомление и подойдёт к вам.', en: "A staff member will get an alert and come to you." },
+  help_sent: { he: '✅ הקריאה נשלחה. עובד בדרך אליכם{at}.', ar: '✅ تم إرسال النداء. موظف في الطريق إليكم{at}.', ru: '✅ Вызов отправлен. Сотрудник уже идёт{at}.', en: '✅ Sent. Someone is on the way{at}.' },
+  help_at: { he: ' ל{a}', ar: ' إلى {a}', ru: ' к: {a}', en: ' to {a}' },
+  here: { he: '📍 אתה ליד: {name}', ar: '📍 أنت بجانب: {name}', ru: '📍 Вы у: {name}', en: '📍 You are at: {name}' },
+  store_missing: { he: 'החנות לא נמצאה', ar: 'المتجر غير موجود', ru: 'Магазин не найден', en: 'Store not found' },
+  title: { he: '{name} — איפה זה בחנות?', ar: '{name} — أين هو في المتجر؟', ru: '{name} — где это в магазине?', en: '{name} — where is it in the store?' },
+  aisle: { he: 'מעבר {n}', ar: 'ممر {n}', ru: 'Проход {n}', en: 'Aisle {n}' },
+  entrance: { he: 'כניסה', ar: 'مدخل', ru: 'Вход', en: 'Entrance' },
+};
+
+// Common shelf-level phrases the manager types, translated for the other languages.
+const LEVELS = {
+  'מדף עליון': { ar: 'الرف العلوي', ru: 'верхняя полка', en: 'top shelf' },
+  'מדף אמצעי': { ar: 'الرف الأوسط', ru: 'средняя полка', en: 'middle shelf' },
+  'מדף תחתון': { ar: 'الرف السفلي', ru: 'нижняя полка', en: 'bottom shelf' },
+  'מדף שני מלמעלה': { ar: 'الرف الثاني من الأعلى', ru: 'вторая полка сверху', en: 'second shelf from the top' },
+  'מדף שני מלמטה': { ar: 'الرف الثاني من الأسفل', ru: 'вторая полка снизу', en: 'second shelf from the bottom' },
+  'בקצה המעבר': { ar: 'في طرف الممر', ru: 'в конце прохода', en: 'at the end of the aisle' },
+  'על הרצפה': { ar: 'على الأرض', ru: 'на полу', en: 'on the floor' },
+};
+
+const KEY = 'storeFinder:lang';
+export let lang = (() => {
+  const fromUrl = new URLSearchParams(location.search).get('lang');
+  if (LANGS[fromUrl]) return fromUrl;
+  try { const saved = localStorage.getItem(KEY); if (LANGS[saved]) return saved; } catch { /* private mode */ }
+  for (const l of navigator.languages || [navigator.language]) {
+    const code = String(l).slice(0, 2).toLowerCase();
+    if (code === 'iw') return 'he';
+    if (LANGS[code]) return code;
+  }
+  return 'he';
+})();
+
+export function setLang(code) {
+  if (!LANGS[code]) return;
+  lang = code;
+  try { localStorage.setItem(KEY, code); } catch { /* private mode */ }
+}
+
+export function t(key, vars = {}) {
+  const s = T[key]?.[lang] ?? T[key]?.he ?? key;
+  return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+}
+
+// "מעבר 4 · כלי בישול" -> "Aisle 4" in other languages (the category is the manager's Hebrew text).
+export function aisleName(shelf, { short = false } = {}) {
+  const name = shelf?.name ?? '';
+  if (lang === 'he') return short ? name.split('·')[0].trim() : name;
+  const n = name.match(/מעבר\s*(\d+)/)?.[1];
+  return n ? t('aisle', { n }) : name.split('·')[0].trim();
+}
+
+export function levelName(level) {
+  if (!level || lang === 'he') return level || '';
+  return LEVELS[level.trim()]?.[lang] ?? level;
+}
+
+// Apply translations to the static page: data-i18n (text), data-i18n-ph (placeholder),
+// data-i18n-aria (aria-label), data-i18n-alt (alt).
+export function translatePage(root = document) {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = LANGS[lang].dir;
+  for (const el of root.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  for (const el of root.querySelectorAll('[data-i18n-ph]')) el.placeholder = t(el.dataset.i18nPh);
+  for (const el of root.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  for (const el of root.querySelectorAll('[data-i18n-alt]')) el.alt = t(el.dataset.i18nAlt);
+}
