@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>מוצא המוצרים — סרטון הצגה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=block" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0b1224; --navy2: #121b33; --card: #172142; --line: #26325a;
+    --text: #f2f5ff; --muted: #9aa6c7; --orange: #ff7a1a; --blue: #4f7cff; --green: #22c55e; --red: #ef4444; --yellow: #facc15;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--navy); }
+  body { font-family: 'Heebo', sans-serif; color: var(--text); }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: radial-gradient(1200px 700px at 80% 10%, #1a2a5c 0%, transparent 60%), radial-gradient(900px 600px at 10% 100%, #2a1a3c 0%, transparent 60%), var(--navy); }
+  .scene { position: absolute; inset: 0; opacity: 0; display: none; }
+  .abs { position: absolute; }
+  .fade { opacity: 0; will-change: opacity, transform; }
+  .center { left: 0; right: 0; text-align: center; }
+  .h1 { font-size: 112px; font-weight: 900; letter-spacing: -1px; }
+  .h2 { font-size: 72px; font-weight: 800; line-height: 1.15; }
+  .h3 { font-size: 46px; font-weight: 700; line-height: 1.3; }
+  .p { font-size: 36px; font-weight: 400; color: var(--muted); line-height: 1.45; }
+  .accent { background: linear-gradient(100deg, #ffc27a 0%, #ff8a2a 45%, #ff5a36 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #orbs { position: absolute; inset: 0; pointer-events: none; }
+  #orbs div { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .35; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 40;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.45) 100%); }
+  #grain { position: absolute; inset: 0; pointer-events: none; z-index: 41; opacity: .06;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+  .step-label::before { content: ''; display: inline-block; width: 46px; height: 3px; background: linear-gradient(90deg,#ff5a36,#ffc27a); vertical-align: middle; margin-left: 16px; border-radius: 2px; }
+  .glow-o { box-shadow: 0 0 0 1px rgba(255,122,26,.6), 0 0 40px rgba(255,122,26,.35); }
+
+  /* premium in-app UI (dark) */
+  .ui { position: absolute; inset: 0; background: radial-gradient(400px 300px at 80% 0%, #24305e 0%, transparent 70%), #0c1122; color: #eef2ff; font-family: 'Heebo'; }
+  .ui-top { padding: 78px 26px 0; display: flex; justify-content: space-between; align-items: center; }
+  .ui-brand { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: #aab4d4; }
+  .ui-hello { padding: 18px 26px 0; font-size: 30px; font-weight: 800; line-height: 1.2; }
+  .ui-hello small { display: block; font-size: 18px; font-weight: 400; color: #8f9bc0; margin-top: 4px; }
+  .ui-search { margin: 18px 22px 0; height: 64px; border-radius: 22px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); display: flex; align-items: center; padding: 0 18px; gap: 12px; font-size: 25px; }
+  .ui-search .mic { margin-right: auto; width: 42px; height: 42px; border-radius: 14px; background: linear-gradient(135deg,#ff8a2a,#ff5a36); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .ui-card { margin: 16px 22px 0; border-radius: 26px; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.1); overflow: hidden; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 16px; font-weight: 600; background: rgba(255,255,255,.08); color: #dfe6ff; }
+  .chip.o { background: rgba(255,122,26,.18); color: #ffb36b; }
+  .blue { color: var(--blue); }
+  .tag { display: inline-block; padding: 10px 28px; border: 2px solid var(--line); border-radius: 999px; font-size: 28px; color: var(--muted); font-weight: 500; }
+  .step-label { font-size: 30px; font-weight: 700; color: var(--orange); letter-spacing: 2px; }
+  .caption { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; font-size: 44px; font-weight: 700; }
+  .caption span { background: rgba(11,18,36,.82); padding: 14px 36px; border-radius: 18px; border: 1px solid var(--line); }
+  .card { background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)); border: 1px solid rgba(255,255,255,.1); border-radius: 28px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08); }
+
+  /* phone */
+  .phone { position: absolute; width: 420px; height: 860px; border-radius: 64px; background: #05070d; padding: 18px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 3px #2b3352; }
+  .phone .screen { width: 100%; height: 100%; border-radius: 48px; overflow: hidden; background: #f6f7fb; color: #1c2233; position: relative; }
+  .phone .notch { position: absolute; top: 30px; left: 50%; width: 130px; height: 34px; margin-left: -65px; background: #05070d; border-radius: 20px; z-index: 5; }
+  .app-top { padding: 80px 26px 14px; text-align: center; }
+  .app-title { font-size: 30px; font-weight: 800; }
+  .app-sub { font-size: 19px; color: #667085; }
+  .search { margin: 10px 22px; display: flex; gap: 10px; }
+  .search .inp { flex: 1; height: 62px; border-radius: 31px; background: #fff; border: 2px solid #dfe3ee; font-size: 26px; padding: 0 22px; display: flex; align-items: center; }
+  .search .btn { width: 62px; height: 62px; border-radius: 31px; background: #2f5bea; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 26px; }
+  .caret { display: inline-block; width: 3px; height: 30px; background: #2f5bea; margin-right: 2px; }
+  .result { margin: 14px 22px; background: #fff; border-radius: 22px; border: 1px solid #e3e6ee; padding: 14px; }
+
+  /* tablet */
+  .tablet { position: absolute; border-radius: 40px; background: #05070d; padding: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.55), 0 0 0 3px #2b3352; }
+  .tablet .screen { width: 100%; height: 100%; border-radius: 22px; overflow: hidden; background: radial-gradient(600px 300px at 90% 0%, #24305e 0%, transparent 70%), #0c1122; position: relative; color: #eef2ff; }
+
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 12px 26px; border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.12); font-size: 28px; font-weight: 600; box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+  .bar-row { display: flex; align-items: center; gap: 18px; margin: 16px 0; font-size: 28px; }
+  .bar-row .lbl { width: 300px; }
+  .bar-row .bar { height: 30px; border-radius: 15px; background: linear-gradient(90deg, var(--orange), #ffb070); }
+  .bar-row .num { width: 60px; color: var(--muted); }
+  .kpi { width: 380px; padding: 30px; text-align: center; }
+  .kpi .ico { font-size: 60px; }
+  .kpi .t { font-size: 32px; font-weight: 700; margin-top: 10px; }
+  .kpi .d { font-size: 24px; color: var(--muted); margin-top: 6px; }
+  .tl-item { width: 470px; padding: 34px; }
+  .tl-item .when { font-size: 26px; color: var(--orange); font-weight: 700; }
+  .tl-item .what { font-size: 34px; font-weight: 700; margin-top: 8px; }
+  .tl-item .how { font-size: 24px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+  .watermark { position: absolute; top: 40px; right: 56px; font-size: 26px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 10px; z-index: 50; }
+  .progress { position: absolute; bottom: 0; right: 0; height: 6px; background: var(--orange); z-index: 50; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="orbs"><div id="orb1" style="width:700px;height:700px;background:#3b5bff"></div><div id="orb2" style="width:600px;height:600px;background:#ff6a2a"></div><div id="orb3" style="width:500px;height:500px;background:#8b5cf6"></div></div>
+
+  <!-- 1. INTRO -->
+  <section class="scene" id="s-intro">
+    <svg class="abs" id="intro-pin" style="left:880px;top:220px" width="160" height="200" viewBox="0 0 160 200">
+      <path id="pin-path" d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="none" stroke="#ff7a1a" stroke-width="10" stroke-linejoin="round"/>
+      <circle id="pin-dot" cx="80" cy="72" r="26" fill="#ff7a1a"/>
+    </svg>
+    <div class="abs center h1 fade" id="intro-title" style="top:450px">מוצא המוצרים</div>
+    <div class="abs center h3 fade" id="intro-sub" style="top:600px;color:var(--muted);font-weight:400">כל מוצר בחנות — <span class="accent" style="font-weight:700">תוך שניות</span></div>
+    <div class="abs center fade" id="intro-tag" style="top:740px"><span class="tag">הצעה לפיילוט ברשת · אב-טיפוס עובד</span></div>
+  </section>
+
+  <!-- 2. PROBLEM -->
+  <section class="scene" id="s-problem">
+    <div class="abs fade" id="prob-title" style="right:120px;top:150px;width:700px">
+      <div class="step-label">האתגר</div>
+      <div class="h2" style="margin-top:14px">1,000 מ״ר.<br>אלפי מוצרים.</div>
+    </div>
+    <div class="abs" style="right:120px;top:450px;width:700px">
+      <div class="h3 fade" id="prob-l1">הלקוח מחפש <span class="accent">סיר קטן</span>…</div>
+      <div class="h3 fade" id="prob-l2" style="margin-top:26px">מסתובב בין המעברים,</div>
+      <div class="h3 fade" id="prob-l3" style="margin-top:26px">מחפש עובד פנוי,</div>
+      <div class="h3 fade" id="prob-l4" style="margin-top:26px;color:var(--red)">ולפעמים יוצא בלי לקנות.</div>
+    </div>
+    <div class="abs card" style="left:110px;top:160px;width:900px;height:620px;padding:24px">
+      <svg id="prob-map" width="852" height="572" viewBox="0 0 800 500"></svg>
+    </div>
+  </section>
+
+  <!-- 3. SOLUTION -->
+  <section class="scene" id="s-solution">
+    <div class="abs center fade" id="sol-title" style="top:130px">
+      <div class="step-label">הפתרון</div>
+      <div class="h2" style="margin-top:14px">שלושה צעדים. בלי חומרה. בלי התקנות.</div>
+    </div>
+    <div class="abs" style="left:150px;right:150px;top:400px;display:flex;gap:50px;justify-content:center">
+      <div class="card fade sol-card" style="flex:1;padding:50px 40px;text-align:center">
+        <div style="font-size:110px">📷</div><div class="h3" style="margin-top:16px">מצלמים</div>
+        <div class="p" style="font-size:30px;margin-top:10px">צוות הסניף מצלם כל מדף בטלפון</div>
+      </div>
+      <div class="card fade sol-card" style="flex:1;padding:50px 40px;text-align:center">
+        <div style="font-size:110px">✨</div><div class="h3" style="margin-top:16px">הבינה המלאכותית מזהה</div>
+        <div class="p" style="font-size:30px;margin-top:10px">כל מוצר נשמר עם שם, תמונה ומיקום מדויק</div>
+      </div>
+      <div class="card fade sol-card" style="flex:1;padding:50px 40px;text-align:center">
+        <div style="font-size:110px">📍</div><div class="h3" style="margin-top:16px">הלקוח מוצא</div>
+        <div class="p" style="font-size:30px;margin-top:10px">סורק QR, מחפש, ורואה בדיוק לאן ללכת</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. MAP SETUP -->
+  <section class="scene" id="s-map">
+    <div class="abs fade" id="map-text" style="right:110px;top:200px;width:560px">
+      <div class="step-label">שלב 1 · הקמה</div>
+      <div class="h2" style="margin-top:14px">משרטטים את<br>מפת הסניף</div>
+      <div class="p" style="margin-top:24px">פעם אחת. גוררים אצבע על המסך, מסמנים מעברים ונותנים להם שם.</div>
+    </div>
+    <div class="tablet" style="left:100px;top:150px;width:1120px;height:760px">
+      <div class="screen">
+        <div style="padding:22px 30px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:28px;font-weight:800;display:flex;align-items:center;gap:12px"><svg width="20" height="26" viewBox="0 0 160 200"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/></svg>מפת הסניף <span class="chip" style="font-size:16px">סניף מרכז · 1,000 מ״ר</span></div>
+          <div style="display:flex;gap:10px;font-size:20px">
+            <span class="chip o" style="font-size:19px;padding:9px 18px">✏️ מדף חדש</span>
+            <span class="chip" style="font-size:19px;padding:9px 18px">🚪 כניסה</span>
+            <span id="map-save" style="padding:9px 22px;border-radius:999px;background:linear-gradient(135deg,#ff8a2a,#ff5a36);color:#fff;font-weight:700;font-size:19px">שמירה</span>
+          </div>
+        </div>
+        <svg id="setup-map" width="1076" height="620" viewBox="0 0 800 500" style="display:block;margin:6px auto 0"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. PHOTO + AI -->
+  <section class="scene" id="s-photo">
+    <div class="abs fade" id="photo-text" style="right:110px;top:130px;width:760px">
+      <div class="step-label">שלב 2 · צילום</div>
+      <div class="h2" style="margin-top:14px;font-size:64px">מצלמים מדף.<br><span class="accent">והמערכת מזהה הכול.</span></div>
+    </div>
+    <div class="phone" style="left:150px;top:110px">
+      <div class="notch"></div>
+      <div class="screen" style="background:#0d0d0d">
+        <div style="position:absolute;top:74px;left:0;right:0;text-align:center;color:#fff;font-size:20px;z-index:3"><span style="background:rgba(0,0,0,.55);padding:6px 16px;border-radius:12px">📍 מעבר 4 · כלי בישול</span></div>
+        <svg id="shelf-photo" width="384" height="824" viewBox="0 0 384 824" style="position:absolute;inset:0"></svg>
+        <div id="flash" style="position:absolute;inset:0;background:#fff;opacity:0"></div>
+        <div style="position:absolute;bottom:34px;left:50%;margin-left:-42px;width:84px;height:84px;border-radius:50%;border:6px solid #fff;background:rgba(255,255,255,.25)"></div>
+      </div>
+    </div>
+    <div class="abs" id="detected-list" style="right:110px;top:390px;width:700px"></div>
+    <div class="abs fade" id="photo-video" style="right:110px;top:935px;width:760px"><span class="pill">🎬 בקרוב: מסריטים מעבר שלם בהליכה — והקטלוג נבנה לבד</span></div>
+  </section>
+
+  <!-- 6. CUSTOMER -->
+  <section class="scene" id="s-customer">
+    <div class="abs fade" id="cust-text" style="right:110px;top:140px;width:640px">
+      <div class="step-label">שלב 3 · הלקוח</div>
+      <div class="h2" style="margin-top:14px">סורקים בכניסה.<br>מוצאים בשניות.</div>
+      <div class="p" style="margin-top:22px">בלי להוריד אפליקציה. עובד בכל טלפון, בחיפוש כתוב או קולי.</div>
+    </div>
+    <!-- entrance QR sign -->
+    <div class="abs card fade" id="qr-sign" style="right:200px;top:520px;width:440px;padding:30px;text-align:center;background:#fff;color:#1c2233">
+      <div style="font-size:30px;font-weight:800">מחפשים משהו?</div>
+      <div style="font-size:22px;color:#667085">סרקו ותגיעו ישר למוצר</div>
+      <svg id="qr" width="220" height="220" viewBox="0 0 29 29" style="margin:16px auto 0;display:block"></svg>
+    </div>
+    <div class="phone" id="cust-phone" style="left:240px;top:110px">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="ui">
+          <div class="ui-top">
+            <div class="ui-brand"><svg width="16" height="20" viewBox="0 0 160 200"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/></svg>כלי בית · סניף מרכז</div>
+            <div class="chip" style="font-size:14px">עברית ▾</div>
+          </div>
+          <div class="ui-hello">שלום 👋<small>מה מחפשים היום?</small></div>
+          <div class="ui-search"><span style="opacity:.6">🔍</span><span id="typed"></span><span class="caret" id="caret" style="background:#ff8a2a"></span><div class="mic">🎤</div></div>
+          <div id="cust-hint" style="margin:14px 22px 0;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="chip">🍳 מחבתות</span><span class="chip">🫖 קומקומים</span><span class="chip">🥣 קערות</span>
+          </div>
+          <div id="cust-result" class="fade">
+            <div class="ui-card" style="display:flex;gap:14px;align-items:center;padding:14px">
+              <svg width="96" height="96" viewBox="0 0 110 110" id="res-thumb" style="border-radius:18px;background:radial-gradient(circle at 50% 40%,#2c3a6e,#151c36);flex:none"></svg>
+              <div>
+                <div style="font-size:21px;font-weight:800;white-space:nowrap">סיר נירוסטה 16 ס״מ</div>
+                <div style="font-size:16px;color:#8f9bc0;margin-top:2px">סיר קטן עם מכסה · במלאי</div>
+                <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><span class="chip o">📍 מעבר 4</span><span class="chip">מדף 2 מלמטה</span></div>
+              </div>
+            </div>
+            <div class="ui-card" style="padding:12px 12px 10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 8px">
+                <div style="font-size:18px;font-weight:700">הדרך אל המוצר</div>
+                <div id="cust-dir" class="chip o" style="font-size:15px">🚶 15 מ׳ · כ-20 שניות</div>
+              </div>
+              <svg id="cust-map" width="350" height="219" viewBox="0 0 800 500" style="display:block;border-radius:16px;background:#0a0f1f"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. DATA -->
+  <section class="scene" id="s-data">
+    <div class="abs fade" id="data-text" style="right:110px;top:180px;width:640px">
+      <div class="step-label">ערך להנהלה</div>
+      <div class="h2" style="margin-top:14px">לראשונה: יודעים מה הלקוחות <span class="accent">מחפשים ולא מוצאים</span></div>
+      <div class="p" style="margin-top:24px">כל חיפוש הוא נתון. החלטות על מלאי, סידור מדפים ומבצעים מתקבלות לפי מה שהלקוחות באמת ביקשו.</div>
+    </div>
+    <div class="abs card fade" id="dash" style="left:110px;top:170px;width:960px;padding:46px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div class="h3">חיפשו ולא מצאו · השבוע</div><div style="font-size:22px;color:var(--muted)">נתונים להמחשה</div></div>
+      <div id="bars" style="margin-top:20px"></div>
+      <div style="display:flex;gap:20px;margin-top:30px">
+        <div class="pill">🔎 1,284 חיפושים</div><div class="pill">✅ 91% נמצאו</div><div class="pill" style="color:var(--orange)">⚠️ 116 לא נמצאו</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. CHAIN -->
+  <section class="scene" id="s-chain">
+    <div class="abs fade" id="chain-text" style="right:110px;top:200px;width:620px">
+      <div class="step-label">התאמה לרשת</div>
+      <div class="h2" style="margin-top:14px">פלטפורמה אחת<br>לכל הסניפים</div>
+      <div style="margin-top:34px;display:flex;flex-direction:column;gap:18px" id="chain-bullets">
+        <div class="h3 fade" style="font-weight:500">✓ לכל סניף מפה וקטלוג משלו</div>
+        <div class="h3 fade" style="font-weight:500">✓ הקמה של סניף חדש בתוך יום</div>
+        <div class="h3 fade" style="font-weight:500">✓ אפס חומרה — רק טלפון ושלט QR</div>
+        <div class="h3 fade" style="font-weight:500">✓ נתוני חיפוש מכל הרשת במקום אחד</div>
+      </div>
+    </div>
+    <svg class="abs" id="chain-net" style="left:90px;top:120px" width="980" height="840" viewBox="0 0 980 840"></svg>
+  </section>
+
+  <!-- 9. ROBOT -->
+  <section class="scene" id="s-robot" style="background:linear-gradient(180deg,#050813 0%,#0b1430 100%)">
+    <div class="abs fade" id="robot-text" style="right:110px;top:90px;width:900px">
+      <div class="step-label">החזון · השלב הבא</div>
+      <div class="h2" style="margin-top:14px">רובוט שסורק את המדפים</div>
+    </div>
+    <div class="abs fade" id="robot-moon" style="left:130px;top:100px;font-size:34px;color:var(--muted)">🌙 אחרי שעות הפתיחה</div>
+    <svg class="abs" id="robot-scene" style="left:0;top:260px" width="1920" height="560" viewBox="0 0 1920 560"></svg>
+    <div class="abs" style="left:0;right:0;top:850px;display:flex;justify-content:center;gap:30px" id="robot-pills">
+      <div class="pill fade">🔄 מעדכן את הקטלוג אוטומטית</div>
+      <div class="pill fade" style="color:var(--red)">⛔ מזהה מדפים ריקים</div>
+      <div class="pill fade" style="color:var(--yellow)">↔️ מאתר מוצרים שזזו</div>
+      <div class="pill fade" style="color:var(--green)">🤝 מלווה לקוחות עד המוצר</div>
+    </div>
+  </section>
+
+  <!-- 10. PILOT -->
+  <section class="scene" id="s-pilot">
+    <div class="abs center fade" id="pilot-title" style="top:110px">
+      <div class="step-label">ההצעה</div>
+      <div class="h2" style="margin-top:14px">פיילוט בסניף אחד · <span class="accent">30 יום</span></div>
+    </div>
+    <div class="abs" style="left:0;right:0;top:330px;display:flex;justify-content:center;gap:40px">
+      <div class="card tl-item fade pilot-tl"><div class="when">שבוע 1</div><div class="what">הקמה</div><div class="how">מפת הסניף, צילום המדפים ושלטי QR בכניסה</div></div>
+      <div class="card tl-item fade pilot-tl"><div class="when">שבועות 2–4</div><div class="what">לקוחות משתמשים</div><div class="how">מעקב יומי ושיפור הקטלוג לפי החיפושים</div></div>
+      <div class="card tl-item fade pilot-tl"><div class="when">סוף החודש</div><div class="what">סיכום ותוצאות</div><div class="how">דוח מדדים והחלטה על הרחבה לסניפים נוספים</div></div>
+    </div>
+    <div class="abs center fade" id="pilot-kpi-title" style="top:640px"><div class="h3" style="color:var(--muted);font-weight:500">מה נמדוד</div></div>
+    <div class="abs" style="left:0;right:0;top:720px;display:flex;justify-content:center;gap:30px">
+      <div class="pill fade pilot-kpi">⏱️ זמן עד מציאת מוצר</div>
+      <div class="pill fade pilot-kpi">🙋 פניות לעובדים</div>
+      <div class="pill fade pilot-kpi">🔎 חיפושים שלא נמצאו</div>
+      <div class="pill fade pilot-kpi">⭐ שביעות רצון לקוחות</div>
+    </div>
+  </section>
+
+  <!-- 11. CLOSE -->
+  <section class="scene" id="s-close">
+    <svg class="abs fade" id="close-pin" style="left:900px;top:200px" width="120" height="150" viewBox="0 0 160 200">
+      <path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/>
+      <circle cx="80" cy="72" r="26" fill="#0b1224"/>
+    </svg>
+    <div class="abs center h1 fade" id="close-title" style="top:390px">מוצא המוצרים</div>
+    <div class="abs center h3 fade" id="close-sub" style="top:540px;font-weight:400;color:var(--muted)">המערכת קיימת ועובדת כבר היום.</div>
+    <div class="abs center h2 fade" id="close-ask" style="top:650px">נשמח לאישורך <span class="accent">לפיילוט</span>.</div>
+  </section>
+
+  <div class="caption" id="caption"><span></span></div>
+  <div class="watermark" id="wm"><svg width="22" height="28" viewBox="0 0 160 200"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/></svg>מוצא המוצרים</div>
+  <div class="progress" id="progress"></div>
+  <div id="vignette"></div><div id="grain"></div>
+</div>
+
+<script>
+// ---------------- timing ----------------
+const SCENES = [
+  ['s-intro', 0, 11],
+  ['s-problem', 11, 35],
+  ['s-solution', 35, 53],
+  ['s-map', 53, 77],
+  ['s-photo', 77, 111],
+  ['s-customer', 111, 150],
+  ['s-data', 150, 170],
+  ['s-chain', 170, 189],
+  ['s-robot', 189, 213],
+  ['s-pilot', 213, 230],
+  ['s-close', 230, 238],
+];
+const DURATION = 238;
+
+const CAPTIONS = [
+  [57, 64, 'מעברים ומדפים — בדיוק כמו בסניף'],
+  [64, 73, 'כל משבצת היא מטר אחד · 1,000 מ״ר על המסך'],
+  [118, 124, 'לקוח נכנס וסורק את השלט בכניסה', 'r'],
+  [124, 131, 'כותב או אומר: "סיר קטן"', 'r'],
+  [131, 146, 'רואה את המוצר, המדף והדרך אליו', 'r'],
+  [196, 203, 'בלילה הרובוט עובר בין המעברים וסורק כל מדף'],
+  [203, 211, 'והקטלוג של כל הסניפים מתעדכן לבד'],
+];
+
+// ---------------- helpers ----------------
+const $ = (id) => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const prog = (t, t0, d) => ease(clamp((t - t0) / d));
+function show(el, t, t0, d = 0.7, dy = 34, out = null) {
+  let p = prog(t, t0, d);
+  if (out !== null) p *= 1 - prog(t, out, 0.5);
+  el.style.opacity = p;
+  el.style.transform = `translateY(${(1 - p) * dy}px)`;
+}
+function svg(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function pointAlong(pts, f) { // f in [0,1] along polyline
+  const segs = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); total += l; }
+  let d = f * total;
+  for (let i = 0; i < segs.length; i++) {
+    if (d <= segs[i]) { const k = segs[i] ? d / segs[i] : 0; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * k, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * k]; }
+    d -= segs[i];
+  }
+  return pts[pts.length - 1];
+}
+
+// ---------------- store geometry (20px cells, 40x25) ----------------
+const C = 20;
+const AISLES = [34, 29, 24, 19, 14, 9, 4].map((x, i) => ({ x, y: 4, w: 2, h: 15, name: `מעבר ${i + 1}` }));
+const WALLS = [{ x: 2, y: 1, w: 36, h: 1, name: '' }, { x: 0, y: 4, w: 1, h: 15, name: '' }, { x: 39, y: 4, w: 1, h: 15, name: '' }];
+const TARGET = AISLES[3]; // מעבר 4 at x=19
+const ENTRANCE = [20.5, 24];
+const ROUTE = [[20.5, 23.5], [20.5, 20.5], [22, 20.5], [22, 11.5]].map(([x, y]) => [x * C, y * C]);
+const CASHIERS = [{ x: 4, y: 21, w: 3, h: 2 }, { x: 9, y: 21, w: 3, h: 2 }];
+
+let defsId = 0;
+function drawStore(root, { labels = true, count = 99, target = false } = {}) {
+  root.innerHTML = '';
+  const id = ++defsId;
+  const defs = svg('defs', {}, root);
+  const sh = svg('linearGradient', { id: `sh${id}`, x1: 0, y1: 0, x2: 1, y2: 1 }, defs);
+  svg('stop', { offset: '0%', 'stop-color': '#34437a' }, sh); svg('stop', { offset: '100%', 'stop-color': '#222c55' }, sh);
+  const tg = svg('linearGradient', { id: `tg${id}`, x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+  svg('stop', { offset: '0%', 'stop-color': '#ffb36b' }, tg); svg('stop', { offset: '100%', 'stop-color': '#ff5a36' }, tg);
+  const gl = svg('filter', { id: `gl${id}`, x: '-50%', y: '-50%', width: '200%', height: '200%' }, defs);
+  svg('feGaussianBlur', { stdDeviation: 8, result: 'b' }, gl);
+  const m = svg('feMerge', {}, gl); svg('feMergeNode', { in: 'b' }, m); svg('feMergeNode', { in: 'SourceGraphic' }, m);
+  root.dataset.glow = `url(#gl${id})`;
+  const g = svg('g', {}, root);
+  for (let x = 0; x <= 40; x++) svg('line', { x1: x * C, y1: 0, x2: x * C, y2: 500, stroke: '#8fa3ff', 'stroke-opacity': 0.06 }, g);
+  for (let y = 0; y <= 25; y++) svg('line', { x1: 0, y1: y * C, x2: 800, y2: y * C, stroke: '#8fa3ff', 'stroke-opacity': 0.06 }, g);
+  const shelves = [];
+  [...WALLS, ...AISLES].forEach((s, i) => {
+    const sg = svg('g', { class: 'shelf' }, g);
+    const isT = target && s === TARGET;
+    svg('rect', { x: s.x * C + 2, y: s.y * C + 2, width: s.w * C - 4, height: s.h * C - 4, rx: 6, fill: isT ? `url(#tg${id})` : `url(#sh${id})`, stroke: isT ? '#ffc27a' : '#4a5a96', 'stroke-width': 1.5, filter: isT ? `url(#gl${id})` : '' }, sg);
+    if (labels && s.name) {
+      const cx = (s.x + s.w / 2) * C, cy = (s.y + s.h / 2) * C;
+      const t = svg('text', { x: cx, y: cy + 7, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: isT ? '#fff' : '#c3cdf0', transform: `rotate(-90 ${cx} ${cy})`, 'font-family': 'Heebo' }, sg);
+      t.textContent = s.name;
+    }
+    sg.style.opacity = i < count ? 1 : 0;
+    shelves.push(sg);
+  });
+  for (const c of CASHIERS) {
+    svg('rect', { x: c.x * C + 2, y: c.y * C + 2, width: c.w * C - 4, height: c.h * C - 4, rx: 6, fill: 'rgba(34,197,94,.18)', stroke: '#22c55e', 'stroke-width': 1.5 }, g);
+    const t = svg('text', { x: (c.x + c.w / 2) * C, y: (c.y + c.h / 2) * C + 6, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 700, fill: '#86efac', 'font-family': 'Heebo' }, g);
+    t.textContent = 'קופה';
+  }
+  const eg = svg('g', {}, g);
+  svg('rect', { x: 18 * C, y: 24 * C - 4, width: 5 * C, height: 24, rx: 12, fill: '#22c55e' }, eg);
+  const et = svg('text', { x: 20.5 * C, y: 24 * C + 14, 'text-anchor': 'middle', 'font-size': 17, 'font-weight': 800, fill: '#fff', 'font-family': 'Heebo' }, eg);
+  et.textContent = 'כניסה';
+  return shelves;
+}
+
+// pot / pan / kettle illustrations (front view)
+function pot(g, x, y, w, h, color = '#b9c2d3', shade = '#8e98ad') {
+  svg('rect', { x: x - w * 0.08, y: y + h * 0.28, width: w * 0.12, height: h * 0.08, rx: 4, fill: shade }, g);
+  svg('rect', { x: x + w * 0.96, y: y + h * 0.28, width: w * 0.12, height: h * 0.08, rx: 4, fill: shade }, g);
+  svg('rect', { x, y: y + h * 0.18, width: w, height: h * 0.82, rx: w * 0.06, fill: color }, g);
+  svg('rect', { x: x + w * 0.1, y: y + h * 0.3, width: w * 0.12, height: h * 0.6, rx: 4, fill: '#fff', 'fill-opacity': 0.35 }, g);
+  svg('ellipse', { cx: x + w / 2, cy: y + h * 0.18, rx: w * 0.53, ry: h * 0.1, fill: shade }, g);
+  svg('rect', { x: x + w * 0.42, y: y, width: w * 0.16, height: h * 0.1, rx: 4, fill: '#333' }, g);
+}
+function pan(g, x, y, w, color = '#2b2f3a') {
+  svg('rect', { x: x + w, y: y + 8, width: w * 0.7, height: 12, rx: 6, fill: '#5a4636' }, g);
+  svg('path', { d: `M${x} ${y} L${x + w} ${y} L${x + w * 0.92} ${y + 34} L${x + w * 0.08} ${y + 34} Z`, fill: color }, g);
+}
+function kettle(g, x, y, w, h) {
+  svg('path', { d: `M${x + w * 0.15} ${y + h} L${x + w * 0.85} ${y + h} L${x + w * 0.75} ${y + h * 0.25} L${x + w * 0.25} ${y + h * 0.25} Z`, fill: '#d94b4b' }, g);
+  svg('path', { d: `M${x + w * 0.3} ${y + h * 0.25} Q${x + w / 2} ${y - h * 0.1} ${x + w * 0.7} ${y + h * 0.25}`, fill: 'none', stroke: '#333', 'stroke-width': 7 }, g);
+  svg('path', { d: `M${x + w * 0.18} ${y + h * 0.6} L${x - w * 0.12} ${y + h * 0.35}`, stroke: '#d94b4b', 'stroke-width': 12, 'stroke-linecap': 'round' }, g);
+}
+
+// ---------------- scene builders ----------------
+const probShelves = drawStore($('prob-map'), { labels: false });
+const wander = [[20.5, 23], [20.5, 20], [27, 20], [27, 6], [22, 3], [12, 3], [12, 12], [7, 12], [7, 19.5], [17, 19.5], [17, 9], [17, 20]].map(([x, y]) => [x * C, y * C]);
+const wanderPath = svg('polyline', { points: '', fill: 'none', stroke: '#ef4444', 'stroke-width': 4, 'stroke-dasharray': '6 8', 'stroke-linecap': 'round', opacity: 0.7 }, $('prob-map'));
+const shopper = svg('g', {}, $('prob-map'));
+svg('circle', { r: 13, fill: '#4f7cff', stroke: '#fff', 'stroke-width': 4 }, shopper);
+const qmark = svg('text', { y: -22, 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 900, fill: '#ff7a1a', 'font-family': 'Heebo' }, shopper);
+qmark.textContent = '?';
+
+const setupShelves = drawStore($('setup-map'), { count: 0 });
+const drawRect = svg('rect', { fill: '#ff8a2a', 'fill-opacity': 0.18, stroke: '#ff8a2a', 'stroke-dasharray': '8 6', 'stroke-width': 3, rx: 5 }, $('setup-map'));
+const finger = svg('circle', { r: 16, fill: '#fff', 'fill-opacity': 0.35, stroke: '#fff', 'stroke-width': 3 }, $('setup-map'));
+
+// shelf photo
+(() => {
+  const s = $('shelf-photo');
+  svg('rect', { x: 0, y: 0, width: 384, height: 824, fill: '#e9e2d6' }, s);
+  for (const y of [230, 450, 670]) { svg('rect', { x: 0, y, width: 384, height: 18, fill: '#7a6450' }, s); svg('rect', { x: 0, y: y + 18, width: 384, height: 10, fill: '#5f4c3c', opacity: 0.5 }, s); }
+  // top shelf: kettles
+  kettle(s, 40, 120, 90, 110); kettle(s, 150, 120, 90, 110); kettle(s, 260, 120, 90, 110);
+  // middle: big pots
+  pot(s, 30, 330, 140, 120); pot(s, 210, 330, 140, 120);
+  // bottom-middle: small pots (target)
+  pot(s, 28, 590, 70, 80, '#cfd6e4'); pot(s, 118, 590, 70, 80, '#cfd6e4'); pot(s, 208, 590, 70, 80, '#cfd6e4');
+  pot(s, 300, 600, 60, 70, '#e6c27a', '#b8954f');
+  // floor: pans
+  pan(s, 30, 740, 120); pan(s, 190, 740, 120, '#3a2f2b');
+  svg('rect', { id: 'scanline', x: 0, y: 0, width: 384, height: 6, fill: '#4f7cff', opacity: 0 }, s);
+})();
+const BOXES = [
+  { x: 30, y: 110, w: 330, h: 125, name: 'קומקום אדום 1.7 ל׳', level: 'מדף עליון', t: 92 },
+  { x: 18, y: 320, w: 165, h: 135, name: 'סיר נירוסטה 24 ס״מ', level: 'מדף שלישי', t: 93.2 },
+  { x: 198, y: 320, w: 165, h: 135, name: 'סיר לחץ 6 ל׳', level: 'מדף שלישי', t: 94.4 },
+  { x: 18, y: 580, w: 265, h: 95, name: 'סיר נירוסטה 16 ס״מ', level: 'מדף שני מלמטה', t: 95.6, hot: true },
+  { x: 20, y: 730, w: 300, h: 50, name: 'מחבת נון-סטיק 28 ס״מ', level: 'מדף תחתון', t: 96.8 },
+];
+const boxEls = BOXES.map((b) => {
+  const g = svg('g', { opacity: 0 }, $('shelf-photo'));
+  svg('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 8, fill: b.hot ? '#ff7a1a' : '#4f7cff', 'fill-opacity': 0.12, stroke: b.hot ? '#ff7a1a' : '#4f7cff', 'stroke-width': 4 }, g);
+  return g;
+});
+const detEls = BOXES.map((b) => {
+  const d = document.createElement('div');
+  d.className = 'card fade';
+  d.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:13px 24px;margin-bottom:12px;border-radius:20px;${b.hot ? 'border-color:#ff7a1a' : ''}`;
+  d.innerHTML = `<div><div style="font-size:30px;font-weight:700">${b.name}</div><div style="font-size:22px;color:#9aa6c7">📍 מעבר 4 · ${b.level}</div></div><div style="font-size:30px;color:#22c55e">✓</div>`;
+  $('detected-list').appendChild(d);
+  return d;
+});
+
+// QR-like pattern (decorative)
+(() => {
+  const q = $('qr');
+  svg('rect', { x: 0, y: 0, width: 29, height: 29, fill: '#fff' }, q);
+  let seed = 7; const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+  const finder = (x, y) => { svg('rect', { x, y, width: 7, height: 7, fill: '#111' }, q); svg('rect', { x: x + 1, y: y + 1, width: 5, height: 5, fill: '#fff' }, q); svg('rect', { x: x + 2, y: y + 2, width: 3, height: 3, fill: '#111' }, q); };
+  for (let y = 0; y < 29; y++) for (let x = 0; x < 29; x++) {
+    const inFinder = (x < 8 && y < 8) || (x > 20 && y < 8) || (x < 8 && y > 20);
+    if (!inFinder && rnd() > 0.52) svg('rect', { x, y, width: 1, height: 1, fill: '#111' }, q);
+  }
+  finder(0, 0); finder(22, 0); finder(0, 22);
+})();
+(() => { const t = $('res-thumb'); pot(t, 22, 30, 66, 70, '#cfd6e4'); })();
+drawStore($('cust-map'), { target: true });
+const custRoute = svg('polyline', { points: ROUTE.map((p) => p.join(',')).join(' '), fill: 'none', stroke: '#6f93ff', filter: $('cust-map').dataset.glow, 'stroke-width': 9, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, $('cust-map'));
+const routeLen = ROUTE.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - ROUTE[i][0], p[1] - ROUTE[i][1]), 0);
+custRoute.setAttribute('stroke-dasharray', routeLen);
+const youDot = svg('circle', { r: 14, fill: '#6f93ff', stroke: '#fff', 'stroke-width': 4 }, $('cust-map'));
+const pinT = svg('g', {}, $('cust-map'));
+svg('path', { d: 'M0 0 C0 0 -22 -26 -22 -40 A22 22 0 1 1 22 -40 C22 -26 0 0 0 0 Z', fill: '#ff7a1a', stroke: '#fff', 'stroke-width': 3 }, pinT);
+svg('circle', { cx: 0, cy: -40, r: 8, fill: '#fff' }, pinT);
+
+// data bars
+const BARS = [['סיר לחץ חשמלי', 31], ['קופסאות אחסון זכוכית', 24], ['מסננת סיליקון', 19], ['תבנית אפייה עגולה', 15], ['סכין לחם', 11]];
+const barEls = BARS.map(([lbl, n]) => {
+  const r = document.createElement('div'); r.className = 'bar-row';
+  r.innerHTML = `<div class="lbl">${lbl}</div><div class="bar" style="width:0"></div><div class="num">${n}</div>`;
+  $('bars').appendChild(r); return { r, bar: r.querySelector('.bar'), n };
+});
+
+// chain network
+const NODES = [[490, 150], [800, 290], [800, 560], [490, 700], [180, 560], [180, 290]];
+const netLines = [], netNodes = [];
+(() => {
+  const n = $('chain-net');
+  NODES.forEach(([x, y], i) => {
+    netLines.push(svg('line', { x1: 490, y1: 425, x2: x, y2: y, stroke: '#4f7cff', 'stroke-width': 4, 'stroke-dasharray': '10 10', opacity: 0 }, n));
+  });
+  NODES.forEach(([x, y], i) => {
+    const g = svg('g', { opacity: 0 }, n);
+    svg('circle', { cx: x, cy: y, r: 74, fill: '#172142', stroke: '#26325a', 'stroke-width': 3 }, g);
+    const t1 = svg('text', { x, y: y - 4, 'text-anchor': 'middle', 'font-size': 44, 'font-family': 'Heebo' }, g); t1.textContent = '🏬';
+    const t2 = svg('text', { x, y: y + 42, 'text-anchor': 'middle', 'font-size': 24, 'font-weight': 700, fill: '#f2f5ff', 'font-family': 'Heebo' }, g); t2.textContent = `סניף ${i + 1}`;
+    netNodes.push(g);
+  });
+  const hub = svg('g', { id: 'hub', opacity: 0 }, n);
+  svg('circle', { cx: 490, cy: 425, r: 120, fill: '#ff7a1a' }, hub);
+  const h1 = svg('text', { x: 490, y: 418, 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 900, fill: '#fff', 'font-family': 'Heebo' }, hub); h1.textContent = 'מוצא';
+  const h2 = svg('text', { x: 490, y: 458, 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 900, fill: '#fff', 'font-family': 'Heebo' }, hub); h2.textContent = 'המוצרים';
+})();
+
+// robot scene: shelf front view + robot
+const robotItems = [];
+let robotG, beam;
+(() => {
+  const s = $('robot-scene');
+  svg('rect', { x: 120, y: 30, width: 1680, height: 420, rx: 10, fill: '#1b2440', stroke: '#2c3a66', 'stroke-width': 3 }, s);
+  for (const y of [170, 310, 450]) svg('rect', { x: 120, y: y - 12, width: 1680, height: 14, fill: '#3a4a7a' }, s);
+  const rows = [60, 200, 340];
+  rows.forEach((ry, r) => {
+    for (let i = 0; i < 14; i++) {
+      const x = 160 + i * 116;
+      const g = svg('g', {}, s);
+      let status = 'ok';
+      if (r === 1 && i === 9) status = 'empty';
+      if (r === 2 && i === 4) status = 'moved';
+      if (status !== 'empty') {
+        const col = ['#8ea4d8', '#d98b5f', '#7fc8a9', '#d6c06a'][(i + r) % 4];
+        if (r === 0) svg('rect', { x: x + 10, y: ry + 20, width: 70, height: 75, rx: 10, fill: status === 'moved' ? '#c084fc' : col }, g);
+        else svg('rect', { x: x + 6, y: ry + 30, width: 80, height: 66, rx: 12, fill: status === 'moved' ? '#c084fc' : col }, g);
+      }
+      const mark = svg('g', { opacity: 0 }, g);
+      if (status === 'ok') { svg('circle', { cx: x + 80, cy: ry + 22, r: 14, fill: '#22c55e' }, mark); svg('path', { d: `M${x + 73} ${ry + 22} l5 5 l9 -10`, stroke: '#fff', 'stroke-width': 3, fill: 'none' }, mark); }
+      if (status === 'empty') { svg('rect', { x: x + 2, y: ry + 16, width: 92, height: 84, rx: 10, fill: 'none', stroke: '#ef4444', 'stroke-width': 4, 'stroke-dasharray': '10 6' }, mark); const t = svg('text', { x: x + 48, y: ry + 66, 'text-anchor': 'middle', 'font-size': 22, 'font-weight': 800, fill: '#ef4444', 'font-family': 'Heebo' }, mark); t.textContent = 'חסר'; }
+      if (status === 'moved') { svg('rect', { x: x + 2, y: ry + 16, width: 92, height: 84, rx: 10, fill: 'none', stroke: '#facc15', 'stroke-width': 4 }, mark); const t = svg('text', { x: x + 48, y: ry + 10, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 800, fill: '#facc15', 'font-family': 'Heebo' }, mark); t.textContent = 'לא במקום'; }
+      robotItems.push({ x: x + 48, mark });
+    }
+  });
+  svg('rect', { x: 0, y: 470, width: 1920, height: 90, fill: '#0a0f22' }, s);
+  beam = svg('path', { d: '', fill: 'url(#beamGrad)', opacity: 0.55 }, s);
+  const defs = svg('defs', {}, s);
+  const lg = svg('linearGradient', { id: 'beamGrad', x1: 0, y1: 0, x2: 1, y2: 0 }, defs);
+  svg('stop', { offset: '0%', 'stop-color': '#4f7cff', 'stop-opacity': 0.9 }, lg);
+  svg('stop', { offset: '100%', 'stop-color': '#4f7cff', 'stop-opacity': 0 }, lg);
+  robotG = svg('g', {}, s);
+  svg('rect', { x: -46, y: 330, width: 92, height: 140, rx: 22, fill: '#e8ecf7' }, robotG); // body
+  svg('rect', { x: -10, y: 140, width: 20, height: 195, fill: '#c3cbe0' }, robotG); // mast
+  svg('rect', { x: -40, y: 100, width: 80, height: 60, rx: 18, fill: '#e8ecf7' }, robotG); // head
+  svg('rect', { x: -30, y: 112, width: 60, height: 34, rx: 12, fill: '#0b1224' }, robotG);
+  svg('circle', { cx: -12, cy: 129, r: 6, fill: '#4f7cff', class: 'eye' }, robotG);
+  svg('circle', { cx: 12, cy: 129, r: 6, fill: '#4f7cff', class: 'eye' }, robotG);
+  svg('rect', { x: -38, y: 360, width: 76, height: 18, rx: 9, fill: '#ff7a1a' }, robotG);
+  svg('circle', { cx: -26, cy: 478, r: 16, fill: '#2b3352' }, robotG);
+  svg('circle', { cx: 26, cy: 478, r: 16, fill: '#2b3352' }, robotG);
+  for (const y of [200, 260]) svg('rect', { x: -22, y, width: 30, height: 16, rx: 4, fill: '#4f7cff' }, robotG); // cameras
+})();
+
+// ---------------- render(t) ----------------
+function render(t) {
+  for (const [id, a, b] of SCENES) {
+    const el = $(id);
+    const vis = t >= a - 0.01 && t < b + 0.6;
+    el.style.display = vis ? 'block' : 'none';
+    if (!vis) continue;
+    const fin = a === 0 ? 1 : prog(t, a, 0.6);
+    const fout = b >= DURATION ? 1 : 1 - prog(t, b - 0.1, 0.6);
+    el.style.opacity = Math.min(fin, fout);
+    UPDATE[id](t - a, b - a);
+  }
+  // captions
+  const cap = CAPTIONS.find(([a, b]) => t >= a && t < b);
+  const capEl = $('caption');
+  capEl.style.left = cap && cap[3] === 'r' ? '760px' : '0px';
+  if (cap) { capEl.firstChild.textContent = cap[2]; const o = Math.min(prog(t, cap[0], 0.4), 1 - prog(t, cap[1] - 0.4, 0.4)); capEl.style.opacity = o; capEl.style.transform = `translateY(${(1 - o) * 20}px)`; }
+  else capEl.style.opacity = 0;
+  $('wm').style.opacity = t > 11 && t < 229 ? 0.8 : 0;
+  $('progress').style.width = `${(t / DURATION) * 100}%`;
+  const o = (id, x, y) => { const e = $(id); e.style.left = `${x}px`; e.style.top = `${y}px`; };
+  o('orb1', 1200 + 260 * Math.sin(t / 9), -250 + 120 * Math.cos(t / 7));
+  o('orb2', -200 + 220 * Math.cos(t / 11), 650 + 140 * Math.sin(t / 8));
+  o('orb3', 700 + 300 * Math.sin(t / 13 + 1), 300 + 200 * Math.cos(t / 10));
+}
+
+const UPDATE = {
+  's-intro'(t) {
+    const len = 520;
+    const p = $('pin-path'); p.style.strokeDasharray = len; p.style.strokeDashoffset = len * (1 - prog(t, 0.4, 1.6));
+    p.setAttribute('fill', `rgba(255,122,26,${0.0 + 0.0 * t})`);
+    const dot = $('pin-dot'); const dp = prog(t, 1.6, 0.6); dot.setAttribute('r', 26 * dp);
+    $('intro-pin').style.transform = `translateY(${-6 * Math.sin(t * 2)}px)`;
+    show($('intro-title'), t, 2.2, 0.9, 40);
+    show($('intro-sub'), t, 3.4, 0.9);
+    show($('intro-tag'), t, 4.8, 0.9);
+  },
+  's-problem'(t) {
+    show($('prob-title'), t, 0.3);
+    show($('prob-l1'), t, 3);
+    show($('prob-l2'), t, 7);
+    show($('prob-l3'), t, 11.5);
+    show($('prob-l4'), t, 16);
+    const f = clamp((t - 2) / 19);
+    const pos = pointAlong(wander, f);
+    shopper.setAttribute('transform', `translate(${pos[0]},${pos[1]})`);
+    const n = Math.max(2, Math.ceil(f * wander.length));
+    const pts = wander.slice(0, n - 1).concat([pos]);
+    wanderPath.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
+    qmark.setAttribute('opacity', 0.6 + 0.4 * Math.sin(t * 5));
+    qmark.textContent = t > 17 ? '?!' : '?';
+  },
+  's-solution'(t) {
+    show($('sol-title'), t, 0.3);
+    document.querySelectorAll('.sol-card').forEach((c, i) => show(c, t, 2.5 + i * 3.5, 0.9, 60));
+  },
+  's-map'(t) {
+    show($('map-text'), t, 0.4);
+    // draw aisles one by one: each 2.2s, starting at t=2
+    const per = 2.0, start = 2.0;
+    const order = [0, 1, 2, ...[...Array(7).keys()].map((i) => i + 3)];
+    let drawing = null;
+    setupShelves.forEach((sg, i) => {
+      const t0 = i < 3 ? 1 + i * 0.3 : start + (i - 3) * per;
+      sg.style.opacity = t >= t0 + (i < 3 ? 0 : per * 0.8) ? 1 : (i < 3 ? prog(t, t0, 0.4) : 0);
+      if (i >= 3 && t >= t0 && t < t0 + per * 0.8) drawing = { s: AISLES[i - 3], f: prog(t, t0, per * 0.7) };
+    });
+    if (drawing) {
+      const s = drawing.s, h = Math.max(1, s.h * drawing.f);
+      drawRect.setAttribute('x', s.x * C); drawRect.setAttribute('y', s.y * C); drawRect.setAttribute('width', s.w * C); drawRect.setAttribute('height', h * C);
+      drawRect.setAttribute('opacity', 1);
+      finger.setAttribute('cx', (s.x + s.w) * C); finger.setAttribute('cy', (s.y + h) * C); finger.setAttribute('opacity', 1);
+    } else { drawRect.setAttribute('opacity', 0); finger.setAttribute('opacity', 0); }
+    const saved = t > 19;
+    $('map-save').textContent = saved ? 'נשמר ✓' : 'שמירה';
+    $('map-save').style.background = saved ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'linear-gradient(135deg,#ff8a2a,#ff5a36)';
+  },
+  's-photo'(t) {
+    show($('photo-text'), t, 0.4);
+    // camera flash at 4s, scan 5-14s, boxes 15-20
+    $('flash').style.opacity = t > 4 && t < 4.6 ? 1 - (t - 4) / 0.6 : 0;
+    const sl = document.getElementById('scanline');
+    const scanning = t > 5 && t < 14.5;
+    sl.setAttribute('opacity', scanning ? 0.85 : 0);
+    sl.setAttribute('y', 824 * (((t - 5) / 4.5) % 1));
+    BOXES.forEach((b, i) => {
+      const lt = b.t - 77;
+      boxEls[i].setAttribute('opacity', prog(t, lt, 0.4));
+      show(detEls[i], t, lt + 0.2, 0.6, 26);
+    });
+    show($('photo-video'), t, 27);
+  },
+  's-customer'(t) {
+    show($('cust-text'), t, 0.4);
+    show($('qr-sign'), t, 2, 0.8, 30, 12);
+    // phone slides in at 6
+    const pp = prog(t, 5, 1.2);
+    $('cust-phone').style.transform = `translateY(${(1 - pp) * 900}px)`;
+    const q = 'סיר קטן';
+    const n = Math.floor(clamp((t - 14) / 2.2) * q.length);
+    $('typed').textContent = q.slice(0, n);
+    $('caret').style.opacity = t > 20 ? 0 : (Math.floor(t * 2) % 2 ? 1 : 0);
+    show($('cust-result'), t, 18.5, 0.6, 30);
+    $('cust-hint').style.display = t > 18.5 ? 'none' : 'flex';
+    const rp = prog(t, 21, 4);
+    custRoute.setAttribute('stroke-dashoffset', routeLen * (1 - rp));
+    const pos = pointAlong(ROUTE, rp);
+    youDot.setAttribute('cx', pos[0]); youDot.setAttribute('cy', pos[1]);
+    youDot.setAttribute('opacity', t > 21 ? 1 : 0);
+    const bounce = Math.abs(Math.sin(t * 3)) * 10;
+    pinT.setAttribute('transform', `translate(${20 * C},${11.5 * C - bounce})`);
+    pinT.setAttribute('opacity', prog(t, 24.5, 0.5));
+    // move text block away when QR sign hides, show direction text
+    show($('cust-dir'), t, 25, 0.6, 10);
+  },
+  's-data'(t) {
+    show($('data-text'), t, 3);
+    show($('dash'), t, 0.4, 0.8);
+    barEls.forEach((b, i) => {
+      const p = prog(t, 1.5 + i * 0.5, 1.2);
+      b.bar.style.width = `${(b.n / 31) * 420 * p}px`;
+    });
+  },
+  's-chain'(t) {
+    show($('chain-text'), t, 0.4);
+    $('hub').setAttribute('opacity', prog(t, 1, 0.8));
+    NODES.forEach((_, i) => {
+      const t0 = 2 + i * 0.8;
+      netLines[i].setAttribute('opacity', prog(t, t0, 0.5) * 0.8);
+      netLines[i].setAttribute('stroke-dashoffset', -t * 30);
+      netNodes[i].setAttribute('opacity', prog(t, t0 + 0.2, 0.6));
+    });
+    document.querySelectorAll('#chain-bullets > div').forEach((b, i) => show(b, t, 4 + i * 2.6));
+  },
+  's-robot'(t) {
+    show($('robot-text'), t, 0.4);
+    show($('robot-moon'), t, 1.2);
+    const rx = 1850 - clamp((t - 2) / 17) * 1780;
+    robotG.setAttribute('transform', `translate(${rx},0)`);
+    const scanning = t > 2 && t < 19;
+    beam.setAttribute('d', scanning ? `M${rx - 10} 210 L${rx - 220} 40 L${rx - 220} 460 Z` : '');
+    beam.setAttribute('opacity', 0.35 + 0.15 * Math.sin(t * 8));
+    for (const it of robotItems) it.mark.setAttribute('opacity', rx < it.x + 140 ? prog(rx - 0, it.x + 140, -60) || 1 : 0);
+    document.querySelectorAll('#robot-pills > div').forEach((p, i) => show(p, t, 6 + i * 3.4, 0.7, 24));
+  },
+  's-pilot'(t) {
+    show($('pilot-title'), t, 0.3);
+    document.querySelectorAll('.pilot-tl').forEach((c, i) => show(c, t, 1.8 + i * 1.6, 0.8, 50));
+    show($('pilot-kpi-title'), t, 7);
+    document.querySelectorAll('.pilot-kpi').forEach((c, i) => show(c, t, 8 + i * 0.9, 0.7, 24));
+  },
+  's-close'(t) {
+    show($('close-pin'), t, 0.2, 0.8);
+    show($('close-title'), t, 0.8, 0.9);
+    show($('close-sub'), t, 2, 0.8);
+    show($('close-ask'), t, 3.2, 0.8);
+  },
+};
+
+window.render = render;
+window.DURATION = DURATION;
+window.ready = document.fonts.ready.then(() => true);
+// live preview when opened directly in a browser
+if (!navigator.webdriver) {
+  const t0 = performance.now();
+  const loop = () => { const t = ((performance.now() - t0) / 1000) % DURATION; render(t); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+} else render(0);
+</script>
+</body>
+</html>
