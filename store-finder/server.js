@@ -419,6 +419,67 @@ app.get('/api/pilot-report', requireOwner, (req, res) => {
   res.json({ store: req.store.name, products: productNames.size, ...pilot.report(searches, events, { days, productNames }) });
 });
 
+// ---------- chain headquarters: every branch on this server, side by side ----------
+function requireHq(req, res, next) {
+  const token = (req.get('authorization') || '').replace(/^Bearer /, '');
+  const ok = token && db.prepare(`SELECT 1 FROM hq_sessions WHERE token = ? AND created_at >= datetime('now', ?)`).get(token, `-${SESSION_DAYS} days`);
+  if (!ok) return res.status(401).json({ error: 'צריך להתחבר מחדש' });
+  next();
+}
+app.post('/api/hq/login', (req, res) => {
+  if (!process.env.HQ_PASSWORD) return res.status(404).json({ error: 'מסך הרשת לא הופעל בשרת (חסר HQ_PASSWORD)' });
+  if (rateLimited(`login:${req.ip}`, 10, 5 * 60000)) return res.status(429).json({ error: 'יותר מדי ניסיונות כניסה, נסו שוב בעוד 5 דקות' });
+  const given = crypto.createHash('sha256').update(String(req.body.password || '')).digest();
+  const real = crypto.createHash('sha256').update(process.env.HQ_PASSWORD).digest();
+  if (!crypto.timingSafeEqual(given, real)) return res.status(401).json({ error: 'סיסמה שגויה' });
+  const token = crypto.randomBytes(24).toString('hex');
+  db.prepare('INSERT INTO hq_sessions (token) VALUES (?)').run(token);
+  res.json({ token });
+});
+
+app.get('/api/hq/overview', requireHq, (req, res) => {
+  const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
+  const since = `-${days + 1} days`;
+  const missing = new Map();
+  const stores = db.prepare('SELECT * FROM stores ORDER BY name').all().map((store) => {
+    const searches = db.prepare(`SELECT query, result_count, visitor, created_at FROM searches WHERE store_id = ? AND created_at >= datetime('now', ?)`).all(store.id, since);
+    const events = db.prepare(`SELECT type, visitor, product_id, query, note, created_at, resolved_at FROM events WHERE store_id = ? AND created_at >= datetime('now', ?)`).all(store.id, since);
+    const r = pilot.report(searches, events, { days });
+    // What shoppers wanted and the branch doesn't carry: unfound searches + explicit requests.
+    for (const s of searches.filter((x) => x.result_count === 0)) addMissing(missing, s.query, store.slug);
+    for (const e of events.filter((x) => x.type === 'request')) addMissing(missing, e.query, store.slug);
+    return {
+      slug: store.slug, name: store.name,
+      products: db.prepare('SELECT COUNT(*) AS n FROM products WHERE store_id = ? AND active = 1').get(store.id).n,
+      openAlerts: db.prepare(`SELECT COUNT(*) AS n FROM events WHERE store_id = ? AND resolved_at IS NULL AND type IN ('help', 'not_there', 'empty')`).get(store.id).n,
+      ...Object.fromEntries(['visitors', 'returning', 'searches', 'searchFoundRate', 'found', 'problems', 'successRate', 'medianSecondsToFind',
+        'staffHoursSaved', 'help', 'medianHelpResponseSeconds', 'requests'].map((k) => [k, r[k]])),
+      problemsPer100: r.views ? Math.round((r.problems / r.views) * 1000) / 10 : null,
+    };
+  });
+  const sum = (k) => stores.reduce((a, s) => a + (s[k] || 0), 0);
+  const weighted = (k, w) => { const tw = stores.reduce((a, s) => a + (s[k] == null ? 0 : s[w]), 0); return tw ? Math.round(stores.reduce((a, s) => a + (s[k] ?? 0) * s[w], 0) / tw) : null; };
+  res.json({
+    days,
+    chain: {
+      branches: stores.length, visitors: sum('visitors'), searches: sum('searches'), found: sum('found'), problems: sum('problems'),
+      help: sum('help'), requests: sum('requests'), staffHoursSaved: Math.round(sum('staffHoursSaved') * 10) / 10,
+      successRate: (sum('found') + sum('problems')) ? Math.round((sum('found') / (sum('found') + sum('problems'))) * 100) : null,
+      medianSecondsToFind: weighted('medianSecondsToFind', 'found'),
+    },
+    stores,
+    missing: [...missing.values()].map((m) => ({ ...m, branches: m.branches.size })).sort((a, b) => b.count - a.count).slice(0, 12),
+  });
+});
+function addMissing(map, query, slug) {
+  const key = insights.groupKey(query); // "סירי לחץ" and "סיר לחץ" are the same request
+  if (!key) return;
+  const m = map.get(key) || { query: query.trim(), count: 0, branches: new Set() };
+  m.count++;
+  m.branches.add(slug);
+  map.set(key, m);
+}
+
 // ---------- public (customers) ----------
 // Anonymous per-phone id (random, kept in the browser) so the pilot can count shoppers, not just searches.
 function cleanVisitor(v) {

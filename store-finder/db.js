@@ -62,6 +62,11 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     resolved_at TEXT
   );
+  -- Chain headquarters sign-ins (one password for the whole server, HQ_PASSWORD).
+  CREATE TABLE IF NOT EXISTS hq_sessions (
+    token TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
   CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
   CREATE INDEX IF NOT EXISTS idx_events_store ON events(store_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_events_product ON events(store_id, product_id);

@@ -36,9 +36,18 @@ function holidayDates(from, to) {
   return out;
 }
 
-// "סירי לחץ", "סיר-לחץ", "הסיר לחץ" -> same key
+// "סירי לחץ", "סיר-לחץ", "הסיר לחץ" -> same key; "צידנית" and "צידניות" too.
+// (Only for grouping reports: these endings are too loose for matching products.)
 function groupKey(query) {
-  return tokenize(query).map((t) => variants(t).sort((a, b) => a.length - b.length)[0]).sort().join(' ');
+  const base = (t) => {
+    const forms = variants(t);
+    for (const v of [...forms]) {
+      if (v.length > 4 && v.endsWith('ית')) forms.push(v.slice(0, -2)); // feminine singular: צידנית -> צידנ
+      if (v.length > 3 && v.endsWith('י')) forms.push(v.slice(0, -1)); // construct plural: סירי -> סיר
+    }
+    return forms.sort((a, b) => a.length - b.length)[0];
+  };
+  return tokenize(query).map(base).sort().join(' ');
 }
 
 function parseTime(s) {
