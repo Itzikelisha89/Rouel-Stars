@@ -49,10 +49,15 @@ def duration(path):
     return float(out.stdout)
 
 
+CLIPS = os.environ.get('VOICE_CLIPS_DIR')  # pre-generated seg{i}.wav files (e.g. from f5_hebrew_tts.py) instead of the API
+
+
 def main():
-    if not KEY:
+    if CLIPS:
+        pass
+    elif not KEY:
         sys.exit('ELEVENLABS_API_KEY is not set')
-    if not VOICE:
+    elif not VOICE:
         voices = json.loads(request('/voices'))['voices']
         for v in voices:
             print(v['voice_id'], v['name'], v.get('labels', {}))
@@ -61,12 +66,15 @@ def main():
     tmp = tempfile.mkdtemp()
     inputs, filters = [], []
     for i, (start, slot, text) in enumerate(SEGMENTS):
-        clip = os.path.join(tmp, f'seg{i}.mp3')
-        audio = request(f'/text-to-speech/{VOICE}?output_format=mp3_44100_192', {
-            'text': text, 'model_id': MODEL, 'language_code': 'he',
-            'voice_settings': {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.25, 'use_speaker_boost': True},
-        })
-        open(clip, 'wb').write(audio)
+        if CLIPS:
+            clip = os.path.join(CLIPS, f'seg{i}.wav')
+        else:
+            clip = os.path.join(tmp, f'seg{i}.mp3')
+            audio = request(f'/text-to-speech/{VOICE}?output_format=mp3_44100_192', {
+                'text': text, 'model_id': MODEL, 'language_code': 'he',
+                'voice_settings': {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.25, 'use_speaker_boost': True},
+            })
+            open(clip, 'wb').write(audio)
         d = duration(clip)
         tempo = min(1.12, d / slot) if d > slot else 1.0  # gently speed up only if it overruns its scene
         print(f'segment {i}: {d:.1f}s in a {slot}s slot' + (f' -> tempo {tempo:.2f}' if tempo > 1 else ''))
