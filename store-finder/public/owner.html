@@ -50,6 +50,28 @@
 
     <!-- MAP -->
     <section id="tab-map" class="hidden">
+      <div class="card walk-card">
+        <div class="walk-hero">
+          <div class="wh-ico">🚶</div>
+          <div><h2 style="margin:0">מיפוי החנות בהליכה</h2>
+          <p class="muted" style="margin:4px 0 0">לחנות גדולה (גם 1,000 מ״ר ויותר): עוברים פעם אחת בכל המעברים עם הטלפון, והמפה נבנית לבד, כולל תמונה של כל מעבר.</p></div>
+        </div>
+        <button type="button" class="primary big-btn" id="walk-open">🚶 התחלת מיפוי בהליכה</button>
+        <div id="walk-result" class="hidden">
+          <h3 style="margin:16px 0 6px">✓ המפה מההליכה</h3>
+          <p class="muted" id="wres-sum"></p>
+          <div class="map-box"><svg id="wres-map"></svg></div>
+          <label for="wres-names">שמות המעברים לפי המספרים במפה (שורה לכל מעבר, לא חובה)</label>
+          <textarea id="wres-names" rows="4" placeholder="מוצרי חלב&#10;לחמים ומאפים"></textarea>
+          <div class="row" style="margin-top:10px">
+            <button type="button" class="grow" id="wres-ai">✨ שמות מהשלטים בתמונות</button>
+            <button type="button" class="primary grow" id="wres-save">💾 שמירת המפה והתמונות</button>
+            <button type="button" id="wres-again">↻ שוב</button>
+          </div>
+          <div class="up-progress hidden" id="wres-progress"><i></i></div>
+          <p id="wres-status" class="muted" style="margin:8px 0 0"></p>
+        </div>
+      </div>
       <details class="card wizard-card" id="wizard" open>
         <summary><h2 style="display:inline">✨ אשף מפה מהיר</h2></summary>
         <p class="muted" style="margin-top:8px">רוב הסופרים בנויים ממעברים במקביל. ממלאים כמה פרטים, והמפה מצוירת לבד, עם המעברים, המקררים בקיר האחורי, הקופות והכניסה. אחר כך אפשר לתקן ביד.</p>
@@ -313,6 +335,39 @@
       </div>
     </section>
   </main>
+
+  <!-- map by walking: full screen while the manager walks the store -->
+  <div id="walk-ui" class="walk-ui hidden">
+    <div id="wr-intro" class="wr-intro">
+      <div class="wr-big">🚶</div>
+      <h2>מיפוי בהליכה</h2>
+      <ol class="wr-steps">
+        <li>עומדים <b>בכניסה לחנות</b>, עם הפנים פנימה.</li>
+        <li>מחזיקים את הטלפון <b>ישר לפנים</b>, כמו כשמצלמים.</li>
+        <li>הולכים בקצב רגיל <b>לאורך כל מעבר עד הסוף</b>, פונים למעבר הבא, וכך עד שעוברים בכולם.</li>
+        <li>בסוף לוחצים <b>"✓ סיימתי"</b>.</li>
+      </ol>
+      <label for="wr-step">אורך צעד (ס״מ)</label>
+      <input type="number" id="wr-step" value="70" min="40" max="100">
+      <label class="pf-check"><input type="checkbox" id="wr-cam" checked> לצלם את המעברים תוך כדי (התמונות נכנסות לכל מעבר)</label>
+      <p class="error" id="wr-msg"></p>
+      <button type="button" class="primary big-btn" id="wr-start">▶ מתחילים</button>
+      <button type="button" id="wr-intro-cancel" style="width:100%;margin-top:8px">ביטול</button>
+    </div>
+    <div id="wr-live" class="wr-live hidden">
+      <video id="wr-video" playsinline muted autoplay></video>
+      <div class="wr-hud">
+        <span class="chip o" id="wr-meters">0 מ׳</span><span class="chip" id="wr-steps">0 צעדים</span><span class="chip" id="wr-photos">📷 0</span>
+      </div>
+      <p class="wr-live-msg" id="wr-live-msg"></p>
+      <canvas id="wr-path" class="wr-path"></canvas>
+      <div class="wr-actions">
+        <button type="button" id="wr-cancel">✕</button>
+        <button type="button" id="wr-pause">⏸ הפסקה</button>
+        <button type="button" class="primary" id="wr-done">✓ סיימתי</button>
+      </div>
+    </div>
+  </div>
   <script type="module" src="/js/owner.js"></script>
 </body>
 </html>

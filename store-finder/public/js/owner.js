@@ -2,6 +2,8 @@ import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractF
 import { createAlertsFeed } from '/js/alerts.js';
 import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
 import { generateStoreMap } from '/js/mapwizard.js';
+import { buildMap } from '/js/walkmap.js';
+import { createWalkRecorder } from '/js/walkrec.js';
 
 if (!getToken()) location.href = '/';
 const $ = (id) => document.getElementById(id);
@@ -174,6 +176,94 @@ $('wz-video').addEventListener('change', async (e) => {
     $('wz-names').value = aisles.map((a) => a.name).join('\n');
     $('wz-status').textContent = `✓ זוהו ${aisles.length} מעברים מהסרטון. בודקים את השמות ולוחצים "ציור המפה".`;
   } catch (err) { $('wz-status').textContent = err.message; } finally { bar.classList.add('hidden'); }
+});
+
+// ---------- map by walking ----------
+let walked = null; // { built, points, frames }
+const recorder = createWalkRecorder({ onFinish: ({ walk, frames }) => {
+  try {
+    const points = walk.final();
+    walked = { built: buildMap(points), points, frames };
+  } catch (err) {
+    walked = null;
+    $('walk-result').classList.remove('hidden');
+    $('wres-sum').textContent = err.message;
+    $('wres-map').innerHTML = '';
+    return;
+  }
+  showWalkResult();
+} });
+$('walk-open').addEventListener('click', () => recorder.open());
+$('wres-again').addEventListener('click', () => recorder.open());
+function walkedMap() {
+  const names = $('wres-names').value.split('\n').map((x) => x.trim());
+  const m = structuredClone(walked.built.map);
+  for (const s of m.shelves) {
+    const n = Number(s.name.match(/^מעבר (\d+)/)?.[1]);
+    if (n && names[n - 1]) s.name = s.name.replace(/^מעבר \d+/, `מעבר ${n} · ${names[n - 1]}`).slice(0, 60);
+  }
+  return m;
+}
+function showWalkResult() {
+  const { built, frames } = walked;
+  $('walk-result').classList.remove('hidden');
+  const m = walkedMap();
+  $('wres-sum').textContent = `${built.aisles.length} מעברים, ${m.shelves.length} מדפים וקירות, שטח של כ-${m.cols}×${m.rows} מטר, ${frames.length} תמונות. בודקים שהמפה נראית כמו החנות, ושומרים.`;
+  renderMap($('wres-map'), m);
+  $('wres-ai').classList.toggle('hidden', !store.aiEnabled || !frames.length);
+  $('walk-result').scrollIntoView({ behavior: 'smooth' });
+}
+$('wres-names').addEventListener('input', () => { if (walked) renderMap($('wres-map'), walkedMap()); });
+$('wres-ai').addEventListener('click', async () => {
+  const { built, points, frames } = walked;
+  const bar = $('wres-progress');
+  bar.classList.remove('hidden');
+  try {
+    // the photos in walking order, a few per aisle, so the AI reads the signs aisle by aisle
+    const byAisle = built.aisles.map((a) => frames.filter((f) => built.shelfFor(points[Math.min(f.step, points.length - 1)]).join() === a.shelfIds.join()).slice(0, 4));
+    const form = new FormData();
+    byAisle.flat().slice(0, 40).forEach((f, i) => form.append('frames', f.blob, `frame-${i}.jpg`));
+    const { aisles } = await upload('/api/store/walk', form, (f) => { $('wres-status').textContent = f < 1 ? `מעלה… ${Math.round(f * 100)}%` : 'קורא את השלטים…'; bar.firstElementChild.style.width = `${f * 90}%`; });
+    $('wres-names').value = aisles.map((a) => a.name).slice(0, built.aisles.length).join('\n');
+    renderMap($('wres-map'), walkedMap());
+    $('wres-status').textContent = '✓ השמות מולאו מהשלטים. בודקים ושומרים.';
+  } catch (err) { $('wres-status').textContent = err.message; } finally { bar.classList.add('hidden'); }
+});
+$('wres-save').addEventListener('click', async () => {
+  const { built, points, frames } = walked;
+  const next = walkedMap();
+  const keep = new Set(next.shelves.map((s) => s.id));
+  const lost = products.filter((p) => !keep.has(p.shelfId)).length;
+  if (store.map.shelves.length && !confirm(lost ? `המפה הנוכחית תוחלף, ו-${lost} מוצרים שנמצאים במדפים הישנים יימחקו. להמשיך?` : 'המפה הנוכחית תוחלף במפה מההליכה. להמשיך?')) return;
+  const bar = $('wres-progress');
+  bar.classList.remove('hidden');
+  $('wres-save').disabled = true;
+  try {
+    await api('/api/store/map', { method: 'PUT', body: next });
+    store.map = structuredClone(next);
+    map = structuredClone(next);
+    $('cols').value = map.cols; $('rows').value = map.rows;
+    setDirty(false);
+    drawEditor();
+    // each aisle's photos go to the shelves on both sides of it
+    const jobs = [];
+    for (const a of built.aisles) {
+      const mine = frames.filter((f) => built.shelfFor(points[Math.min(f.step, points.length - 1)]).join() === a.shelfIds.join());
+      const pick = mine.filter((_, i) => mine.length <= 6 || i % Math.ceil(mine.length / 6) === 0).slice(0, 6);
+      if (pick.length) for (const id of a.shelfIds) jobs.push([id, pick]);
+    }
+    for (let j = 0; j < jobs.length; j++) {
+      const [shelfId, pick] = jobs[j];
+      const form = new FormData();
+      form.append('shelfId', shelfId);
+      pick.forEach((f, i) => form.append('frames', f.blob, `frame-${i}.jpg`));
+      $('wres-status').textContent = `שומר תמונות… מדף ${j + 1} מתוך ${jobs.length}`;
+      bar.firstElementChild.style.width = `${((j + 1) / jobs.length) * 100}%`;
+      await upload('/api/videos', form, () => {});
+    }
+    products = await api('/api/products');
+    $('wres-status').textContent = jobs.length ? `✓ נשמרו המפה והתמונות של ${new Set(jobs.map((x) => x[0])).size} מדפים. השלב הבא: לייבא את קובץ המוצרים.` : '✓ המפה נשמרה. השלב הבא: לייבא את קובץ המוצרים.';
+  } catch (err) { $('wres-status').textContent = err.message; } finally { bar.classList.add('hidden'); $('wres-save').disabled = false; }
 });
 
 // ---------- photo capture ----------
