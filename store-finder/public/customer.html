@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=11">
-  <link rel="stylesheet" href="/css/shop.css?v=11">
+  <link rel="stylesheet" href="/css/app.css?v=12">
+  <link rel="stylesheet" href="/css/shop.css?v=12">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -54,6 +54,7 @@
       <button type="button" id="tour-card" class="tour-card hidden">
         <span class="tc-bg" id="tour-card-bg"></span>
         <span class="tc-text"><b data-i18n="tour_title">🎥 סיור וירטואלי בחנות</b><span data-i18n="tour_sub">טיילו בין המדפים האמיתיים והוסיפו לעגלה</span></span>
+        <span class="tc-3d" id="tc-3d">3D</span>
         <span class="tc-go">▶</span>
       </button>
       <button type="button" class="where-btn" data-where data-i18n="where_home">📍 איפה אני? צלם מדף ואכוון אותך</button>
@@ -124,6 +125,7 @@
         <h2 class="sec-title" id="related-title"></h2>
         <div class="deals-row" id="related-row"></div>
       </div>
+      <button type="button" class="ghost-btn show3d hidden" id="detail-3d" data-i18n="show_3d">🎥 הראה לי איפה זה בחנות (3D)</button>
       <button type="button" class="ghost-btn need-help" data-i18n="need_help">🙋 לא מוצא? עובד יבוא אליך</button>
       <div class="action-bar">
         <button type="button" id="list-toggle" class="ab-list" data-i18n="add_short">➕ לרשימה</button>
@@ -163,6 +165,24 @@
       <p class="muted" style="font-size:.85rem;margin:8px 0 0" data-i18n="lost_hint">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
       <div class="action-bar">
         <button type="button" id="arrived-btn" class="ab-go ab-green" data-i18n="arrived_btn">✅ הגעתי</button>
+      </div>
+    </section>
+
+    <!-- the store in 3D: walk it like the real supermarket, fill the cart -->
+    <section id="s3d-view" class="view hidden s3d">
+      <div id="s3d-canvas" class="s3d-canvas"></div>
+      <div class="s3d-top">
+        <button type="button" class="s3d-btn" data-back aria-label="✕">✕</button>
+        <div class="s3d-where" id="s3d-where"></div>
+        <button type="button" class="s3d-btn s3d-cart" id="s3d-cart" aria-label="🛒">🛒<b id="s3d-count">0</b></button>
+      </div>
+      <canvas id="s3d-mini" class="s3d-mini" width="240" height="240"></canvas>
+      <div class="s3d-loading" id="s3d-loading"><span class="spinner"></span><span data-i18n="s3d_loading">בונה את החנות בתלת-ממד…</span></div>
+      <div class="s3d-hint" id="s3d-hint" data-i18n="s3d_hint">גוררים כדי להסתכל · הג׳ויסטיק כדי ללכת · לוחצים על תג מחיר כדי לקנות</div>
+      <div class="s3d-stick" id="s3d-stick"><i></i></div>
+      <div class="s3d-actions">
+        <button type="button" class="s3d-btn" id="s3d-photos" aria-label="🖼️">🖼️</button>
+        <button type="button" class="s3d-pill" id="s3d-auto" data-i18n="s3d_auto">▶ סיור מודרך</button>
       </div>
     </section>
 
@@ -305,6 +325,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=11"></script>
+  <script type="module" src="/js/customer.js?v=12"></script>
 </body>
 </html>

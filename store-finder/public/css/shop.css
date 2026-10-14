@@ -232,3 +232,26 @@ body.shop[data-view=detail] .wrap, body.shop[data-view=nav] .wrap { padding-bott
 .tp-actions button { height: 56px; font-size: 1.05rem; border-radius: 16px; }
 #tp-add.on { background: rgba(34, 197, 94, .16); border-color: rgba(34, 197, 94, .55); color: #8ff0b0; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .tc-bg, .hot-dot { animation: none; } }
+
+/* the store in 3D */
+body.in3d .c-top, body.in3d .tabbar, body.in3d #search-wrap { display: none !important; }
+body.in3d { overflow: hidden; }
+.s3d { position: fixed; inset: 0; z-index: 12; background: #eef1f6; }
+.s3d-canvas { position: absolute; inset: 0; touch-action: none; }
+.s3d-canvas canvas { display: block; }
+.s3d-top { position: absolute; top: 0; inset-inline: 0; display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px; background: linear-gradient(rgba(11, 18, 36, .55), transparent); pointer-events: none; }
+.s3d-top > * { pointer-events: auto; }
+.s3d-btn { width: 48px; height: 48px; padding: 0; border-radius: 50%; border: none; font-size: 1.2rem; color: #fff; background: rgba(11, 18, 36, .72); backdrop-filter: blur(8px); box-shadow: 0 6px 16px rgba(0, 0, 0, .3); }
+.s3d-where { flex: 1; min-width: 0; text-align: center; color: #fff; font-weight: 900; font-size: 1.05rem; text-shadow: 0 2px 8px rgba(0, 0, 0, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s3d-cart { position: relative; width: auto; padding: 0 14px; border-radius: 999px; gap: 6px; background: var(--primary-grad); }
+.s3d-cart b { font-size: 1rem; }
+.s3d-mini { position: absolute; top: calc(70px + env(safe-area-inset-top, 0px)); inset-inline-end: 12px; width: 108px; height: 108px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0, 0, 0, .35); pointer-events: none; }
+.s3d-loading { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; color: #1d2433; font-weight: 800; background: #eef1f6; text-align: center; padding: 20px; }
+.s3d-hint { position: absolute; bottom: 150px; inset-inline: 16px; text-align: center; color: #fff; font-weight: 700; padding: 10px 14px; border-radius: 16px; background: rgba(11, 18, 36, .72); pointer-events: none; animation: rise .4s ease-out; }
+.s3d-stick { position: absolute; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); inset-inline-start: 22px; width: 118px; height: 118px; border-radius: 50%; background: rgba(11, 18, 36, .45); border: 2px solid rgba(255, 255, 255, .5); touch-action: none; display: grid; place-items: center; backdrop-filter: blur(6px); }
+.s3d-stick i { width: 52px; height: 52px; border-radius: 50%; background: var(--primary-grad); box-shadow: 0 6px 16px rgba(255, 90, 54, .5); pointer-events: none; }
+.s3d-actions { position: absolute; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); inset-inline-end: 16px; display: flex; gap: 10px; align-items: center; }
+.s3d-pill { height: 52px; padding: 0 18px; border-radius: 999px; border: none; color: #fff; font-weight: 800; background: rgba(11, 18, 36, .78); box-shadow: 0 6px 16px rgba(0, 0, 0, .3); }
+.tc-3d { position: absolute; top: 12px; inset-inline-start: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: #ff5a36; font-weight: 900; font-size: .85rem; letter-spacing: .05em; }
+.show3d { border-style: solid; border-color: rgba(111, 147, 255, .5); color: #c9d6ff; }
+#tour-sheet { z-index: 30; }

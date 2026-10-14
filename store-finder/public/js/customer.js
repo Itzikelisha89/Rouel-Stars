@@ -1,6 +1,7 @@
 import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js';
 import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js';
 import { rankShelves } from '/js/locate.js';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js';
 import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js';
 
 const $ = (id) => document.getElementById(id);
@@ -129,14 +130,15 @@ function markBox(el, box) {
 // ---------- screens and the phone's back button ----------
 // Every screen is a step in the browser history, so "back" on the phone moves between screens
 // instead of leaving the store.
-const VIEWS = ['home-view', 'home-extra', 'results-view', 'deals-view', 'detail', 'nav-view', 'arrived-view', 'list-view', 'tour-view'];
+const VIEWS = ['home-view', 'home-extra', 'results-view', 'deals-view', 'detail', 'nav-view', 'arrived-view', 'list-view', 'tour-view', 's3d-view'];
 const SHOWS = {
   home: ['home-view', 'home-extra'], results: ['results-view'], deals: ['deals-view'],
-  detail: ['detail'], nav: ['nav-view'], arrived: ['arrived-view'], list: ['list-view'], tour: ['tour-view'],
+  detail: ['detail'], nav: ['nav-view'], arrived: ['arrived-view'], list: ['list-view'], tour: ['tour-view'], s3d: ['s3d-view'],
 };
 const TAB_OF = { home: 'home', results: 'home', deals: 'deals', list: 'list', tour: 'home' };
 function setView(name) {
   stopWalker();
+  if (name !== 's3d') { stop3d(); document.body.classList.remove('in3d'); }
   $('upsell-sheet').classList.add('hidden');
   $('tour-sheet').classList.add('hidden');
   for (const id of VIEWS) $(id).classList.toggle('hidden', !SHOWS[name].includes(id));
@@ -435,6 +437,7 @@ function renderDetail(p, { quiet = false } = {}) {
   say(spokenAnswer);
   // The shelf photo with the product outlined, so the shopper recognises the spot when they get there.
   $('shelf-card').classList.toggle('hidden', !p.photo);
+  $('detail-3d').classList.toggle('hidden', !has3d || !shelf);
   if (p.photo) $('detail-photo').src = p.photo;
   $('shelf-level').textContent = levelName(p.level);
   markBox($('shelf-mark'), p.box);
@@ -764,7 +767,9 @@ async function prepTourCard() {
   if (first) $('tour-card-bg').style.backgroundImage = `url("${first.photos[0].url}")`;
 }
 function openTour(i = tour?.i || 0) { go(() => renderTour(i)); }
-$('tour-card').addEventListener('click', () => { buzz(); openTour(0); });
+const has3d = webglOk();
+$('tc-3d').classList.toggle('hidden', !has3d);
+$('tour-card').addEventListener('click', () => { buzz(); if (has3d) open3d(); else openTour(0); });
 function renderTour(i) {
   if (!tour?.aisles.length) return renderHome();
   setView('tour');
@@ -845,11 +850,156 @@ function paintTourAdd() {
 $('tp-add').addEventListener('click', () => {
   if (!tourPick) return;
   $('tour-sheet').classList.add('hidden');
+  const adding = !inList(tourPick.id);
   toggleList(tourPick);
+  if (s3d && document.body.dataset.view === 's3d') {
+    if (adding) s3d.flyToCart(tourPick.id); else s3d.refreshTag(tourPick.id);
+    $('s3d-count').textContent = loadList().filter((i) => !i.picked).length;
+  }
   for (const h of document.querySelectorAll(`[data-hot="${tourPick.id}"]`)) h.classList.toggle('in', inList(tourPick.id));
 });
 $('tp-more').addEventListener('click', () => { $('tour-sheet').classList.add('hidden'); if (tourPick) openProduct(tourPick); });
 $('tour-sheet').addEventListener('click', (e) => { if (e.target === $('tour-sheet')) $('tour-sheet').classList.add('hidden'); });
+
+// ---------- the store in 3D ----------
+let s3d = null;
+let s3dPick = null;
+function stop3d() { s3d?.stop(); }
+function open3d(opts = {}) { go(() => render3d(opts)); }
+async function render3d({ productId = null } = {}) {
+  setView('s3d');
+  document.body.classList.add('in3d');
+  $('s3d-loading').classList.remove('hidden');
+  $('s3d-hint').classList.remove('hidden');
+  try {
+    const [THREE, tr] = await Promise.all([loadThree(), loadTour()]);
+    if (document.body.dataset.view !== 's3d') return;
+    if (!s3d) {
+      s3d = new Store3D(THREE, $('s3d-canvas'), store.map, tr.aisles, {
+        price: (p) => (p.price ? formatPrice(p.price) : ''),
+        inCart: (id) => inList(id),
+        where: (shelf) => {
+          $('s3d-where').textContent = shelf ? aisleName(shelf) : t('s3d_walk');
+          clearTimeout(s3d?.sayTimer);
+          if (shelf && s3d) s3d.sayTimer = setTimeout(() => { if (s3d.whereId === shelf.id && !s3d.path) say(aisleName(shelf, { short: lang !== 'he' })); }, 1200);
+        },
+      });
+      s3d.fillCart(loadList().filter((i) => !i.picked).length);
+      bind3dControls();
+    }
+    s3d.resize();
+    s3d.start();
+    $('s3d-loading').classList.add('hidden');
+    $('s3d-count').textContent = loadList().filter((i) => !i.picked).length;
+    setTimeout(() => $('s3d-hint').classList.add('hidden'), 5000);
+    tick3dMini();
+    if (productId) {
+      const ok = s3d.walkToProduct(productId, (p) => show3dPick(p));
+      if (!ok) {
+        const p = await api(pub(`/products/${productId}`)).catch(() => null);
+        const shelf = p && shelfOf(p);
+        if (shelf) s3d.walkToShelf(shelf);
+      }
+      say(t('s3d_taking'));
+    } else say(t('s3d_welcome'));
+  } catch (err) {
+    $('s3d-loading').innerHTML = `<span>${escapeHtml(err.message)}</span>`;
+  }
+}
+function tick3dMini() {
+  if (document.body.dataset.view !== 's3d' || !s3d) return;
+  s3d.minimap($('s3d-mini'));
+  setTimeout(tick3dMini, 120);
+}
+function show3dPick(p) {
+  tourPick = p;
+  s3dPick = p;
+  buzz(10);
+  drawCrop($('tp-thumb'), p.image || p.photo, p.image ? null : p.box, 200);
+  $('tp-name').textContent = p.name;
+  $('tp-price').textContent = p.price ? formatPrice(p.price) : '';
+  $('tp-promo').innerHTML = p.promo ? `<span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : '';
+  paintTourAdd();
+  $('tour-sheet').classList.remove('hidden');
+  say(lang === 'he' ? `${shortName(p)}${p.price ? `, ${formatPrice(p.price)}` : ''}${p.promo ? `. ${p.promo}` : ''}` : '');
+}
+let bound3d = false;
+function bind3dControls() {
+  if (bound3d) return;
+  bound3d = true;
+  const cv = $('s3d-canvas');
+  // drag to look, tap to buy or to walk to that spot
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag || !s3d) return;
+    s3d.yaw -= (e.clientX - drag.x) * 0.006; // drag right, look right
+    s3d.pitch = Math.max(-0.6, Math.min(0.5, s3d.pitch + (e.clientY - drag.y) * 0.004));
+    s3d.turnTo = undefined;
+    drag.x = e.clientX; drag.y = e.clientY;
+  });
+  cv.addEventListener('pointerup', (e) => {
+    if (!drag || !s3d) return;
+    const tap = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8 && performance.now() - drag.t < 400;
+    drag = null;
+    if (!tap) return;
+    const hit = s3d.pick(e.clientX, e.clientY);
+    if (hit?.product) show3dPick(hit.product);
+    else if (hit?.floor) { s3d.walkToPoint(hit.floor.x, hit.floor.z); buzz(6); }
+  });
+  // joystick: up/down walks, sideways steps aside
+  const stick = $('s3d-stick'), knob = stick.firstElementChild;
+  let sid = null;
+  const setStick = (e) => {
+    const r = stick.getBoundingClientRect(), R = r.width / 2;
+    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    s3d.move.f = -dy / R; s3d.move.s = dx / R;
+    if (Math.abs(s3d.move.f) < 0.15) s3d.move.f = 0;
+    if (Math.abs(s3d.move.s) < 0.25) s3d.move.s = 0;
+    s3d.path = null; s3d.tour = null;
+  };
+  stick.addEventListener('pointerdown', (e) => { sid = e.pointerId; stick.setPointerCapture(sid); setStick(e); });
+  stick.addEventListener('pointermove', (e) => { if (e.pointerId === sid) setStick(e); });
+  const release = () => { sid = null; knob.style.transform = ''; if (s3d) { s3d.move.f = 0; s3d.move.s = 0; } };
+  stick.addEventListener('pointerup', release);
+  stick.addEventListener('pointercancel', release);
+  // keyboard on a computer
+  const keys = new Set();
+  const applyKeys = () => {
+    if (!s3d || document.body.dataset.view !== 's3d') return;
+    s3d.move.f = (keys.has('ArrowUp') || keys.has('w') ? 1 : 0) - (keys.has('ArrowDown') || keys.has('s') ? 1 : 0);
+    s3d.turnKeys = (keys.has('ArrowLeft') || keys.has('a') ? 1 : 0) - (keys.has('ArrowRight') || keys.has('d') ? 1 : 0);
+  };
+  window.addEventListener('keydown', (e) => { if (document.body.dataset.view === 's3d') { keys.add(e.key); applyKeys(); } });
+  window.addEventListener('keyup', (e) => { keys.delete(e.key); applyKeys(); });
+  setInterval(() => { if (s3d?.turnKeys && s3d.running) s3d.yaw += s3d.turnKeys * 0.04; }, 16);
+  // a guided walk through the aisles, in walking order, a pause at each one
+  $('s3d-auto').addEventListener('click', () => {
+    if (!s3d) return;
+    if (s3d.tour) { s3d.tour = null; s3d.path = null; $('s3d-auto').textContent = t('s3d_auto'); return; }
+    const shelves = tour.aisles.map((a) => store.map.shelves.find((s) => s.id === a.shelfId)).filter(Boolean);
+    const order = planRoute(store.map, shelves, store.map.entrance).legs.map((l) => l.shelf);
+    s3d.tour = { order, i: 0 };
+    $('s3d-auto').textContent = t('s3d_stop');
+    const next = () => {
+      if (!s3d.tour) return;
+      const sh = s3d.tour.order[s3d.tour.i++];
+      if (!sh) { s3d.tour = null; $('s3d-auto').textContent = t('s3d_auto'); say(t('s3d_tour_end')); return; }
+      s3d.walkToShelf(sh, () => {
+        const a = tour.aisles.find((x) => x.shelfId === sh.id);
+        const deals = a ? a.products.filter((p) => p.promo).length : 0;
+        say(`${aisleName(sh, { short: lang !== 'he' })}. ${a ? t('tour_n', { n: a.products.length }) : ''}${deals ? ` ${t('tour_deals', { n: deals })}` : ''}`);
+        setTimeout(next, 4200);
+      });
+    };
+    next();
+  });
+  $('s3d-cart').addEventListener('click', () => go(renderListView));
+  $('s3d-photos').addEventListener('click', () => openTour(0));
+}
+$('detail-3d').addEventListener('click', () => { if (current) open3d({ productId: current.id }); });
 
 // ---------- request a product the store doesn't carry ----------
 $('request-form').addEventListener('submit', async (e) => {
@@ -1229,7 +1379,8 @@ function listen() {
     prepTourCard();
     const q = params.get('q');
     const lastId = hereShelf && !q ? recentProductId() : null;
-    if (params.get('tour')) { await loadTour(); openTour(0); } else if (q) search(q);
+    // ?tour=1 opens the store in 3D (the photo tour on phones without 3D, or with ?tour=photos)
+    if (params.get('tour')) { await loadTour(); if (has3d && params.get('tour') !== 'photos') open3d(); else openTour(0); } else if (q) search(q);
     else if (lastId) {
       // Scanned an aisle sticker mid-trip: continue to the product chosen a moment ago.
       const p = await api(pub(`/products/${lastId}`)).catch(() => null);
