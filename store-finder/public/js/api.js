@@ -71,9 +71,31 @@ export function extractFrames(file, { every = 1.5, max = 40, maxSide = 1024, onP
         const ctx = canvas.getContext('2d');
         const times = [];
         for (let t = Math.min(step / 2, duration / 2); t < duration && times.length < max; t += step) times.push(t);
+        // walking with a phone blurs many frames: around each moment, keep the sharpest of three
+        const probe = document.createElement('canvas');
+        probe.width = 160; probe.height = Math.max(1, Math.round((160 * canvas.height) / canvas.width));
+        const pctx = probe.getContext('2d', { willReadFrequently: true });
+        const sharpness = () => {
+          pctx.drawImage(video, 0, 0, probe.width, probe.height);
+          const d = pctx.getImageData(0, 0, probe.width, probe.height).data, w = probe.width, h = probe.height;
+          const g = (x, y) => { const o = (y * w + x) * 4; return d[o] * 0.3 + d[o + 1] * 0.59 + d[o + 2] * 0.11; };
+          let sum = 0, sq = 0, n = 0;
+          for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+            const l = 4 * g(x, y) - g(x - 1, y) - g(x + 1, y) - g(x, y - 1) - g(x, y + 1);
+            sum += l; sq += l * l; n++;
+          }
+          return sq / n - (sum / n) ** 2; // variance of the Laplacian: higher is sharper
+        };
+        const seek = (t) => new Promise((ok) => { video.onseeked = ok; video.currentTime = Math.max(0, Math.min(duration - 0.05, t)); });
         const frames = [];
         for (const t of times) {
-          await new Promise((ok) => { video.onseeked = ok; video.currentTime = t; });
+          let best = t, bestScore = -1;
+          for (const c of [t - step / 4, t, t + step / 4]) {
+            await seek(c);
+            const score = sharpness();
+            if (score > bestScore) { bestScore = score; best = c; }
+          }
+          await seek(best);
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           frames.push(await new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.82)));
           onProgress?.(frames.length, times.length);

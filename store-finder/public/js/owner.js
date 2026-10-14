@@ -136,6 +136,7 @@ function renderPicker() {
     : '<option value="">— קודם צייר מדפים במפה —</option>';
   if (store.map.shelves.some((s) => s.id === current)) sel.value = current;
   renderMap(picker, store.map, { targetShelfId: sel.value, onShelfClick: (s) => { sel.value = s.id; renderPicker(); } });
+  loadSpot();
 }
 $('photo-shelf').addEventListener('change', renderPicker);
 
@@ -153,6 +154,8 @@ $('photo-input').addEventListener('change', async (e) => {
     form.append('photo', await resizeImage(file), 'shelf.jpg');
     const result = await api('/api/photos', { method: 'POST', form });
     lastPhoto = { ...result.photo, shelfId };
+    spotPhoto = null;
+    loadSpot();
     $('photo-status').textContent = result.aiError || `זוהו ${result.products.length} מוצרים ב"${shelfName(shelfId)}". אפשר לתקן בלשונית מוצרים.`;
     showPhotoResult(result.products);
   } catch (err) { $('photo-status').textContent = err.message; }
@@ -173,6 +176,14 @@ $('video-input').addEventListener('change', async (e) => {
     form.append('shelfId', shelfId);
     frames.forEach((f, i) => form.append('frames', f, `frame-${i}.jpg`));
     const result = await api('/api/videos', { method: 'POST', form });
+    spotPhoto = null; // show the new frames first
+    loadSpot();
+    if (result.ai === false) {
+      $('photo-status').textContent = `נשמרו ${result.keptFrames} תמונות אמיתיות של "${shelfName(shelfId)}" מהסרטון ✓ עכשיו סמנו איפה כל מוצר 👇`;
+      $('photo-result').classList.add('hidden');
+      $('spot-card').scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
     $('photo-status').textContent = `זוהו ${result.products.length} מוצרים ב"${shelfName(shelfId)}" מתוך ${result.frames} תמונות בסרטון. אפשר לתקן בלשונית מוצרים.`;
     lastPhoto = null;
     $('photo-result').classList.remove('hidden');
@@ -207,6 +218,123 @@ $('manual-add').addEventListener('submit', async (e) => {
     $('manual-add').reset();
   } catch (err) { alert(err.message); }
 });
+
+// ---------- marking each product on the real shelf photo ----------
+let spotPhotos = [];
+let spotPhoto = null;
+let spotBox = null;
+let spotWanted = null; // product to select after switching here from the products tab
+async function loadSpot() {
+  const shelfId = $('photo-shelf').value;
+  if (!shelfId) return;
+  spotPhotos = await api(`/api/photos?shelfId=${encodeURIComponent(shelfId)}`).catch(() => []);
+  if (!spotPhotos.some((ph) => ph.id === spotPhoto?.id)) spotPhoto = spotPhotos[0] || null;
+  if (spotWanted?.photoId && spotPhotos.some((ph) => ph.id === spotWanted.photoId)) spotPhoto = spotPhotos.find((ph) => ph.id === spotWanted.photoId);
+  $('spot-empty').classList.toggle('hidden', spotPhotos.length > 0);
+  $('spot-editor').classList.toggle('hidden', !spotPhoto);
+  $('spot-frames').innerHTML = spotPhotos.map((ph) => `<button type="button" class="spot-frame${ph.id === spotPhoto?.id ? ' on' : ''}" data-photo="${ph.id}"><img src="${escapeHtml(ph.url)}" alt=""><span>${ph.products ? `${ph.products} מסומנים` : 'חדש'}</span></button>`).join('');
+  fillSpotProducts();
+  renderSpot();
+}
+function fillSpotProducts() {
+  const shelfId = $('photo-shelf').value;
+  const keep = spotWanted?.id ?? Number($('spot-product').value);
+  const here = products.filter((p) => p.shelfId === shelfId);
+  const other = products.filter((p) => p.shelfId !== shelfId);
+  const opt = (p) => `<option value="${p.id}">${p.photoId ? '✓' : '⚠️'} ${escapeHtml(p.name)}</option>`;
+  $('spot-product').innerHTML = `<optgroup label="${escapeHtml(shelfName(shelfId))}">${here.map(opt).join('')}</optgroup>` +
+    (other.length ? `<optgroup label="ממעברים אחרים (יועבר למעבר הזה)">${other.map(opt).join('')}</optgroup>` : '');
+  const pick = products.find((p) => p.id === keep) || here.find((p) => !p.photoId) || here[0];
+  if (pick) $('spot-product').value = pick.id;
+  spotWanted = null;
+}
+function renderSpot() {
+  if (!spotPhoto) return;
+  $('spot-img').src = spotPhoto.url;
+  const pid = Number($('spot-product').value);
+  const pct = (b) => `left:${b.x0 / 10}%;top:${b.y0 / 10}%;width:${(b.x1 - b.x0) / 10}%;height:${(b.y1 - b.y0) / 10}%`;
+  $('spot-marks').innerHTML = products.filter((p) => p.photoId === spotPhoto.id && p.box && p.id !== pid)
+    .map((p) => `<div class="box" style="${pct(p.box)}"><span>${escapeHtml(p.name)}</span></div>`).join('');
+  const current = products.find((p) => p.id === pid);
+  spotBox = current?.photoId === spotPhoto.id && current.box ? { ...current.box } : null;
+  drawSpotBox();
+  $('spot-save').disabled = true;
+  $('spot-status').textContent = '';
+}
+function drawSpotBox() {
+  const el = $('spot-box');
+  el.classList.toggle('hidden', !spotBox);
+  if (spotBox) Object.assign(el.style, { left: `${spotBox.x0 / 10}%`, top: `${spotBox.y0 / 10}%`, width: `${(spotBox.x1 - spotBox.x0) / 10}%`, height: `${(spotBox.y1 - spotBox.y0) / 10}%` });
+}
+$('spot-frames').addEventListener('click', (e) => {
+  const id = Number(e.target.closest('[data-photo]')?.dataset.photo);
+  if (!id) return;
+  spotPhoto = spotPhotos.find((ph) => ph.id === id);
+  for (const b of $('spot-frames').children) b.classList.toggle('on', Number(b.dataset.photo) === id);
+  renderSpot();
+});
+$('spot-product').addEventListener('change', renderSpot);
+{
+  // tap = a box around the finger; drag = exactly the frame drawn
+  let start = null;
+  const at = (e) => {
+    const r = $('spot-photo').getBoundingClientRect();
+    return { x: Math.max(0, Math.min(1000, ((e.clientX - r.left) / r.width) * 1000)), y: Math.max(0, Math.min(1000, ((e.clientY - r.top) / r.height) * 1000)) };
+  };
+  $('spot-photo').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    start = at(e);
+    $('spot-photo').setPointerCapture(e.pointerId);
+  });
+  $('spot-photo').addEventListener('pointermove', (e) => {
+    if (!start) return;
+    const p = at(e);
+    if (Math.abs(p.x - start.x) + Math.abs(p.y - start.y) < 30) return;
+    spotBox = { x0: Math.min(start.x, p.x), y0: Math.min(start.y, p.y), x1: Math.max(start.x, p.x), y1: Math.max(start.y, p.y) };
+    drawSpotBox();
+  });
+  $('spot-photo').addEventListener('pointerup', (e) => {
+    if (!start) return;
+    const p = at(e);
+    if (Math.abs(p.x - start.x) + Math.abs(p.y - start.y) < 30) {
+      const w = 90, h = 140;
+      const cx = Math.max(w, Math.min(1000 - w, p.x)), cy = Math.max(h, Math.min(1000 - h, p.y));
+      spotBox = { x0: cx - w, y0: cy - h, x1: cx + w, y1: cy + h };
+      drawSpotBox();
+    }
+    start = null;
+    $('spot-save').disabled = !spotBox || !$('spot-product').value;
+  });
+}
+$('spot-save').addEventListener('click', async () => {
+  const id = Number($('spot-product').value);
+  if (!id || !spotBox || !spotPhoto) return;
+  try {
+    const np = await api(`/api/products/${id}/spot`, { method: 'PUT', body: { photoId: spotPhoto.id, box: spotBox } });
+    const i = products.findIndex((p) => p.id === id);
+    if (i >= 0) products[i] = np;
+    spotPhoto.products = products.filter((p) => p.photoId === spotPhoto.id).length;
+    const next = products.find((p) => p.shelfId === np.shelfId && !p.photoId);
+    if (next) spotWanted = next;
+    fillSpotProducts();
+    renderSpot();
+    $('spot-status').textContent = `✓ נשמר: הלקוח יראה את "${np.name}" מסומן בתמונה הזו.${next ? ' עוברים למוצר הבא 👇' : ''}`;
+  } catch (err) { $('spot-status').textContent = err.message; }
+});
+$('spot-del').addEventListener('click', async () => {
+  if (!spotPhoto || !confirm('למחוק את התמונה הזו? מוצרים שסומנו עליה יצטרכו סימון מחדש.')) return;
+  await api(`/api/photos/${spotPhoto.id}`, { method: 'DELETE' });
+  products = await api('/api/products');
+  spotPhoto = null;
+  loadSpot();
+});
+function markOnShelf(p) {
+  spotWanted = p;
+  showTab('photo');
+  if (store.map.shelves.some((s) => s.id === p.shelfId)) $('photo-shelf').value = p.shelfId;
+  renderPicker();
+  $('spot-card').scrollIntoView({ behavior: 'smooth' });
+}
 
 // ---------- products: the manager controls every detail ----------
 function thumbFor(p, size = 168) {
@@ -348,7 +476,7 @@ function productItem(p) {
       <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}${p.price ? ` · ${escapeHtml(formatPrice(p.price))}` : ''}</div>
       ${p.description ? `<div class="meta pf-desc">${escapeHtml(p.description)}</div>` : ''}
       <div class="meta">${escapeHtml(p.keywords)}</div>
-      <div class="row" style="margin-top:6px"><button data-a="edit">✏️ עריכה</button><button data-a="toggle">${p.active === false ? '👁️ הצגה' : '🙈 הסתרה'}</button><button data-a="del" class="danger">מחיקה</button></div>`;
+      <div class="row" style="margin-top:6px"><button data-a="edit">✏️ עריכה</button><button data-a="spot">📍 ${p.photoId ? 'מיקום בתמונה' : 'סימון בתמונת המדף'}</button><button data-a="toggle">${p.active === false ? '👁️ הצגה' : '🙈 הסתרה'}</button><button data-a="del" class="danger">מחיקה</button></div>`;
     item.append(thumbFor(p), body);
   };
   item.addEventListener('click', async (e) => {
@@ -357,6 +485,7 @@ function productItem(p) {
       item.className = 'product-item editing';
       productForm(item, p, { onSaved: (np) => { replace(np); view(); }, onCancel: view });
     }
+    if (a === 'spot') markOnShelf(p);
     if (a === 'toggle') {
       replace(await api(`/api/products/${p.id}`, { method: 'PUT', body: { active: p.active === false } }));
       view();
@@ -628,6 +757,5 @@ $('export-btn').addEventListener('click', async () => {
   products = await api('/api/products');
   loadAlerts();
   setInterval(loadAlerts, 15000);
-  $('video-box').classList.toggle('hidden', !store.aiEnabled);
-  if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי — אפשר לצלם את המדף ולהוסיף מוצרים ידנית, או להוסיף מוצרים בלשונית "מוצרים".';
+  if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי: מצלמים או מסריטים את המעבר, ומסמנים כל מוצר על התמונה האמיתית (למטה).';
 })();

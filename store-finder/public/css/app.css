@@ -364,3 +364,13 @@ body:has(.list-bar:not(.hidden)) .wrap { padding-bottom: 96px; }
 #map-editor, #map-picker { min-width: 640px; }
 #detail-desc { white-space: pre-line; }
 .pf-ai { font-size: .88rem; }
+/* owner: marking products on the real shelf photo */
+.spot-frames { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+.spot-frame { flex: 0 0 auto; flex-direction: column; gap: 4px; padding: 4px; border-radius: 12px; font-size: .78rem; }
+.spot-frame img { width: 112px; height: 84px; object-fit: cover; border-radius: 8px; display: block; }
+.spot-frame.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.spot-photo { position: relative; margin-top: 12px; border-radius: 14px; overflow: hidden; touch-action: none; user-select: none; cursor: crosshair; }
+.spot-photo img { display: block; width: 100%; pointer-events: none; }
+.spot-photo .box { position: absolute; border: 2px solid rgba(255, 255, 255, .8); border-radius: 6px; pointer-events: none; }
+.spot-photo .box span { position: absolute; top: 0; right: 0; background: rgba(11, 18, 36, .8); color: #fff; font-size: .7rem; padding: 1px 6px; border-radius: 0 0 0 6px; white-space: nowrap; }
+.spot-box { position: absolute; border: 4px solid #ff7a1a; border-radius: 10px; box-shadow: 0 0 0 4000px rgba(11, 18, 36, .35), 0 0 16px rgba(255, 122, 26, .9); pointer-events: none; }

@@ -272,7 +272,19 @@ app.post('/api/videos', requireOwner, upload.array('frames', 60), async (req, re
   const shelfId = String(req.body.shelfId || '');
   const shelf = JSON.parse(req.store.map_json).shelves.find((s) => s.id === shelfId);
   if (!shelf) return res.status(400).json({ error: 'בחר מדף מהמפה' });
-  if (!ai.aiEnabled()) return res.status(503).json({ error: 'זיהוי מסרטון דורש מפתח GEMINI_API_KEY (חינמי) בשרת' });
+  const saveFrame = (f) => {
+    const file = `${req.store.id}-v${crypto.randomBytes(8).toString('hex')}.${{ 'image/png': 'png', 'image/webp': 'webp' }[f.mimetype] || 'jpg'}`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, file), f.buffer);
+    const id = Number(db.prepare('INSERT INTO photos (store_id, shelf_id, file) VALUES (?, ?, ?)').run(req.store.id, shelfId, file).lastInsertRowid);
+    return { id, url: `/uploads/${file}` };
+  };
+  // Without AI the video still gives the shoppers real photos of the shelf: a few frames spread along
+  // the aisle (the phone already sent the sharpest ones). The manager marks products on them.
+  if (!ai.aiEnabled()) {
+    const keep = Math.min(frames.length, 8);
+    const photos = Array.from({ length: keep }, (_, i) => saveFrame(frames[Math.round((i * (frames.length - 1)) / Math.max(1, keep - 1))]));
+    return res.json({ frames: frames.length, keptFrames: photos.length, photos, products: [], ai: false });
+  }
 
   let detected;
   try {
@@ -290,16 +302,39 @@ app.post('/api/videos', requireOwner, upload.array('frames', 60), async (req, re
     const c = cleanProduct(p);
     if (!c.name || seen.has(c.name)) continue;
     seen.add(c.name);
-    if (!photoIds.has(p.frame)) {
-      const f = frames[p.frame];
-      const file = `${req.store.id}-v${crypto.randomBytes(8).toString('hex')}.${{ 'image/png': 'png', 'image/webp': 'webp' }[f.mimetype] || 'jpg'}`;
-      fs.writeFileSync(path.join(UPLOAD_DIR, file), f.buffer);
-      photoIds.set(p.frame, Number(db.prepare('INSERT INTO photos (store_id, shelf_id, file) VALUES (?, ?, ?)').run(req.store.id, shelfId, file).lastInsertRowid));
-    }
+    if (!photoIds.has(p.frame)) photoIds.set(p.frame, saveFrame(frames[p.frame]).id);
     ids.push(Number(insert.run(req.store.id, shelfId, photoIds.get(p.frame), c.name, c.description, c.keywords, c.level, JSON.stringify(p.box)).lastInsertRowid));
   }
   const products = ids.map((id) => productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, id)));
   res.json({ frames: frames.length, keptFrames: photoIds.size, products });
+});
+
+// The real shelf photos of an aisle (from photos and videos), and marking where a product is on one.
+app.get('/api/photos', requireStaff, (req, res) => {
+  const rows = db.prepare(`SELECT photos.id, photos.file, photos.shelf_id, COUNT(products.id) AS products FROM photos
+    LEFT JOIN products ON products.photo_id = photos.id WHERE photos.store_id = ? AND photos.shelf_id = ? GROUP BY photos.id ORDER BY photos.id DESC`)
+    .all(req.store.id, String(req.query.shelfId || ''));
+  res.json(rows.map((r) => ({ id: r.id, url: `/uploads/${r.file}`, shelfId: r.shelf_id, products: r.products })));
+});
+app.delete('/api/photos/:id', requireOwner, (req, res) => {
+  const photo = db.prepare('SELECT * FROM photos WHERE id = ? AND store_id = ?').get(req.params.id, req.store.id);
+  if (!photo) return res.status(404).json({ error: 'התמונה לא נמצאה' });
+  db.prepare('UPDATE products SET photo_id = NULL, box_json = NULL WHERE photo_id = ?').run(photo.id);
+  db.prepare('DELETE FROM photos WHERE id = ?').run(photo.id);
+  fs.rm(path.join(UPLOAD_DIR, photo.file), { force: true }, () => {});
+  res.json({ ok: true });
+});
+app.put('/api/products/:id/spot', requireStaff, (req, res) => {
+  const product = db.prepare('SELECT id FROM products WHERE id = ? AND store_id = ?').get(req.params.id, req.store.id);
+  const photo = db.prepare('SELECT id, shelf_id FROM photos WHERE id = ? AND store_id = ?').get(req.body.photoId, req.store.id);
+  if (!product || !photo) return res.status(404).json({ error: 'מוצר או תמונה לא נמצאו' });
+  const b = req.body.box || {};
+  const n = (v) => Math.max(0, Math.min(1000, Math.round(Number(v) || 0)));
+  const box = { x0: n(Math.min(b.x0, b.x1)), y0: n(Math.min(b.y0, b.y1)), x1: n(Math.max(b.x0, b.x1)), y1: n(Math.max(b.y0, b.y1)) };
+  if (box.x1 - box.x0 < 20 || box.y1 - box.y0 < 20) return res.status(400).json({ error: 'סמנו את המוצר בתמונה' });
+  // the photo shows where the product really is, so it also moves to that aisle
+  db.prepare('UPDATE products SET photo_id = ?, box_json = ?, shelf_id = ? WHERE id = ?').run(photo.id, JSON.stringify(box), photo.shelf_id, product.id);
+  res.json(productRow(db.prepare(`${PRODUCTS_QUERY} AND products.id = ?`).get(req.store.id, product.id)));
 });
 
 app.get('/api/products', requireStaff, (req, res) => {

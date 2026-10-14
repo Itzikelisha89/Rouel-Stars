@@ -150,7 +150,11 @@ test('aisle video: frames in one request, products saved on the clearest frame',
       for (let i = 0; i < 4; i++) f.append('frames', new Blob([JPEG], { type: 'image/jpeg' }), `f${i}.jpg`);
       return f;
     };
-    assert.equal((await call('POST', '/api/videos', { token, form: form() })).status, 503); // no key yet
+    const noKey = await call('POST', '/api/videos', { token, form: form() }); // no key yet: real shelf photos only
+    assert.equal(noKey.status, 200);
+    assert.equal(noKey.data.ai, false);
+    assert.equal(noKey.data.photos.length, 4);
+    assert.deepEqual(noKey.data.products, []);
 
     process.env.GEMINI_API_KEY = 'test-key';
     const r = await call('POST', '/api/videos', { token, form: form() });
