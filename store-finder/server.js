@@ -590,7 +590,40 @@ app.post('/api/public/:slug/photo-search', upload.single('image'), async (req, r
   res.json({ identified, results: results.map((r) => productRow(r.product)) });
 });
 
+// Home screen: what people look for this week (only things we have), and the departments with a
+// photo of one of their products.
+app.get('/api/public/:slug/home', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  const groups = new Map();
+  for (const r of db.prepare(`SELECT query FROM searches WHERE store_id = ? AND result_count > 0 AND created_at >= datetime('now', '-30 days')`).all(store.id)) {
+    const key = insights.groupKey(r.query);
+    if (!key) continue;
+    const g = groups.get(key) || { count: 0, forms: new Map() };
+    g.count++;
+    g.forms.set(r.query.trim(), (g.forms.get(r.query.trim()) || 0) + 1);
+    groups.set(key, g);
+  }
+  const trending = [...groups.values()].sort((a, b) => b.count - a.count).slice(0, 8)
+    .map((g) => [...g.forms.entries()].sort((a, b) => b[1] - a[1])[0][0]);
+  const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 ORDER BY products.promo = '', products.id`).all(store.id);
+  const categories = JSON.parse(store.map_json).shelves.map((s) => {
+    const items = products.filter((p) => p.shelf_id === s.id);
+    const sample = items.find((p) => p.image) || items.find((p) => p.file);
+    return { shelfId: s.id, name: s.name, count: items.length, sample: sample ? productRow(sample) : null };
+  }).filter((c) => c.count);
+  res.json({ trending, categories });
+});
+
 // Deals for the shopper's home screen.
+// Everything on one aisle, for the department tiles on the shopper's home screen.
+app.get('/api/public/:slug/aisle/:shelfId', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  const rows = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 AND products.shelf_id = ? ORDER BY products.promo = '', products.name`).all(store.id, req.params.shelfId);
+  res.json(rows.map(productRow));
+});
+
 app.get('/api/public/:slug/deals', (req, res) => {
   const store = getStoreBySlug(req.params.slug);
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
@@ -688,6 +721,17 @@ app.post('/api/public/:slug/tts', async (req, res) => {
   }
 });
 
+// "Add to home screen": the store opens like an app, straight on the shopper's screen.
+app.get('/api/public/:slug/manifest.webmanifest', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  res.type('application/manifest+json').json({
+    name: store.name, short_name: store.name.split('·')[0].trim().slice(0, 12), lang: 'he', dir: 'rtl',
+    start_url: `/s/${encodeURIComponent(store.slug)}`, scope: '/', display: 'standalone',
+    background_color: '#0b1224', theme_color: '#0b1224',
+    icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+  });
+});
 app.get('/s/:slug', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'customer.html')));
 
 app.use((err, _req, res, _next) => {
