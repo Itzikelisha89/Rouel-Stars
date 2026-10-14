@@ -103,6 +103,7 @@
 
     <div id="nav-view" class="hidden">
       <button id="nav-back" data-i18n="nav_back">→ חזרה למוצר</button>
+      <div id="nav-here" class="here-banner hidden" style="margin:0 0 12px"></div>
       <div class="card">
         <div class="nav-head">
           <canvas id="nav-thumb" class="nav-thumb"></canvas>
@@ -147,6 +148,16 @@
   </div>
 
   <button type="button" id="list-bar" class="list-bar hidden"><span><span data-i18n="list_bar">🛒 הרשימה שלי ·</span> <b id="list-count">0</b></span><span data-i18n="to_route">למסלול ←</span></button>
+
+  <div id="listen-sheet" class="sheet listen hidden" role="dialog" aria-modal="true">
+    <div class="sheet-card" style="text-align:center">
+      <div class="listen-label" id="listen-label">מקשיב…</div>
+      <div class="mic-ring">🎤</div>
+      <div class="listen-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="listen-text" id="listen-text"></div>
+      <button type="button" id="listen-cancel" data-i18n="cancel">ביטול</button>
+    </div>
+  </div>
 
   <div id="help-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
     <div class="sheet-card">

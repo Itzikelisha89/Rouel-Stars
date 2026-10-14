@@ -52,7 +52,7 @@ function getStoreBySlug(slug) {
   return db.prepare('SELECT * FROM stores WHERE slug = ?').get(slug);
 }
 function publicStore(store) {
-  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled() };
+  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(process.env.ELEVENLABS_API_KEY) };
 }
 function productRow(p) {
   return {
@@ -641,6 +641,51 @@ app.get('/api/public/:slug/staff-qr.svg', async (req, res) => {
   if (!store) return res.status(404).end();
   const base = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
   res.type('image/svg+xml').send(await QRCode.toString(`${base}/staff.html?store=${encodeURIComponent(store.slug)}`, { type: 'svg', margin: 1, width: 240 }));
+});
+
+// ---------- premium voice: a real, clear human voice (ElevenLabs) for spoken answers ----------
+// Every sentence is generated once and kept on disk, so the same answer (same product) never costs
+// twice. A daily character cap protects the plan's quota; past it the phone's own voice takes over.
+const TTS_VOICE = process.env.ELEVENLABS_VOICE_ID || 'k77ZRVqAFg9Hd0ltAuON'; // "Omer", the pitch video voice
+const TTS_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_v3';
+const TTS_DAILY_CHARS = Number(process.env.TTS_DAILY_CHARS) || 1200;
+const TTS_DIR = path.join(path.dirname(UPLOAD_DIR), 'tts');
+fs.mkdirSync(TTS_DIR, { recursive: true });
+function speechText(text) {
+  return String(text || '')
+    .replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/מ['׳](?=\s|$)/g, 'מטר')
+    .replace(/₪\s?([\d.]+)/g, '$1 שקלים').replace(/[·|]/g, ',').replace(/\s+/g, ' ').trim().slice(0, 300);
+}
+app.post('/api/public/:slug/tts', async (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (!process.env.ELEVENLABS_API_KEY) return res.status(503).json({ error: 'קול פרימיום לא הוגדר' });
+  const text = speechText(req.body.text);
+  const lang = ['he', 'ar', 'ru', 'en'].includes(req.body.lang) ? req.body.lang : 'he';
+  if (!text) return res.status(400).json({ error: 'אין טקסט' });
+  const key = crypto.createHash('sha256').update(`${TTS_VOICE}|${TTS_MODEL}|${lang}|${text}`).digest('hex').slice(0, 32);
+  const file = path.join(TTS_DIR, `${key}.mp3`);
+  res.set('Cache-Control', 'public, max-age=604800');
+  if (fs.existsSync(file)) return res.type('audio/mpeg').send(fs.readFileSync(file));
+  if (rateLimited(`tts:${req.ip}`, 20)) return res.status(429).json({ error: 'יותר מדי בקשות' });
+  const day = new Date().toISOString().slice(0, 10);
+  const used = db.prepare('SELECT chars FROM tts_usage WHERE day = ?').get(day)?.chars || 0;
+  if (used + text.length > TTS_DAILY_CHARS) return res.status(429).json({ error: 'נגמרה המכסה היומית של הקול' });
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${TTS_VOICE}?output_format=mp3_44100_128`, {
+      method: 'POST',
+      headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, model_id: TTS_MODEL, language_code: lang }),
+    });
+    if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
+    const audio = Buffer.from(await r.arrayBuffer());
+    db.prepare('INSERT INTO tts_usage (day, chars) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET chars = chars + ?').run(day, text.length, text.length);
+    fs.writeFileSync(file, audio);
+    res.type('audio/mpeg').send(audio);
+  } catch (err) {
+    console.error('tts failed:', err.message);
+    res.status(502).json({ error: 'הקול לא זמין כרגע' });
+  }
 });
 
 app.get('/s/:slug', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'customer.html')));

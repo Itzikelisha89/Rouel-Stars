@@ -246,6 +246,20 @@ body.staff .a-actions > * { flex: 1; }
 .pf-check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin-top: 12px; }
 .pf-check input { width: auto; }
 
+/* voice search: listening screen */
+.sheet.listen { align-items: center; }
+.sheet.listen .sheet-card { border-radius: 28px; margin: 16px; }
+.listen-label { font-size: 1.15rem; color: var(--muted); font-weight: 700; }
+.mic-ring { width: 130px; height: 130px; margin: 52px auto 0; border-radius: 50%; display: grid; place-items: center; font-size: 54px; background: var(--primary-grad); box-shadow: 0 0 0 16px rgba(255, 122, 26, .18), 0 0 0 32px rgba(255, 122, 26, .08); }
+.listen.live .mic-ring { animation: micPulse 1.2s ease-in-out infinite; }
+@keyframes micPulse { 50% { box-shadow: 0 0 0 22px rgba(255, 122, 26, .22), 0 0 0 44px rgba(255, 122, 26, .06); } }
+.listen-wave { display: flex; gap: 6px; justify-content: center; align-items: center; height: 70px; margin-top: 40px; }
+.listen-wave i { width: 6px; height: 10px; border-radius: 3px; background: linear-gradient(#ffb36b, #ff5a36); }
+.listen.live .listen-wave i { animation: wave .9s ease-in-out infinite; }
+.listen-wave i:nth-child(2n) { animation-delay: .15s; } .listen-wave i:nth-child(3n) { animation-delay: .3s; } .listen-wave i:nth-child(5n) { animation-delay: .45s; }
+@keyframes wave { 50% { height: 56px; } }
+.listen-text { font-size: 1.5rem; font-weight: 800; min-height: 2.2em; margin: 14px 0 10px; }
+
 /* navigation: take me there */
 .go-btn { width: 100%; margin-top: 14px; height: 60px; font-size: 1.2rem; font-weight: 800; border: none; color: #fff; background: var(--primary-grad); box-shadow: 0 12px 28px rgba(255, 90, 54, .35); }
 .nav-head { display: flex; gap: 14px; align-items: center; }

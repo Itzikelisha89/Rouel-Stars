@@ -15,8 +15,25 @@ const canSpeak = 'speechSynthesis' in window;
 function forSpeech(text) {
   return text.replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/[·|/]/g, ',');
 }
-function speak(text) {
-  if (!canSpeak || !text) return;
+// A real, clear human voice (the store's premium voice, generated on the server) when available;
+// otherwise the phone's built-in voice. Phones only allow sound after a tap, so the audio element is
+// unlocked on the first touch and reused.
+const player = new Audio();
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  // a few ms of silence, played inside the tap, lets later answers play out loud on iOS
+  const sr = 8000, n = 80, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  [[0, 'RIFF'], [8, 'WAVE'], [12, 'fmt '], [36, 'data']].forEach(([o, str]) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0))));
+  v.setUint32(4, 36 + n * 2, true); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); v.setUint32(40, n * 2, true);
+  player.src = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  player.play().catch(() => {});
+}
+document.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
+function speakDevice(text) {
+  if (!canSpeak) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(forSpeech(text));
   u.lang = LANGS[lang].voice;
@@ -24,6 +41,25 @@ function speak(text) {
   if (voice) u.voice = voice;
   u.rate = 1;
   speechSynthesis.speak(u);
+}
+let speakSeq = 0;
+async function speak(text) {
+  if (!text) return;
+  const seq = ++speakSeq;
+  player.pause();
+  if (canSpeak) speechSynthesis.cancel();
+  if (store?.premiumVoice) {
+    try {
+      const res = await fetch(`/api/public/${encodeURIComponent(slug)}/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, lang }) });
+      if (!res.ok) throw new Error(res.status);
+      const blob = await res.blob();
+      if (seq !== speakSeq) return; // a newer answer started meanwhile
+      player.src = URL.createObjectURL(blob);
+      await player.play();
+      return;
+    } catch { /* fall back to the phone's voice */ }
+  }
+  if (seq === speakSeq) speakDevice(text);
 }
 const LAST_KEY = `storeFinder:last:${slug}`;
 const LIST_KEY = `storeFinder:list:${slug}`;
@@ -75,7 +111,7 @@ async function runSearch(q) {
       if (voiceMode) speak(t('voice_not_found', { q }));
       return;
     }
-    showResults(data.expanded ? t('maybe_meant', { q }) : t('n_results', { n: results.length }));
+    showResults(data.expanded ? t('maybe_meant', { q }) : t('n_results_pick', { n: results.length, q }));
   } catch (err) { $('status').textContent = err.message; }
 }
 
@@ -178,7 +214,7 @@ function showDetail(p) {
     const n = path ? path.length - 1 : 0;
     if (path && hereShelf?.id !== shelf.id) $('detail-meters').textContent = t(here ? 'm_from_here' : 'm_from_entrance', { n });
     // Product names are in Hebrew, so other languages speak the aisle, shelf and distance only.
-    spokenAnswer = [lang === 'he' ? p.name : '', aisleName(shelf), levelName(p.level), path && hereShelf?.id !== shelf.id ? t(here ? 'say_from_here' : 'say_from_entrance', { n }) : '']
+    spokenAnswer = [lang === 'he' ? p.name : '', aisleName(shelf, { short: true }), levelName(p.level), path && hereShelf?.id !== shelf.id ? t(here ? 'say_from_here' : 'say_from_entrance', { n }) : '']
       .filter(Boolean).join('. ');
     renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
     navRoute = { shelf, path, here };
@@ -189,7 +225,7 @@ function showDetail(p) {
   resetFeedback();
   updateListToggle();
   renderListBar();
-  $('speak').classList.toggle('hidden', !canSpeak);
+  $('speak').classList.toggle('hidden', !canSpeak && !store.premiumVoice);
   if (voiceMode) speak(spokenAnswer);
   // The shelf photo with the product outlined, so the shopper recognises the spot when they get there.
   $('shelf-card').classList.toggle('hidden', !p.photo);
@@ -234,6 +270,8 @@ function showNav() {
   lines.push(['📍', `${t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) })} · ${current.level ? t('step_look', { l: levelName(current.level) }) : t('step_look_nolevel')}`]);
   $('nav-steps').innerHTML = `<li class="muted" style="font-size:.9rem;border-top:none;padding-top:0">${escapeHtml(t(here ? 'nav_from_here' : 'nav_from_entrance'))}</li>` +
     lines.map(([ico, txt], i) => `<li class="${i === lines.length - 1 ? 'last' : ''}"><span class="ico">${ico}</span><span>${escapeHtml(txt)}</span></li>`).join('');
+  $('nav-here').classList.toggle('hidden', !here);
+  if (here) $('nav-here').textContent = `${t('here', { name: aisleName(hereShelf) })} · ${t('m_from_here', { n: path.length - 1 })}`;
   const svgEl = $('nav-map');
   renderMap(svgEl, store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
   // the walker: walks the route at a calm pace, waits a moment at the shelf, then starts again
@@ -438,7 +476,7 @@ function renderListView() {
   const stops = route.legs.map((l, n) => ({ ...l.path[l.path.length - 1], n: n + 1 }));
   renderMap($('list-map'), store.map, { targetShelfIds: shelves.map((s) => s.id), path: route.path, here, stops, ...mapLabels() });
   routeSpeech = route.legs.map((l, n) => `${n + 1}. ${shortShelf(l.shelf)}: ${todo.filter((i) => i.shelfId === l.shelf.id).map((i) => i.name).join(', ')}`).join('. ');
-  $('list-speak').classList.toggle('hidden', !canSpeak || !route.legs.length);
+  $('list-speak').classList.toggle('hidden', (!canSpeak && !store.premiumVoice) || !route.legs.length);
 }
 $('list-items').addEventListener('click', (e) => {
   const li = e.target.closest('.list-item');
@@ -510,10 +548,26 @@ if (Recognition) {
   $('mic').addEventListener('click', () => {
     const rec = new Recognition();
     rec.lang = LANGS[lang].voice;
-    rec.interimResults = false;
-    $('mic').textContent = '🔴';
-    rec.onresult = (e) => { voiceMode = true; $('q').value = e.results[0][0].transcript; runSearch($('q').value); };
-    rec.onend = () => { $('mic').textContent = '🎤'; };
+    rec.interimResults = true;
+    let heard = '';
+    $('listen-text').textContent = '';
+    $('listen-label').textContent = t('listening');
+    $('listen-sheet').classList.remove('hidden');
+    $('listen-sheet').classList.add('live');
+    rec.onresult = (e) => {
+      heard = [...e.results].map((r) => r[0].transcript).join('');
+      $('listen-text').textContent = `"${heard}"`;
+      if (e.results[e.results.length - 1].isFinal) {
+        $('listen-label').textContent = t('understood');
+        $('listen-sheet').classList.remove('live');
+      }
+    };
+    rec.onerror = () => { heard = ''; };
+    rec.onend = () => {
+      setTimeout(() => $('listen-sheet').classList.add('hidden'), heard ? 700 : 0);
+      if (heard) { voiceMode = true; $('q').value = heard; runSearch(heard); }
+    };
+    $('listen-cancel').onclick = () => { heard = ''; rec.abort(); $('listen-sheet').classList.add('hidden'); };
     rec.start();
   });
 }

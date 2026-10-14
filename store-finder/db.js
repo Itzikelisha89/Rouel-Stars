@@ -67,6 +67,11 @@ db.exec(`
     token TEXT PRIMARY KEY,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  -- Characters sent to the premium voice per day (ElevenLabs quota guard).
+  CREATE TABLE IF NOT EXISTS tts_usage (
+    day TEXT PRIMARY KEY,
+    chars INTEGER NOT NULL DEFAULT 0
+  );
   CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
   CREATE INDEX IF NOT EXISTS idx_events_store ON events(store_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_events_product ON events(store_id, product_id);

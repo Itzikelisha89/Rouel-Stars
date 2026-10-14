@@ -177,7 +177,7 @@ function seedBranch(SLUG, NAME, o) {
   ev.run(storeId, visitorId(), 'help', null, 'a2', 'מצעים לילדים', '', ago(2), null);
 }
 
-seedBranch('demo', 'הסטוק · סניף הדגמה', { traffic: 1, found: 0.74, problems: 0.06, help: [45, 150], walk: 1, liveAlerts: true });
+seedBranch('demo', 'הסטוק · סניף מרכז', { traffic: 1, found: 0.74, problems: 0.06, help: [45, 150], walk: 1, liveAlerts: true });
 seedBranch('demo-north', 'הסטוק · קריון', { traffic: 1.3, found: 0.66, problems: 0.12, help: [90, 330], walk: 1.25 });
 seedBranch('demo-south', 'הסטוק · באר שבע', { traffic: 0.75, found: 0.8, problems: 0.04, help: [35, 80], walk: 0.9 });
 console.log(`password: ${process.env.DEMO_PASSWORD ? '[DEMO_PASSWORD]' : 'demo1234'}`);
