@@ -1,6 +1,7 @@
 import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames } from '/js/api.js';
 import { createAlertsFeed } from '/js/alerts.js';
 import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
+import { generateStoreMap } from '/js/mapwizard.js';
 
 if (!getToken()) location.href = '/';
 const $ = (id) => document.getElementById(id);
@@ -123,6 +124,56 @@ $('save-map').addEventListener('click', async () => {
     $('map-status').textContent = removedProducts ? `נשמר ✓ (${removedProducts} מוצרים הוסרו)` : 'נשמר ✓';
     if (removedProducts) loadProducts();
   } catch (err) { $('map-status').textContent = err.message; }
+});
+
+// ---------- quick map wizard ----------
+function wizardOptions() {
+  const num = (id, d) => Number($(id).value) || d;
+  return {
+    aisles: num('wz-n', 8), length: num('wz-len', 12), walk: num('wz-walk', 2), checkouts: Number($('wz-checkouts').value) || 0,
+    entrance: $('wz-door').value, backWall: $('wz-back').checked,
+    names: $('wz-names').value.split('\n').map((x) => x.trim()).filter(Boolean),
+  };
+}
+function prefillWizard() {
+  const aisles = map.shelves.filter((s) => /^a\d+$/.test(s.id)).sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+  if (!aisles.length) return;
+  $('wz-n').value = aisles.length;
+  $('wz-names').value = aisles.map((s) => s.name.replace(/^מעבר\s*\d+\s*[·\-–]?\s*/, '')).join('\n');
+  $('wizard').open = false; // a store that already has a map: the wizard stays folded
+}
+$('wz-make').addEventListener('click', () => {
+  const next = generateStoreMap(wizardOptions());
+  const keep = new Set(next.shelves.map((s) => s.id));
+  const lost = products.filter((p) => !keep.has(p.shelfId)).length;
+  if (map.shelves.length && !confirm(lost
+    ? `המפה הנוכחית תוחלף. ${lost} מוצרים נמצאים במדפים שלא יהיו במפה החדשה, ויימחקו בשמירה. להמשיך?`
+    : 'המפה הנוכחית תוחלף במפה החדשה (המוצרים נשארים במעברים שלהם). להמשיך?')) return;
+  map = next;
+  $('cols').value = map.cols; $('rows').value = map.rows;
+  setDirty(true);
+  drawEditor();
+  $('wz-status').textContent = `✓ צוירו ${map.shelves.filter((s) => /^a\d+$/.test(s.id)).length} מעברים. בודקים, מתקנים אם צריך, ולוחצים "שמירת מפה".`;
+  editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+$('wz-video').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const bar = $('wz-progress');
+  bar.classList.remove('hidden');
+  const ui = (text, pct) => { $('wz-status').innerHTML = `<span class="row"><span class="spinner"></span> ${escapeHtml(text)}</span>`; bar.firstElementChild.style.width = `${pct}%`; };
+  try {
+    ui('מכין את הסרטון…', 2);
+    const frames = await extractFrames(file, { every: 2, max: 40, onProgress: (n, total) => ui(`בוחר תמונות מהסיור… ${n}/${total}`, 2 + (n / total) * 48) });
+    const form = new FormData();
+    frames.forEach((f, i) => form.append('frames', f, `frame-${i}.jpg`));
+    const { aisles } = await upload('/api/store/walk', form, (f) => ui(f < 1 ? `מעלה… ${Math.round(f * 100)}%` : 'קורא את שלטי המעברים… (עד 2 דקות)', 50 + f * 45));
+    if (!aisles.length) throw new Error('לא הצלחתי לזהות מעברים בסרטון. אפשר לכתוב את השמות ביד.');
+    $('wz-n').value = aisles.length;
+    $('wz-names').value = aisles.map((a) => a.name).join('\n');
+    $('wz-status').textContent = `✓ זוהו ${aisles.length} מעברים מהסרטון. בודקים את השמות ולוחצים "ציור המפה".`;
+  } catch (err) { $('wz-status').textContent = err.message; } finally { bar.classList.add('hidden'); }
 });
 
 // ---------- photo capture ----------
@@ -992,6 +1043,7 @@ $('export-btn').addEventListener('click', async () => {
   $('cols').value = map.cols;
   $('rows').value = map.rows;
   drawEditor();
+  prefillWizard();
   products = await api('/api/products');
   fillAisleSelects();
   loadHome();

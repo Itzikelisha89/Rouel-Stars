@@ -177,6 +177,60 @@ async function detectProductsInFrames(frames, shelfName) {
     .map((p) => ({ ...p, box: clampBox(p.box) }));
 }
 
+// A walk through the whole store (frames in order): read the aisle signs and what each aisle holds,
+// so the quick map gets real aisle names.
+const WALK_SCHEMA = {
+  type: 'object',
+  properties: {
+    aisles: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          number: { type: 'integer', description: 'מספר המעבר לפי השלט, 0 אם אין' },
+          name: { type: 'string', description: 'שם קצר בעברית של מה שיש במעבר, למשל "מוצרי חלב" או "חטיפים ומתוקים"' },
+        },
+        required: ['number', 'name'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['aisles'],
+  additionalProperties: false,
+};
+const WALK_SYSTEM = `מקבלים פריימים לפי הסדר מסרטון שצולם בהליכה לאורך חנות (סופרמרקט או חנות לבית).
+זהה את המעברים שרואים: לפי שלטי המעברים (מספר וכיתוב) ולפי המוצרים על המדפים.
+החזר את המעברים לפי הסדר שבו עוברים בהם בסרטון, בלי כפילויות, עד 40. שם כל מעבר: 2–4 מילים בעברית.`;
+async function readStoreWalk(frames) {
+  const ask = `יש ${frames.length} פריימים לפי הסדר. אילו מעברים יש בחנות?`;
+  let parsed;
+  if (provider() === 'gemini') {
+    const parts = frames.flatMap((f, i) => [{ text: `פריים ${i}:` }, { inline_data: { mime_type: f.mediaType, data: f.buffer.toString('base64') } }]);
+    parsed = await gemini({ system: WALK_SYSTEM, schema: WALK_SCHEMA, parts: [...parts, { text: ask }] });
+  } else {
+    const content = frames.flatMap((f, i) => [
+      { type: 'text', text: `פריים ${i}:` },
+      { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.buffer.toString('base64') } },
+    ]);
+    const response = await getClient().beta.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: WALK_SCHEMA } },
+      system: WALK_SYSTEM,
+      messages: [{ role: 'user', content: [...content, { type: 'text', text: ask }] }],
+    });
+    if (response.stop_reason === 'refusal') throw new Error('המודל סירב לעבד את הסרטון');
+    parsed = JSON.parse(response.content.filter((b) => b.type === 'text').map((b) => b.text).join(''));
+  }
+  const seen = new Set();
+  return (Array.isArray(parsed.aisles) ? parsed.aisles : [])
+    .map((a) => ({ number: Number.isInteger(a.number) ? a.number : 0, name: String(a.name || '').trim().slice(0, 40) }))
+    .filter((a) => a.name && !seen.has(a.name) && seen.add(a.name))
+    .slice(0, 40);
+}
+
 // One product in a photo (a product the manager is adding, or a shopper's "find this" picture).
 const IDENTIFY_SCHEMA = {
   type: 'object',
@@ -325,4 +379,4 @@ async function locateShelf(imageBuffer, mediaType, shelves) {
   return [...new Set((Array.isArray(parsed.shelfIds) ? parsed.shelfIds : []).map(String))].filter((id) => ids.has(id)).slice(0, 3);
 }
 
-module.exports = { setKeySource, aiEnabled, provider, detectProducts, detectProductsInFrames, identifyProduct, locateShelf, expandQuery, toGeminiSchema };
+module.exports = { setKeySource, aiEnabled, provider, detectProducts, detectProductsInFrames, readStoreWalk, identifyProduct, locateShelf, expandQuery, toGeminiSchema };

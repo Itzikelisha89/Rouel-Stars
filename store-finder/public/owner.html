@@ -50,6 +50,26 @@
 
     <!-- MAP -->
     <section id="tab-map" class="hidden">
+      <details class="card wizard-card" id="wizard" open>
+        <summary><h2 style="display:inline">✨ אשף מפה מהיר</h2></summary>
+        <p class="muted" style="margin-top:8px">רוב הסופרים בנויים ממעברים במקביל. ממלאים כמה פרטים, והמפה מצוירת לבד, עם המעברים, המקררים בקיר האחורי, הקופות והכניסה. אחר כך אפשר לתקן ביד.</p>
+        <div class="wz-grid">
+          <label>מספר מעברים<input type="number" id="wz-n" min="1" max="40" value="8"></label>
+          <label>אורך מעבר (מטר)<input type="number" id="wz-len" min="3" max="60" value="12"></label>
+          <label>רוחב מעבר הליכה (מטר)<input type="number" id="wz-walk" min="1" max="5" value="2"></label>
+          <label>קופות<input type="number" id="wz-checkouts" min="0" max="20" value="4"></label>
+          <label>הכניסה<select id="wz-door"><option value="right">בצד ימין</option><option value="center">באמצע</option><option value="left">בצד שמאל</option></select></label>
+          <label class="pf-check wz-check"><input type="checkbox" id="wz-back" checked> מקררים לאורך הקיר האחורי</label>
+        </div>
+        <label for="wz-names">שמות המעברים: שורה לכל מעבר, לפי הסדר מהכניסה (לא חובה)</label>
+        <textarea id="wz-names" rows="5" placeholder="מוצרי חלב&#10;לחמים ומאפים&#10;חטיפים ומתוקים"></textarea>
+        <div class="row" style="margin-top:10px">
+          <label class="btn grow" style="margin:0">🎥 שמות מסרטון סיור בחנות<input type="file" accept="video/*" id="wz-video" class="hidden"></label>
+          <button type="button" class="primary grow" id="wz-make">✨ ציור המפה</button>
+        </div>
+        <div class="up-progress hidden" id="wz-progress"><i></i></div>
+        <p id="wz-status" class="muted" style="margin:8px 0 0"></p>
+      </details>
       <div class="card">
         <h2>מפת החנות</h2>
         <p class="muted">כל משבצת ≈ מטר. גרור על המפה כדי לצייר מדף או מעבר, ותן לו שם (למשל "מעבר 4 – כלי בישול").</p>

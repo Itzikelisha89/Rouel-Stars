@@ -311,10 +311,26 @@ app.post('/api/videos', requireOwner, upload.array('frames', 60), async (req, re
   res.json({ frames: frames.length, keptFrames: photoIds.size, products });
 });
 
+// Quick map from a walk through the store: the AI reads the aisle signs, in order.
+app.post('/api/store/walk', requireOwner, upload.array('frames', 60), async (req, res) => {
+  const frames = req.files || [];
+  if (!frames.length) return res.status(400).json({ error: 'לא התקבלו תמונות מהסרטון' });
+  if (!ai.aiEnabled()) return res.status(503).json({ error: 'קריאת שלטים מסרטון צריכה מפתח Gemini חינמי (מכניסים אותו במסך הנהלת הרשת). בינתיים אפשר לכתוב את שמות המעברים.' });
+  try {
+    const aisles = await ai.readStoreWalk(frames.map((f) => ({ buffer: f.buffer, mediaType: f.mimetype })));
+    // numbered signs in number order; the rest in the order they were walked
+    aisles.sort((a, b) => (a.number && b.number ? a.number - b.number : 0));
+    res.json({ aisles });
+  } catch (err) {
+    console.error('store walk failed:', err.message);
+    res.status(502).json({ error: `הקריאה נכשלה: ${err.message}` });
+  }
+});
+
 // Pilot readiness for the manager's start screen: per aisle, real photos, products and how many are
 // marked on a photo, plus the store-wide checklist.
 app.get('/api/store/setup', requireOwner, (req, res) => {
-  const shelves = JSON.parse(req.store.map_json).shelves;
+  const shelves = JSON.parse(req.store.map_json).shelves.filter((s) => !/^c\d+$/.test(s.id)); // checkouts aren't aisles to film
   const photos = db.prepare('SELECT shelf_id, COUNT(*) AS n, MAX(id) AS last FROM photos WHERE store_id = ? GROUP BY shelf_id').all(req.store.id);
   const lastFile = db.prepare('SELECT file FROM photos WHERE id = ?');
   const prods = db.prepare(`SELECT shelf_id, COUNT(*) AS n, SUM(photo_id IS NOT NULL AND box_json IS NOT NULL) AS marked,

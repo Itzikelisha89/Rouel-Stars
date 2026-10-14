@@ -453,3 +453,12 @@ body:has(.list-bar:not(.hidden)) .wrap { padding-bottom: 96px; }
   .product-item.row-item canvas, .product-item.row-item .thumb { width: 48px; height: 48px; }
   .ri-acts { grid-column: 2 / -1; justify-content: flex-start; }
 }
+
+/* owner: quick map wizard */
+.wizard-card summary { cursor: pointer; list-style: none; }
+.wizard-card summary::-webkit-details-marker { display: none; }
+.wizard-card:not([open]) summary::after { content: ' ▾'; color: var(--muted); }
+.wz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.wz-grid label { margin: 0; font-size: .9rem; }
+.wz-grid input, .wz-grid select { margin-top: 4px; }
+.wz-check { align-self: end; padding-bottom: 10px; }
