@@ -660,7 +660,8 @@ const EVENT_TYPES = ['view', 'found', ...ALERT_TYPES];
 app.post('/api/public/:slug/events', (req, res) => {
   const store = getStoreBySlug(req.params.slug);
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
-  if (rateLimited(req.ip)) return res.status(429).json({ error: 'יותר מדי פניות, נסו שוב בעוד דקה' });
+  // per phone, plus a high ceiling per address: a whole store of shoppers can share one Wi-Fi address
+  if (rateLimited(`ev:${req.ip}:${cleanVisitor(req.body.visitor)}`) || rateLimited(`ev:${req.ip}`, 900)) return res.status(429).json({ error: 'יותר מדי פניות, נסו שוב בעוד דקה' });
   const { type } = req.body;
   if (!EVENT_TYPES.includes(type)) return res.status(400).json({ error: 'סוג פנייה לא מוכר' });
   const product = req.body.productId != null
@@ -745,7 +746,7 @@ app.post('/api/public/:slug/locate', upload.single('image'), async (req, res) =>
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
   if (!req.file) return res.status(400).json({ error: 'צריך תמונה' });
   if (!ai.aiEnabled()) return res.json({ shelfIds: [], ai: false });
-  if (rateLimited(`locate:${req.ip}`, 6)) return res.status(429).json({ error: 'יותר מדי תמונות, נסו שוב בעוד דקה' });
+  if (rateLimited(`locate:${req.ip}`, 30)) return res.status(429).json({ error: 'יותר מדי תמונות, נסו שוב בעוד דקה' });
   const products = db.prepare('SELECT shelf_id, name FROM products WHERE store_id = ? AND active = 1').all(store.id);
   const shelves = JSON.parse(store.map_json).shelves.map((s) => ({
     id: s.id, name: s.name, products: products.filter((p) => p.shelf_id === s.id).slice(0, 15).map((p) => p.name),
@@ -763,7 +764,7 @@ app.post('/api/public/:slug/photo-search', upload.single('image'), async (req, r
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
   if (!req.file) return res.status(400).json({ error: 'צריך תמונה' });
   if (!ai.aiEnabled()) return res.status(503).json({ error: 'חיפוש בתמונה לא זמין כרגע. אפשר לכתוב מה מחפשים 🙂' });
-  if (rateLimited(`photo:${req.ip}`, 6)) return res.status(429).json({ error: 'יותר מדי תמונות, נסו שוב בעוד דקה' });
+  if (rateLimited(`photo:${req.ip}`, 30)) return res.status(429).json({ error: 'יותר מדי תמונות, נסו שוב בעוד דקה' });
   let identified;
   try {
     identified = await ai.identifyProduct(req.file.buffer, req.file.mimetype);
@@ -938,7 +939,7 @@ app.post('/api/public/:slug/tts', async (req, res) => {
   const file = path.join(TTS_DIR, `${key}.mp3`);
   res.set('Cache-Control', 'public, max-age=604800');
   if (fs.existsSync(file)) return res.type('audio/mpeg').send(fs.readFileSync(file));
-  if (rateLimited(`tts:${req.ip}`, 20)) return res.status(429).json({ error: 'יותר מדי בקשות' });
+  if (rateLimited(`tts:${req.ip}`, 200)) return res.status(429).json({ error: 'יותר מדי בקשות' });
   const day = new Date().toISOString().slice(0, 10);
   const used = db.prepare('SELECT chars FROM tts_usage WHERE day = ?').get(day)?.chars || 0;
   if (used + text.length > TTS_DAILY_CHARS) return res.status(429).json({ error: 'נגמרה המכסה היומית של הקול' });
@@ -972,7 +973,7 @@ app.post('/api/public/:slug/stt', uploadAudio.single('audio'), async (req, res) 
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
   if (!voiceKey()) return res.status(503).json({ error: 'חיפוש קולי לא הוגדר' });
   if (!req.file) return res.status(400).json({ error: 'לא נקלט קול' });
-  if (rateLimited(`stt:${req.ip}`, 10)) return res.status(429).json({ error: 'יותר מדי בקשות, נסו שוב בעוד דקה' });
+  if (rateLimited(`stt:${req.ip}`, 60)) return res.status(429).json({ error: 'יותר מדי בקשות, נסו שוב בעוד דקה' });
   const seconds = Math.max(1, Math.min(12, Math.ceil(Number(req.body.seconds) || 8)));
   const day = new Date().toISOString().slice(0, 10);
   const used = db.prepare('SELECT seconds FROM stt_usage WHERE day = ?').get(day)?.seconds || 0;
