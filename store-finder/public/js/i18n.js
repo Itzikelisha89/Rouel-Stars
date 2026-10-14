@@ -165,6 +165,11 @@ const T = {
   step_to_entrance: { he: 'לכו {n} מ׳ לכיוון הכניסה', ar: 'امشوا {n} م باتجاه المدخل', ru: 'Идите {n} м в сторону входа', en: 'Walk {n} m toward the entrance' },
   step_from_entrance: { he: 'לכו {n} מ׳ הלאה, הרחק מהכניסה', ar: 'امشوا {n} م بعيداً عن المدخل', ru: 'Идите {n} м вглубь, от входа', en: 'Walk {n} m away from the entrance' },
   step_toward: { he: 'לכו {n} מ׳ לכיוון {a}', ar: 'امشوا {n} م باتجاه {a}', ru: 'Идите {n} м в сторону: {a}', en: 'Walk {n} m toward {a}' },
+  mic_done: { he: '✓ סיימתי', ar: '✓ انتهيت', ru: '✓ Готово', en: '✓ Done' },
+  mic_thinking: { he: 'רגע, מבין…', ar: 'لحظة، أفهم…', ru: 'Секунду, разбираю…', en: 'One moment…' },
+  mic_nothing: { he: 'לא שמעתי 🙈 נסו שוב', ar: 'لم أسمع 🙈 حاولوا مجدداً', ru: 'Не расслышал 🙈 Попробуйте ещё', en: "Didn't catch that 🙈 Try again" },
+  mic_retry: { he: 'המיקרופון של הדפדפן לא עובד כאן. לחצו שוב על 🎤', ar: 'ميكروفون المتصفح لا يعمل هنا. اضغطوا 🎤 مجدداً', ru: 'Микрофон браузера здесь не работает. Нажмите 🎤 ещё раз', en: "The browser's mic doesn't work here. Tap 🎤 again" },
+  mic_blocked: { he: 'צריך לאשר גישה למיקרופון 🎤', ar: 'يجب السماح بالوصول إلى الميكروفون 🎤', ru: 'Разрешите доступ к микрофону 🎤', en: 'Please allow microphone access 🎤' },
   see_all: { he: 'הכל ←', ar: 'الكل ←', ru: 'Все →', en: 'See all →' },
   also_try: { he: 'אולי זה יעזור:', ar: 'ربما يساعدك هذا:', ru: 'Может, это поможет:', en: 'Maybe this helps:' },
 

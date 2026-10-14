@@ -68,6 +68,14 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   -- Characters sent to the premium voice per day (ElevenLabs quota guard).
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS stt_usage (
+    day TEXT PRIMARY KEY,
+    seconds INTEGER NOT NULL DEFAULT 0
+  );
   CREATE TABLE IF NOT EXISTS tts_usage (
     day TEXT PRIMARY KEY,
     chars INTEGER NOT NULL DEFAULT 0

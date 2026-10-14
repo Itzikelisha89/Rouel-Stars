@@ -45,6 +45,17 @@
         <p class="muted">חיפושים שלא נמצאו ובקשות "תביאו את זה", מכל הסניפים יחד. מוצר שמבוקש בכמה סניפים הוא החלטת רכש של הרשת.</p>
         <div id="missing" class="rank"></div>
       </div>
+      <form class="card" id="voice-form">
+        <h2>🔊 קול אמיתי של נציג (עומר)</h2>
+        <p class="muted" id="voice-state">…</p>
+        <p class="muted" style="font-size:.9rem">מפתח API מ-elevenlabs.io (Profile → API Keys). הקול והחיפוש הקולי בטלפונים עובדים בכל הסניפים, בתוך המכסה של התוכנית שלכם ועם תקרה יומית.</p>
+        <div class="row">
+          <input class="grow" type="password" id="voice-key" placeholder="המפתח של ElevenLabs" autocomplete="off">
+          <button class="primary" type="submit">שמירה</button>
+          <button type="button" class="danger" id="voice-off">כיבוי</button>
+        </div>
+        <p id="voice-msg" class="ok" style="margin:10px 0 0"></p>
+      </form>
     </main>
   </div>
   <script type="module" src="/js/hq.js"></script>

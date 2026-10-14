@@ -129,3 +129,5 @@ body.shop[data-view=detail] .wrap, body.shop[data-view=nav] .wrap { padding-bott
 .loc-guess.best { border-color: rgba(34, 197, 94, .6); background: rgba(34, 197, 94, .12); }
 .loc-guess.best .lg-yes { color: #8ff0b0; }
 #loc-map .map-shelf rect { cursor: pointer; }
+.listen-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 8px; }
+.listen-actions button { height: 54px; font-size: 1.1rem; }

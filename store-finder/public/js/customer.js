@@ -812,47 +812,150 @@ $('lang').addEventListener('change', () => {
 translatePage();
 
 // ---------- voice search ----------
+// The browser's own recognition where it works (free). iPhones and in-app browsers (WhatsApp, Telegram)
+// often don't have it, so there the phone records a few seconds and the server turns it into text.
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-function listen() {
-  const rec = new Recognition();
-  rec.lang = LANGS[lang].voice;
-  rec.interimResults = true;
-  let heard = '';
+const canRecord = Boolean(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let browserVoiceFailed = false;
+let stopListening = null;
+let cancelListening = null;
+function openListen() {
   $('listen-text').textContent = '';
   $('listen-label').textContent = t('listening');
   $('listen-sheet').classList.remove('hidden');
   $('listen-sheet').classList.add('live');
+  $('listen-done').disabled = false;
   buzz();
+}
+function closeListen(delay = 0) {
+  setTimeout(() => $('listen-sheet').classList.add('hidden'), delay);
+  stopListening = cancelListening = null;
+}
+function heardIt(text) {
+  $('listen-text').textContent = `"${text}"`;
+  $('listen-label').textContent = t('understood');
+  $('listen-sheet').classList.remove('live');
+  closeListen(700);
+  voiceMode = true;
+  $('q').value = text;
+  search(text);
+}
+$('listen-done').addEventListener('click', () => stopListening?.());
+$('listen-cancel').addEventListener('click', () => { cancelListening?.(); closeListen(); });
+
+function listenBrowser() {
+  const rec = new Recognition();
+  rec.lang = LANGS[lang].voice;
+  rec.interimResults = true;
+  let heard = '';
+  let failed = false;
+  let cancelled = false;
+  openListen();
   rec.onresult = (e) => {
     heard = [...e.results].map((r) => r[0].transcript).join('');
     $('listen-text').textContent = `"${heard}"`;
-    if (e.results[e.results.length - 1].isFinal) {
-      $('listen-label').textContent = t('understood');
-      $('listen-sheet').classList.remove('live');
-    }
   };
-  rec.onerror = () => { heard = ''; };
+  rec.onerror = (e) => { if (e.error !== 'no-speech' && e.error !== 'aborted') failed = true; };
   rec.onend = () => {
-    setTimeout(() => $('listen-sheet').classList.add('hidden'), heard ? 700 : 0);
-    if (heard) { voiceMode = true; $('q').value = heard; search(heard); }
+    if (cancelled) return;
+    if (heard.trim()) return heardIt(heard.trim());
+    if (failed && canRecord && store.voiceInput) {
+      // this browser can't do it: the next tap records instead
+      browserVoiceFailed = true;
+      $('listen-label').textContent = t('mic_retry');
+      $('listen-sheet').classList.remove('live');
+      return;
+    }
+    $('listen-label').textContent = t('mic_nothing');
+    $('listen-sheet').classList.remove('live');
+    closeListen(1600);
   };
-  $('listen-cancel').onclick = () => { heard = ''; rec.abort(); $('listen-sheet').classList.add('hidden'); };
+  stopListening = () => rec.stop();
+  cancelListening = () => { cancelled = true; rec.abort(); };
   rec.start();
 }
-if (Recognition) {
-  $('mic').classList.remove('hidden');
-  $('talk-btn').classList.remove('hidden');
-  $('mic').addEventListener('click', listen);
-  $('talk-btn').addEventListener('click', listen);
+
+async function listenRecord() {
+  openListen();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    $('listen-label').textContent = t('mic_blocked');
+    $('listen-sheet').classList.remove('live');
+    return;
+  }
+  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((m) => MediaRecorder.isTypeSupported?.(m)) || '';
+  const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+  const chunks = [];
+  let cancelled = false;
+  const started = Date.now();
+  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  // stop by itself after the shopper finishes talking (a second of quiet), or after 8 seconds
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const analyser = ctx.createAnalyser();
+  ctx.createMediaStreamSource(stream).connect(analyser);
+  const buf = new Uint8Array(analyser.fftSize);
+  let spoke = false, quietSince = 0;
+  const timer = setInterval(() => {
+    analyser.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (const v of buf) sum += (v - 128) ** 2;
+    const loud = Math.sqrt(sum / buf.length) > 6;
+    if (loud) { spoke = true; quietSince = 0; } else if (spoke && !quietSince) quietSince = Date.now();
+    if ((spoke && quietSince && Date.now() - quietSince > 1100) || Date.now() - started > 8000) stop();
+  }, 100);
+  function stop() {
+    clearInterval(timer);
+    if (rec.state !== 'inactive') rec.stop();
+  }
+  rec.onstop = async () => {
+    stream.getTracks().forEach((tr) => tr.stop());
+    ctx.close().catch(() => {});
+    if (cancelled) return;
+    $('listen-sheet').classList.remove('live');
+    $('listen-label').innerHTML = `<span class="row" style="justify-content:center"><span class="spinner"></span> ${escapeHtml(t('mic_thinking'))}</span>`;
+    $('listen-done').disabled = true;
+    try {
+      const form = new FormData();
+      form.append('audio', new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' }), 'voice');
+      form.append('seconds', String(Math.ceil((Date.now() - started) / 1000)));
+      form.append('lang', lang);
+      const { text } = await api(pub('/stt'), { method: 'POST', form });
+      if (text) return heardIt(text);
+      $('listen-label').textContent = t('mic_nothing');
+      closeListen(1600);
+    } catch (err) {
+      $('listen-label').textContent = err.message;
+      closeListen(2500);
+    }
+  };
+  stopListening = stop;
+  cancelListening = () => { cancelled = true; stop(); };
+  rec.start();
 }
 
-// ---------- start ----------
+function listen() {
+  unlockAudio();
+  const useRecorder = canRecord && store.voiceInput && (!Recognition || isIos || browserVoiceFailed);
+  if (useRecorder) listenRecord();
+  else if (Recognition) listenBrowser();
+}
+
+// ---------- start ----------// ---------- start ----------
 (async () => {
   try {
     store = await api(pub(''));
     document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${pub('/manifest.webmanifest')}">`);
     $('store-name').textContent = store.name;
     $('cam').classList.toggle('hidden', !store.photoSearch);
+    if (Recognition || (canRecord && store.voiceInput)) {
+      $('mic').classList.remove('hidden');
+      $('talk-btn').classList.remove('hidden');
+      $('mic').addEventListener('click', listen);
+      $('talk-btn').addEventListener('click', listen);
+    }
     document.title = t('title', { name: store.name });
     const params = new URLSearchParams(location.search);
     hereShelf = store.map.shelves.find((s) => s.id === params.get('at')) || null;

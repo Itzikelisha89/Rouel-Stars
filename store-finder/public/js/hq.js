@@ -110,9 +110,31 @@ $('hq-login').addEventListener('submit', async (e) => {
 });
 $('logout').addEventListener('click', () => { setHq(null); showLogin(); });
 
+async function loadVoice() {
+  const v = await hq('/api/hq/voice').catch(() => null);
+  if (!v) return;
+  $('voice-state').textContent = v.set ? '✅ פעיל: הלקוחות שומעים קול אמיתי וברור, ואפשר לחפש בקול גם באייפון.' : '⚪ כבוי: הטלפונים משתמשים בקול המובנה שלהם.';
+  $('voice-off').classList.toggle('hidden', !v.set || v.fromServer);
+}
+$('voice-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('voice-msg').textContent = 'בודק את המפתח…';
+  try {
+    await hq('/api/hq/voice', { method: 'PUT', body: { key: $('voice-key').value } });
+    $('voice-key').value = '';
+    $('voice-msg').textContent = 'נשמר ✓';
+  } catch (err) { $('voice-msg').textContent = err.message; }
+  loadVoice();
+});
+$('voice-off').addEventListener('click', async () => {
+  await hq('/api/hq/voice', { method: 'PUT', body: { key: '' } }).catch(() => {});
+  $('voice-msg').textContent = 'הקול כובה';
+  loadVoice();
+});
+
 async function start() {
   $('login-view').classList.add('hidden');
   $('app-view').classList.remove('hidden');
-  try { await load(); } catch { /* 401 already shows the sign-in */ }
+  try { await load(); loadVoice(); } catch { /* 401 already shows the sign-in */ }
 }
 if (getHq()) start(); else showLogin();

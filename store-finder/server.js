@@ -56,7 +56,7 @@ function getStoreBySlug(slug) {
   return db.prepare('SELECT * FROM stores WHERE slug = ?').get(slug);
 }
 function publicStore(store) {
-  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(process.env.ELEVENLABS_API_KEY) };
+  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(voiceKey()), voiceInput: Boolean(voiceKey()) };
 }
 function productRow(p) {
   return {
@@ -476,6 +476,24 @@ app.post('/api/hq/login', (req, res) => {
   res.json({ token });
 });
 
+// Headquarters turns on the real human voice (and voice search on every phone) with the ElevenLabs key.
+app.get('/api/hq/voice', requireHq, (_req, res) => {
+  res.json({ set: Boolean(voiceKey()), fromServer: Boolean(process.env.ELEVENLABS_API_KEY) });
+});
+app.put('/api/hq/voice', requireHq, async (req, res) => {
+  const key = String(req.body.key || '').trim();
+  if (!key) {
+    db.prepare("DELETE FROM settings WHERE key = 'elevenlabs_key'").run();
+    return res.json({ set: Boolean(voiceKey()) });
+  }
+  if (!/^[A-Za-z0-9_-]{20,200}$/.test(key)) return res.status(400).json({ error: 'המפתח לא נראה תקין' });
+  // check it opens the store's voice (a free lookup, nothing is generated or billed)
+  const r = await fetch(`https://api.elevenlabs.io/v1/voices/${TTS_VOICE}`, { headers: { 'xi-api-key': key } }).catch(() => null);
+  if (!r || r.status === 401) return res.status(400).json({ error: 'ElevenLabs לא מכיר את המפתח הזה' });
+  db.prepare("INSERT INTO settings (key, value) VALUES ('elevenlabs_key', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key);
+  res.json({ set: true });
+});
+
 app.get('/api/hq/overview', requireHq, (req, res) => {
   const days = Math.min(365, Math.max(1, Number(req.query.days) || 30));
   const since = `-${days + 1} days`;
@@ -750,6 +768,11 @@ app.get('/api/public/:slug/staff-qr.svg', async (req, res) => {
 // ---------- premium voice: a real, clear human voice (ElevenLabs) for spoken answers ----------
 // Every sentence is generated once and kept on disk, so the same answer (same product) never costs
 // twice. A daily character cap protects the plan's quota; past it the phone's own voice takes over.
+// The ElevenLabs key: from the server environment, or set by chain headquarters (stored on the server's
+// disk, never sent back to any browser).
+function voiceKey() {
+  return process.env.ELEVENLABS_API_KEY || db.prepare("SELECT value FROM settings WHERE key = 'elevenlabs_key'").get()?.value || '';
+}
 const TTS_VOICE = process.env.ELEVENLABS_VOICE_ID || 'k77ZRVqAFg9Hd0ltAuON'; // "Omer", the pitch video voice
 const TTS_MODEL = process.env.ELEVENLABS_MODEL || 'eleven_v3';
 const TTS_DAILY_CHARS = Number(process.env.TTS_DAILY_CHARS) || 1200;
@@ -763,7 +786,7 @@ function speechText(text) {
 app.post('/api/public/:slug/tts', async (req, res) => {
   const store = getStoreBySlug(req.params.slug);
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
-  if (!process.env.ELEVENLABS_API_KEY) return res.status(503).json({ error: 'קול פרימיום לא הוגדר' });
+  if (!voiceKey()) return res.status(503).json({ error: 'קול פרימיום לא הוגדר' });
   const text = speechText(req.body.text);
   const lang = ['he', 'ar', 'ru', 'en'].includes(req.body.lang) ? req.body.lang : 'he';
   if (!text) return res.status(400).json({ error: 'אין טקסט' });
@@ -778,7 +801,7 @@ app.post('/api/public/:slug/tts', async (req, res) => {
   try {
     const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${TTS_VOICE}?output_format=mp3_44100_128`, {
       method: 'POST',
-      headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+      headers: { 'xi-api-key': voiceKey(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, model_id: TTS_MODEL, language_code: lang }),
     });
     if (!r.ok) throw new Error(`ElevenLabs ${r.status}`);
@@ -789,6 +812,42 @@ app.post('/api/public/:slug/tts', async (req, res) => {
   } catch (err) {
     console.error('tts failed:', err.message);
     res.status(502).json({ error: 'הקול לא זמין כרגע' });
+  }
+});
+
+// Voice search on phones whose browser can't recognise speech (iPhone in-app browsers): the phone
+// records a few seconds and the server turns it into text. Capped per day.
+const STT_DAILY_SECONDS = Number(process.env.STT_DAILY_SECONDS) || 600;
+const uploadAudio = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, /^(audio|video)\//.test(file.mimetype)),
+});
+app.post('/api/public/:slug/stt', uploadAudio.single('audio'), async (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (!voiceKey()) return res.status(503).json({ error: 'חיפוש קולי לא הוגדר' });
+  if (!req.file) return res.status(400).json({ error: 'לא נקלט קול' });
+  if (rateLimited(`stt:${req.ip}`, 10)) return res.status(429).json({ error: 'יותר מדי בקשות, נסו שוב בעוד דקה' });
+  const seconds = Math.max(1, Math.min(12, Math.ceil(Number(req.body.seconds) || 8)));
+  const day = new Date().toISOString().slice(0, 10);
+  const used = db.prepare('SELECT seconds FROM stt_usage WHERE day = ?').get(day)?.seconds || 0;
+  if (used + seconds > STT_DAILY_SECONDS) return res.status(429).json({ error: 'החיפוש הקולי הגיע למכסה היומית. אפשר לכתוב 🙂' });
+  const lang = { he: 'heb', ar: 'ara', ru: 'rus', en: 'eng' }[req.body.lang] || 'heb';
+  try {
+    const form = new FormData();
+    form.append('model_id', 'scribe_v1');
+    form.append('language_code', lang);
+    form.append('tag_audio_events', 'false');
+    form.append('file', new Blob([req.file.buffer], { type: req.file.mimetype }), 'voice');
+    const r = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': voiceKey() }, body: form });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`ElevenLabs ${r.status} ${data.detail?.status || ''}`);
+    db.prepare('INSERT INTO stt_usage (day, seconds) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET seconds = seconds + ?').run(day, seconds, seconds);
+    res.json({ text: String(data.text || '').replace(/[.!?。]+$/, '').trim().slice(0, 100) });
+  } catch (err) {
+    console.error('stt failed:', err.message);
+    res.status(502).json({ error: 'לא הצלחתי לשמוע. אפשר לנסות שוב או לכתוב 🙂' });
   }
 });
 

@@ -44,6 +44,26 @@ test('chain headquarters: off without HQ_PASSWORD, then branches side by side', 
     // "צידנית" searched and "צידניות" requested are one missing product.
     const cooler = r.data.missing.find((m) => m.query.startsWith('צידני'));
     assert.equal(cooler.count, 2);
+
+    // Headquarters turns on the human voice; the key is checked with ElevenLabs and never sent back.
+    delete process.env.ELEVENLABS_API_KEY;
+    const realFetch = global.fetch;
+    global.fetch = async (url, opts) => (String(url).startsWith('https://api.elevenlabs.io')
+      ? new Response('{}', { status: opts?.headers?.['xi-api-key'] === 'good_key_1234567890abcd' ? 200 : 401 })
+      : realFetch(url, opts));
+    try {
+      assert.equal((await call('PUT', '/api/hq/voice', { token: branch, body: { key: 'x' } })).status, 401);
+      assert.equal((await call('GET', '/api/public/branch-b')).data.premiumVoice, false);
+      assert.equal((await call('PUT', '/api/hq/voice', { token, body: { key: 'bad_key_1234567890abcdef' } })).status, 400);
+      assert.deepEqual((await call('PUT', '/api/hq/voice', { token, body: { key: 'good_key_1234567890abcd' } })).data, { set: true });
+      const v = await call('GET', '/api/hq/voice', { token });
+      assert.deepEqual(v.data, { set: true, fromServer: false });
+      const pub = (await call('GET', '/api/public/branch-b')).data;
+      assert.equal(pub.premiumVoice, true);
+      assert.equal(pub.voiceInput, true);
+      await call('PUT', '/api/hq/voice', { token, body: { key: '' } });
+      assert.equal((await call('GET', '/api/public/branch-b')).data.premiumVoice, false);
+    } finally { global.fetch = realFetch; }
   } finally {
     delete process.env.HQ_PASSWORD;
     server.close();
