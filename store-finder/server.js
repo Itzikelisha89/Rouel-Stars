@@ -9,6 +9,7 @@ const { search } = require('./search');
 const synonyms = require('./synonyms');
 const ai = require('./ai');
 const insights = require('./insights');
+const { suggest } = require('./suggest');
 const pilot = require('./pilot');
 
 const app = express();
@@ -738,6 +739,28 @@ app.get('/api/public/:slug/products/:id/related', (req, res) => {
   const aisle = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 AND products.shelf_id = ? AND products.id != ? ORDER BY products.promo = '', random() LIMIT 4`)
     .all(store.id, p.shelf_id, p.id);
   res.json({ kind: 'aisle', products: aisle.map(productRow) });
+});
+
+// "Goes well with" for what the shopper just put on their list (or the whole list).
+app.get('/api/public/:slug/suggest', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  const ids = String(req.query.ids || '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 30);
+  const exclude = new Set(String(req.query.exclude || '').split(',').map(Number).filter(Boolean));
+  const limit = Math.min(8, Math.max(1, Number(req.query.limit) || 4));
+  const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1`).all(store.id);
+  const sources = products.filter((p) => ids.includes(p.id));
+  if (!sources.length) return res.json([]);
+  const together = new Map();
+  const pairs = db.prepare(`
+    SELECT b.product_id AS id, COUNT(DISTINCT b.visitor) AS shoppers
+    FROM events a JOIN events b ON b.store_id = a.store_id AND b.visitor = a.visitor AND b.product_id != a.product_id
+    WHERE a.store_id = ? AND a.product_id = ? AND a.visitor != '' AND a.type IN ('view', 'found') AND b.type IN ('view', 'found')
+      AND a.created_at >= datetime('now', '-90 days') AND abs(julianday(b.created_at) - julianday(a.created_at)) < 1
+    GROUP BY b.product_id HAVING shoppers >= 2`);
+  for (const src of sources) together.set(src.id, new Map(pairs.all(store.id, src.id).map((r) => [r.id, r.shoppers])));
+  const list = suggest(sources, products.filter((p) => !exclude.has(p.id)), together, limit);
+  res.json(list.map((s) => ({ product: productRow(s.product), reason: s.reason, forId: s.forId })));
 });
 
 app.get('/api/public/:slug/products/:id', (req, res) => {

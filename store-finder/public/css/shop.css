@@ -176,3 +176,12 @@ body.shop[data-view=detail] .wrap, body.shop[data-view=nav] .wrap { padding-bott
 .ab-go:not(.ab-green)::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .35) 50%, transparent 70%); transform: translateX(-100%); animation: shine 2.6s ease-in-out infinite; }
 @keyframes shine { 60%, 100% { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .nav-arrow svg, .map-halo, .map-goal, .ab-go::after, .ab-green.pulse { animation: none; } }
+
+/* goes well with */
+.upsell-card { animation: rise .35s ease-out; }
+.up-head { display: flex; align-items: center; gap: 12px; }
+.up-check { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; font-weight: 900; color: #fff; background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 0 0 8px rgba(34, 197, 94, .15); animation: pop .4s ease-out; }
+.up-added { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upsell-card .deals-row { margin: 0 -18px; padding: 0 18px 6px; }
+.promo-tag.why { background: linear-gradient(135deg, #4f7cff, #3a5ee0); }
+#list-suggest { margin-top: 6px; }

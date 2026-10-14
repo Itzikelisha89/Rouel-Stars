@@ -18,7 +18,7 @@ let trending = [];
 // ---------- voice: a real, clear human voice (premium, from the server) or the phone's own ----------
 const canSpeak = 'speechSynthesis' in window;
 function forSpeech(text) {
-  return text.replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/(\d)\s*מ['׳]/g, '$1 מטר').replace(/[·|/]/g, ',');
+  return text.replace(/₪/g, ' שקל').replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/(\d)\s*מ['׳]/g, '$1 מטר').replace(/[·|/]/g, ',');
 }
 // Phones only allow sound after a tap, so the audio element is unlocked on the first touch and reused.
 const player = new Audio();
@@ -137,6 +137,7 @@ const SHOWS = {
 const TAB_OF = { home: 'home', results: 'home', deals: 'deals', list: 'list' };
 function setView(name) {
   stopWalker();
+  $('upsell-sheet').classList.add('hidden');
   for (const id of VIEWS) $(id).classList.toggle('hidden', !SHOWS[name].includes(id));
   $('search-wrap').classList.toggle('hidden', !['home', 'results'].includes(name));
   document.body.dataset.view = name;
@@ -374,13 +375,14 @@ function addButton(p) {
   b.addEventListener('list-changed', paint);
   return b;
 }
-function miniCard(p) {
+function miniCard(p, { why = '' } = {}) {
   const card = document.createElement('div');
   card.className = 'mini-card';
   card.tabIndex = 0;
   const canvas = document.createElement('canvas');
   drawCrop(canvas, p.image || p.photo, p.image ? null : p.box, 240);
-  card.innerHTML = `${p.promo ? `<span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : ''}
+  const whyTag = !p.promo && why && why !== 'deal' ? `<span class="promo-tag why">${escapeHtml(t(`why_${why}`))}</span>` : '';
+  card.innerHTML = `${p.promo ? `<span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : whyTag}
     <span class="mc-name">${escapeHtml(p.name)}</span>
     <span class="mc-meta">📍 ${escapeHtml(shortShelf(shelfOf(p)))}</span>
     ${p.price ? `<span class="mc-price">${escapeHtml(formatPrice(p.price))}</span>` : ''}`;
@@ -771,13 +773,38 @@ function toggleList(p) {
     list.push({ id: p.id, name: p.name, shelfId: p.shelfId, level: p.level, price: p.price, photo: p.photo, image: p.image, box: p.box, picked: false });
     const shelf = shelfOf(p);
     toast(t('added', { a: shelf ? shortShelf(shelf) : '' }));
-    say(t('added_say'));
     buzz(15);
+    offerWith(p, list);
     const badge = $('list-count');
     badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
   }
   saveList(list);
 }
+// ---------- "goes well with": after something goes on the list, offer what fits it ----------
+// Deals first, then what other shoppers took with it, then what naturally goes with it.
+const offered = new Set();
+// "כוס קפה קר MOOSH בצבעי פסטל 550 מ"ל" -> "כוס קפה קר": short enough to say out loud
+const shortName = (p) => { const w = []; for (const x of p.name.split(/\s+/)) { if (!/^[\u0590-\u05FF'׳-]+$/.test(x) || w.length === 3) break; w.push(x); } return w.join(' ') || p.name; };
+async function offerWith(p, list) {
+  const inSheet = !$('upsell-sheet').classList.contains('hidden');
+  if (inSheet || offered.has(p.id)) return say(t('added_say'));
+  offered.add(p.id);
+  const ids = list.map((i) => i.id).join(',');
+  const sugg = await api(pub(`/suggest?ids=${p.id}&exclude=${ids}&limit=4`)).catch(() => []);
+  if (!sugg.length) return say(t('added_say'));
+  $('up-added').textContent = p.name;
+  $('up-title').textContent = lang === 'he' ? t('up_title', { name: shortName(p) }) : t('up_title_any');
+  $('up-row').replaceChildren(...sugg.map((s) => miniCard(s.product, { why: s.reason })));
+  $('upsell-sheet').classList.remove('hidden');
+  $('toast').classList.remove('show'); // the sheet already says it was added
+  const deal = sugg.find((s) => s.product.promo);
+  say(deal && lang === 'he' ? t('up_say_deal', { name: shortName(deal.product), promo: deal.product.promo }) : t('up_say'));
+}
+const closeUpsell = () => $('upsell-sheet').classList.add('hidden');
+$('up-done').addEventListener('click', closeUpsell);
+$('upsell-sheet').addEventListener('click', (e) => { if (e.target === $('upsell-sheet')) closeUpsell(); });
+$('up-row').addEventListener('click', (e) => { if (!e.target.closest('.add-btn')) closeUpsell(); }, true);
+
 function updateListToggle() {
   const on = current && inList(current.id);
   $('list-toggle').textContent = t(on ? 'in_short' : 'add_short');
@@ -799,6 +826,17 @@ $('list-toggle').addEventListener('click', () => { if (current) { toggleList(cur
 const priceValue = (p) => (/^\s*₪?\s*\d+(\.\d+)?\s*₪?\s*$/.test(p || '') ? Number(p.replace(/[^\d.]/g, '')) : 0);
 let routeSpeech = '';
 let listRoute = null;
+let listSuggestFor = '';
+async function loadListSuggest(todo) {
+  const key = todo.map((i) => i.id).join(',');
+  listSuggestFor = key;
+  if (!todo.length) return $('list-suggest').classList.add('hidden');
+  const all = loadList().map((i) => i.id).join(',');
+  const sugg = await api(pub(`/suggest?ids=${key}&exclude=${all}&limit=6`)).catch(() => []);
+  if (listSuggestFor !== key) return;
+  $('list-suggest-row').replaceChildren(...sugg.map((s) => miniCard(s.product, { why: s.reason })));
+  $('list-suggest').classList.toggle('hidden', !sugg.length);
+}
 function renderListView() {
   setView('list');
   const list = loadList();
@@ -823,6 +861,7 @@ function renderListView() {
   const total = todo.reduce((sum, i) => sum + priceValue(i.price), 0);
   $('list-total').textContent = t('list_total', { p: total.toFixed(2).replace(/\.00$/, '') });
   $('list-total').classList.toggle('hidden', !total);
+  loadListSuggest(todo);
   $('list-start').classList.toggle('hidden', !todo.length);
   $('list-deals').classList.toggle('hidden', todo.length > 0);
   $('list-map-box').classList.toggle('hidden', !route.legs.length);
