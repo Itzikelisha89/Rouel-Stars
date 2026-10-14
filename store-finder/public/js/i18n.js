@@ -170,6 +170,13 @@ const T = {
   mic_nothing: { he: 'לא שמעתי 🙈 נסו שוב', ar: 'لم أسمع 🙈 حاولوا مجدداً', ru: 'Не расслышал 🙈 Попробуйте ещё', en: "Didn't catch that 🙈 Try again" },
   mic_retry: { he: 'המיקרופון של הדפדפן לא עובד כאן. לחצו שוב על 🎤', ar: 'ميكروفون المتصفح لا يعمل هنا. اضغطوا 🎤 مجدداً', ru: 'Микрофон браузера здесь не работает. Нажмите 🎤 ещё раз', en: "The browser's mic doesn't work here. Tap 🎤 again" },
   mic_blocked: { he: 'צריך לאשר גישה למיקרופון 🎤', ar: 'يجب السماح بالوصول إلى الميكروفون 🎤', ru: 'Разрешите доступ к микрофону 🎤', en: 'Please allow microphone access 🎤' },
+  talk_on: { he: 'עומר מדבר. לחצו להשתקה', ar: 'عومر يتكلم. اضغطوا للإسكات', ru: 'Омер говорит. Нажмите, чтобы выключить', en: 'Omer is talking. Tap to mute' },
+  talk_off: { he: 'עומר בשקט. לחצו כדי שידבר', ar: 'عومر صامت. اضغطوا ليتكلم', ru: 'Омер молчит. Нажмите, чтобы включить', en: 'Omer is muted. Tap to unmute' },
+  talk_hi: { he: 'אני כאן איתך', ar: 'أنا هنا معك', ru: 'Я с вами', en: "I'm here with you" },
+  added_say: { he: 'הוספתי לרשימה', ar: 'أضفته إلى القائمة', ru: 'Добавил в список', en: 'Added to your list' },
+  found_say: { he: 'מעולה, שמח שמצאת!', ar: 'رائع، سعيد أنك وجدته!', ru: 'Отлично, рад, что нашли!', en: 'Great, glad you found it!' },
+  found_next: { he: 'מעולה! הבא ברשימה שלך: {name}', ar: 'رائع! التالي في قائمتك: {name}', ru: 'Отлично! Следующий в списке: {name}', en: 'Great! Next on your list: {name}' },
+  help_say: { he: 'קיבלתי, עובד כבר בדרך אליך', ar: 'تم، موظف في الطريق إليك', ru: 'Принято, сотрудник уже идёт к вам', en: 'Got it, someone is on the way to you' },
   see_all: { he: 'הכל ←', ar: 'الكل ←', ru: 'Все →', en: 'See all →' },
   also_try: { he: 'אולי זה יעזור:', ar: 'ربما يساعدك هذا:', ru: 'Может, это поможет:', en: 'Maybe this helps:' },
 

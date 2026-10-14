@@ -131,3 +131,5 @@ body.shop[data-view=detail] .wrap, body.shop[data-view=nav] .wrap { padding-bott
 #loc-map .map-shelf rect { cursor: pointer; }
 .listen-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 8px; }
 .listen-actions button { height: 54px; font-size: 1.1rem; }
+.talk-toggle { width: 40px; height: 40px; padding: 0; border-radius: 50%; font-size: 1.1rem; background: var(--accent-soft); border-color: rgba(255, 138, 42, .45); }
+.talk-toggle.off { background: rgba(255, 255, 255, .06); border-color: var(--border); }

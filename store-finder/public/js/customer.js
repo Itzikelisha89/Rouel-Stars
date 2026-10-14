@@ -18,7 +18,7 @@ let trending = [];
 // ---------- voice: a real, clear human voice (premium, from the server) or the phone's own ----------
 const canSpeak = 'speechSynthesis' in window;
 function forSpeech(text) {
-  return text.replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/[·|/]/g, ',');
+  return text.replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/(\d)\s*מ['׳]/g, '$1 מטר').replace(/[·|/]/g, ',');
 }
 // Phones only allow sound after a tap, so the audio element is unlocked on the first touch and reused.
 const player = new Audio();
@@ -38,7 +38,7 @@ document.addEventListener('pointerdown', unlockAudio, { once: true, capture: tru
 function speakDevice(text) {
   if (!canSpeak) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(forSpeech(text));
+  const u = new SpeechSynthesisUtterance(text);
   u.lang = LANGS[lang].voice;
   const voice = speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith(lang));
   if (voice) u.voice = voice;
@@ -46,6 +46,7 @@ function speakDevice(text) {
 }
 let speakSeq = 0;
 async function speak(text) {
+  text = forSpeech(String(text || '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '')).replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
   if (!text) return;
   const seq = ++speakSeq;
   player.pause();
@@ -59,11 +60,27 @@ async function speak(text) {
       player.src = URL.createObjectURL(blob);
       await player.play();
       return;
-    } catch { /* fall back to the phone's voice */ }
+    } catch { /* stay quiet: the answer is on the screen, and the phone's robot voice isn't Omer */ }
+    return;
   }
   if (seq === speakSeq) speakDevice(text);
 }
 const voiceOk = () => canSpeak || store?.premiumVoice;
+// Omer talks the shopper through the store (greeting, where the product is, the way, arrival).
+// One tap on 🔊/🔇 in the header keeps him quiet, remembered on this phone.
+let talk = (() => { try { return localStorage.getItem('storeFinder:talk') !== '0'; } catch { return true; } })();
+function say(text) { if (talk && voiceOk()) speak(text); }
+function paintTalk() {
+  $('talk-toggle').textContent = talk ? '🔊' : '🔇';
+  $('talk-toggle').setAttribute('aria-label', t(talk ? 'talk_on' : 'talk_off'));
+  $('talk-toggle').classList.toggle('off', !talk);
+}
+$('talk-toggle').addEventListener('click', () => {
+  talk = !talk;
+  try { localStorage.setItem('storeFinder:talk', talk ? '1' : '0'); } catch { /* private mode */ }
+  paintTalk();
+  if (talk) speak(t('talk_hi')); else { speakSeq++; player.pause(); if (canSpeak) speechSynthesis.cancel(); }
+});
 
 // ---------- small comforts: toast, a light tap on the hand ----------
 let toastTimer = 0;
@@ -177,7 +194,14 @@ function renderHome() {
   $('continue-card').classList.toggle('hidden', !todo);
   $('continue-text').textContent = t('continue_list', { n: todo });
 }
-$('buddy-face').addEventListener('click', () => speak(`${$('greet-title').textContent.replace(/[^\p{L}\p{N}\s!?,.'׳]/gu, '')} ${$('greet-sub').textContent}`));
+const greetingSpeech = () => `${$('greet-title').textContent.replace(/[\p{Extended_Pictographic}\s]+$/u, '')}. ${$('greet-sub').textContent}`;
+$('buddy-face').addEventListener('click', () => speak(greetingSpeech()));
+// Phones only allow sound after a touch: Omer says hello on the shopper's first tap on the home screen
+// (not when it's the microphone, he'd be talking into it).
+document.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#mic, #talk-btn, #talk-toggle, #buddy-face, #lang') || document.body.dataset.view !== 'home') return;
+  setTimeout(() => say(greetingSpeech()), 150);
+}, { once: true });
 $('continue-card').addEventListener('click', () => go(renderListView));
 
 // The search box shows a new example every few seconds: what people really search for in this store.
@@ -265,7 +289,7 @@ async function runSearch(q) {
     $('status').textContent = data.expanded ? t('maybe_meant', { q }) : t('n_results_pick', { n: results.length, q });
     showResultCards();
     if (results.length === 1) openProduct(results[0], { replace: true });
-    else if (voiceMode) speak(t('voice_n_results', { n: results.length }));
+    else say(t('voice_n_results', { n: results.length }));
   } catch (err) { $('status').textContent = err.message; }
 }
 function showNoResults(text, spoken) {
@@ -273,7 +297,7 @@ function showNoResults(text, spoken) {
   $('request-done').classList.add('hidden');
   $('request-form').classList.remove('hidden');
   $('no-results').classList.remove('hidden');
-  if (voiceMode && spoken) speak(spoken);
+  if (spoken) say(spoken);
 }
 function showResultCards() {
   $('results').replaceChildren(...results.map((p) => {
@@ -405,7 +429,7 @@ function renderDetail(p, { quiet = false } = {}) {
   if (!quiet) track('view', { productId: p.id }).catch(() => {});
   updateListToggle();
   $('speak').classList.toggle('hidden', !voiceOk());
-  if (voiceMode) speak(spokenAnswer);
+  say(spokenAnswer);
   // The shelf photo with the product outlined, so the shopper recognises the spot when they get there.
   $('shelf-card').classList.toggle('hidden', !p.photo);
   if (p.photo) $('detail-photo').src = p.photo;
@@ -486,7 +510,7 @@ function renderNav() {
   walkerRaf = requestAnimationFrame(frame);
   navStarted = Date.now();
   spokenAnswer = lines.map((l) => l[1]).join('. ');
-  if (voiceMode) speak(spokenAnswer);
+  say(spokenAnswer);
 }
 function renderArrived() {
   if (!current || !navRoute) return renderHome();
@@ -503,7 +527,7 @@ function renderArrived() {
   $('arr-ask').classList.remove('hidden');
   for (const b of $('arr-reasons').querySelectorAll('button')) b.disabled = false;
   buzz([20, 60, 20]);
-  if (voiceMode) speak(`${t('arrived_title')} ${$('arr-where').textContent}`);
+  say(`${t('arrived_title')} ${$('arr-where').textContent}`);
   // the shopper is standing at this shelf now: the next route starts from here
   hereShelf = shelf;
 }
@@ -528,7 +552,8 @@ async function afterFound() {
     $('next-meta').textContent = `📍 ${shortShelf(store.map.shelves.find((s) => s.id === next.shelfId))}${next.level ? ` · ${levelName(next.level)}` : ''}`;
     $('next-go').onclick = () => goToItem(next.id);
     $('arr-next').classList.remove('hidden');
-  }
+    say(lang === 'he' ? t('found_next', { name: next.name }) : t('found_say'));
+  } else say(t('found_say'));
   // what else is right here: the easiest extra purchase there is
   const aisle = await api(pub(`/aisle/${encodeURIComponent(current.shelfId)}`)).catch(() => []);
   const more = aisle.filter((x) => x.id !== current.id).slice(0, 8);
@@ -559,6 +584,7 @@ $('arr-staff').addEventListener('click', async () => {
   try {
     await track('help', { shelfId: current.shelfId, productId: current.id, query: lastQuery });
     $('arr-done').textContent = t('help_sent', { at: t('help_at', { a: shortShelf(shelfOf(current)) }) });
+    say(t('help_say'));
   } catch (err) { $('arr-done').textContent = err.message; $('arr-staff').disabled = false; }
   $('arr-done').classList.remove('hidden');
 });
@@ -633,7 +659,7 @@ function setHere(shelf) {
       const route = navRoute;
       screens[at] = () => { current = p; navRoute = route; renderNav(); };
       renderNav();
-      if (store.premiumVoice || canSpeak) speak(spokenAnswer);
+      say(spokenAnswer);
     } else screens[at] = () => renderDetail(p, { quiet: true });
   } else if (v === 'list') renderListView();
 }
@@ -667,6 +693,7 @@ function toggleList(p) {
     list.push({ id: p.id, name: p.name, shelfId: p.shelfId, level: p.level, price: p.price, photo: p.photo, image: p.image, box: p.box, picked: false });
     const shelf = shelfOf(p);
     toast(t('added', { a: shelf ? shortShelf(shelf) : '' }));
+    say(t('added_say'));
     buzz(15);
     const badge = $('list-count');
     badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
@@ -787,6 +814,7 @@ $('help-send').addEventListener('click', async () => {
     await track('help', { shelfId: $('help-shelf').value || null, productId: current?.id ?? null, query: lastQuery });
     const s = store.map.shelves.find((x) => x.id === $('help-shelf').value);
     $('help-done').textContent = t('help_sent', { at: s ? t('help_at', { a: shortShelf(s) }) : '' });
+    say(t('help_say'));
     $('help-done').classList.remove('hidden');
     buzz(30);
     setTimeout(() => $('help-sheet').classList.add('hidden'), 3500);
@@ -938,6 +966,7 @@ async function listenRecord() {
 
 function listen() {
   unlockAudio();
+  speakSeq++; player.pause(); if (canSpeak) speechSynthesis.cancel(); // quiet while the shopper talks
   const useRecorder = canRecord && store.voiceInput && (!Recognition || isIos || browserVoiceFailed);
   if (useRecorder) listenRecord();
   else if (Recognition) listenBrowser();
@@ -949,6 +978,8 @@ function listen() {
     store = await api(pub(''));
     document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${pub('/manifest.webmanifest')}">`);
     $('store-name').textContent = store.name;
+    $('talk-toggle').classList.toggle('hidden', !voiceOk());
+    paintTalk();
     $('cam').classList.toggle('hidden', !store.photoSearch);
     if (Recognition || (canRecord && store.voiceInput)) {
       $('mic').classList.remove('hidden');
