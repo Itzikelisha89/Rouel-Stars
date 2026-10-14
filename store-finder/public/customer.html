@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=8">
-  <link rel="stylesheet" href="/css/shop.css?v=8">
+  <link rel="stylesheet" href="/css/app.css?v=9">
+  <link rel="stylesheet" href="/css/shop.css?v=9">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -126,21 +126,36 @@
       </div>
     </section>
 
-    <!-- take me there -->
+    <!-- take me there: like a car navigator, on foot -->
     <section id="nav-view" class="view hidden">
-      <button type="button" class="back-btn" data-back data-i18n="nav_back">→ חזרה למוצר</button>
-      <div id="nav-here" class="here-banner hidden" style="margin:0 0 12px"></div>
-      <button type="button" class="where-btn" data-where data-i18n="where_btn">📍 לא בכניסה? צלם את המדף שמולך</button>
-      <div class="card">
-        <div class="nav-head">
-          <canvas id="nav-thumb" class="nav-thumb"></canvas>
-          <div style="min-width:0"><div class="name" id="nav-name"></div><div class="d-chips" id="nav-chips" style="margin:6px 0 0"></div></div>
-        </div>
-        <ol class="nav-steps" id="nav-steps"></ol>
-        <div class="map-box" style="margin-top:12px;position:relative"><svg id="nav-map"></svg></div>
-        <p class="muted" style="font-size:.85rem;margin:8px 0 0" data-i18n="walk_preview">הנקודה הכחולה מראה את המסלול</p>
-        <p class="muted" style="font-size:.85rem;margin:4px 0 0" data-i18n="lost_hint">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
+      <div class="nav-top">
+        <button type="button" class="nav-close" data-back aria-label="חזרה" data-i18n-aria="nav_back">✕</button>
+        <canvas id="nav-thumb" class="nav-thumb"></canvas>
+        <div class="nav-dest"><div class="name" id="nav-name"></div><div class="nav-eta" id="nav-eta"></div></div>
       </div>
+      <div class="nav-hero" id="nav-hero">
+        <div class="nav-arrow" id="nav-arrow"><div class="na-rot"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 L86 48 H63 V92 H37 V48 H14 Z"/></svg></div></div>
+        <div class="nav-instr">
+          <div class="nav-big" id="nav-big"></div>
+          <div class="nav-sub" id="nav-sub"></div>
+          <div class="nav-then" id="nav-then"></div>
+        </div>
+      </div>
+      <div class="nav-progress"><i id="nav-bar"></i></div>
+      <div class="nav-shelf hidden" id="nav-shelf">
+        <div class="ns-title" data-i18n="look_here">👇 חפשו כאן</div>
+        <div class="shelf-shot"><img id="nav-photo" alt=""><div class="shelf-mark" id="nav-mark"></div></div>
+      </div>
+      <div class="map-box nav-map-box"><svg id="nav-map"></svg></div>
+      <div class="nav-controls">
+        <button type="button" id="nav-pause" aria-label="⏸">⏸</button>
+        <button type="button" id="nav-replay" data-i18n="nav_replay">↻ מההתחלה</button>
+        <button type="button" id="nav-speak" aria-label="🔊">🔊</button>
+      </div>
+      <div id="nav-here" class="here-banner hidden" style="margin:12px 0"></div>
+      <button type="button" class="where-btn" data-where data-i18n="where_btn">📍 לא בכניסה? צלם את המדף שמולך</button>
+      <ol class="nav-steps" id="nav-steps"></ol>
+      <p class="muted" style="font-size:.85rem;margin:8px 0 0" data-i18n="lost_hint">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
       <div class="action-bar">
         <button type="button" id="arrived-btn" class="ab-go ab-green" data-i18n="arrived_btn">✅ הגעתי</button>
       </div>
@@ -243,6 +258,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=8"></script>
+  <script type="module" src="/js/customer.js?v=9"></script>
 </body>
 </html>

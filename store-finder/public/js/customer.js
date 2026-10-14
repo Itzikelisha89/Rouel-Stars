@@ -463,54 +463,132 @@ function renderNav() {
   const { shelf, path, here } = navRoute;
   drawCrop($('nav-thumb'), current.image || current.photo, current.image ? null : current.box, 144);
   $('nav-name').textContent = current.name;
-  $('nav-chips').innerHTML = [chip(`📍 ${aisleName(shelf)}`, 'o'), current.level && chip(levelName(current.level)), chip(t(here ? 'm_from_here' : 'm_from_entrance', { n: path.length - 1 }))].filter(Boolean).join('');
   const dir = directions(store.map, path, shelf);
   const ICON = { straight: '⬆', right: '➡', left: '⬅' };
-  const lines = dir.steps.map((st) => [ICON[st.turn], t(`step_${st.turn}`, { n: st.meters })]);
+  const steps = dir.steps.map((st) => ({ turn: st.turn, meters: st.meters, big: t(`go_${st.turn}`), text: t(`step_${st.turn}`, { n: st.meters }), ico: ICON[st.turn],
+    speech: st.turn === 'straight' ? t('step_straight', { n: st.meters }) : `${t(`go_${st.turn}`)}, ${t('m_more', { n: st.meters })}` }));
   // From an aisle we don't know which way the shopper faces, so the first step names a landmark.
-  if (here && dir.steps.length && path.length > 1) {
-    const [a, b] = path, e = store.map.entrance, n = dir.steps[0].meters;
+  if (here && steps.length && path.length > 1) {
+    const [a, b] = path, e = store.map.entrance, n = steps[0].meters;
     const toEntrance = Math.abs(b.x - e.x) + Math.abs(b.y - e.y) < Math.abs(a.x - e.x) + Math.abs(a.y - e.y);
     const sideways = a.y === b.y;
     const toward = sideways && (Math.sign(shelf.x - a.x) === Math.sign(b.x - a.x) ? shelf : store.map.shelves.filter((s) => s.id !== hereShelf?.id && Math.sign(s.x - a.x) === Math.sign(b.x - a.x))
       .sort((s1, s2) => Math.abs(s1.x - a.x) - Math.abs(s2.x - a.x))[0]);
-    lines[0] = ['🚶', toward ? t('step_toward', { n, a: aisleName(toward, { short: true }) }) : t(toEntrance ? 'step_to_entrance' : 'step_from_entrance', { n })];
+    const text = toward ? t('step_toward', { n, a: aisleName(toward, { short: true }) }) : t(toEntrance ? 'step_to_entrance' : 'step_from_entrance', { n });
+    Object.assign(steps[0], { turn: 'straight', ico: '🚶', text, speech: text, big: text.replace(/^\S+\s+\S+\s+\S+\s*/, '') || text });
   }
-  lines.push(['📍', `${t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) })} · ${current.level ? t('step_look', { l: levelName(current.level) }) : t('step_look_nolevel')}`]);
+  const look = current.level ? t('step_look', { l: levelName(current.level) }) : t('step_look_nolevel');
+  const sideText = t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) });
+  const arrive = { turn: `arrive-${dir.side}`, meters: 0, ico: '📍', big: sideText, sub: current.level ? t('look_level', { l: levelName(current.level) }) : t('look_here'), text: `${sideText} · ${look}` };
+  arrive.speech = arrive.text;
+  const all = [...steps, arrive];
   $('nav-steps').innerHTML = `<li class="muted" style="font-size:.9rem;border-top:none;padding-top:0">${escapeHtml(t(here ? 'nav_from_here' : 'nav_from_entrance'))}</li>` +
-    lines.map(([ico, txt], i) => `<li class="${i === lines.length - 1 ? 'last' : ''}"><span class="ico">${ico}</span><span>${escapeHtml(txt)}</span></li>`).join('');
+    all.map((st, i) => `<li class="${i === all.length - 1 ? 'last' : ''}" data-step="${i}"><span class="ico">${st.ico}</span><span>${escapeHtml(st.text)}</span></li>`).join('');
   $('nav-here').classList.toggle('hidden', !here);
   for (const b of document.querySelectorAll('[data-where]')) b.textContent = t(hereShelf ? 'where_again' : b.closest('#nav-view') ? 'where_btn' : 'where_home');
   if (here) $('nav-here').textContent = `${t('here', { name: aisleName(hereShelf) })} · ${t('m_from_here', { n: path.length - 1 })}`;
+  $('nav-shelf').classList.add('hidden');
+  if (current.photo) $('nav-photo').src = current.photo;
+  markBox($('nav-mark'), current.box);
+
+  // the map, zoomed to the route, with the walked part lit up and the goal pulsing
   const svgEl = $('nav-map');
   renderMap(svgEl, store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
-  // the walker: walks the route at a calm pace, waits a moment at the shelf, then starts again
-  const CELL = 20;
+  const CELL = 20, NS = 'http://www.w3.org/2000/svg';
   const pts = path.map((c) => [c.x * CELL + CELL / 2, c.y * CELL + CELL / 2]);
-  const walker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  const xs = [...pts.map((p) => p[0]), shelf.x * CELL, (shelf.x + shelf.w) * CELL], ys = [...pts.map((p) => p[1]), shelf.y * CELL, (shelf.y + shelf.h) * CELL];
+  let x0 = Math.min(...xs) - 2 * CELL, x1 = Math.max(...xs) + 2 * CELL, y0 = Math.min(...ys) - 2 * CELL, y1 = Math.max(...ys) + 2 * CELL;
+  const minW = 10 * CELL, minH = 8 * CELL;
+  if (x1 - x0 < minW) { const c = (x0 + x1) / 2; x0 = c - minW / 2; x1 = c + minW / 2; }
+  if (y1 - y0 < minH) { const c = (y0 + y1) / 2; y0 = c - minH / 2; y1 = c + minH / 2; }
+  svgEl.setAttribute('viewBox', `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+  const goal = document.createElementNS(NS, 'circle');
+  goal.setAttribute('cx', pts[pts.length - 1][0]); goal.setAttribute('cy', pts[pts.length - 1][1]); goal.setAttribute('r', 14);
+  goal.setAttribute('class', 'map-goal');
+  svgEl.appendChild(goal);
+  const trail = document.createElementNS(NS, 'polyline');
+  trail.setAttribute('class', 'map-done');
+  svgEl.appendChild(trail);
+  const halo = document.createElementNS(NS, 'circle');
+  halo.setAttribute('r', 22); halo.setAttribute('class', 'map-halo');
+  svgEl.appendChild(halo);
+  const walker = document.createElementNS(NS, 'circle');
   walker.setAttribute('r', 11); walker.setAttribute('class', 'map-walker');
   svgEl.appendChild(walker);
-  // which step each cell of the path belongs to, to highlight the current instruction
-  const stepOf = []; let k = 0;
-  dir.steps.forEach((st, i) => { for (let m = 0; m < st.meters; m++) stepOf[++k] = i; });
-  stepOf[0] = 0;
-  const items = [...$('nav-steps').querySelectorAll('li:not(.muted)')];
-  const walkMs = Math.max(3000, (pts.length - 1) * 350), cycle = walkMs + 1500;
-  const t0 = performance.now();
+
+  // A calm walking pace; every step stays on screen long enough for Omer to say it.
+  const MS_PER_M = 850, MIN_STEP_MS = 2600;
+  const sched = []; let tAcc = 0, cAcc = 0;
+  for (const st of steps) {
+    const dur = Math.max(st.meters * MS_PER_M, MIN_STEP_MS);
+    sched.push({ t0: tAcc, dur, c0: cAcc, c1: cAcc + st.meters });
+    tAcc += dur; cAcc += st.meters;
+  }
+  const total = path.length - 1, totalMs = tAcc;
+  let elapsed = 0, last = null, shown = -1, paused = false, finished = false;
+  const items = [...$('nav-steps').querySelectorAll('li[data-step]')];
+  const arrowEl = $('nav-arrow');
+  function showStep(i) {
+    shown = i;
+    const st = all[i];
+    arrowEl.className = `nav-arrow turn-${st.turn}`;
+    void arrowEl.offsetWidth;
+    arrowEl.classList.add('pop');
+    $('nav-big').textContent = st.big;
+    $('nav-sub').textContent = st.sub || t('m_more', { n: st.meters });
+    const next = all[i + 1];
+    $('nav-then').textContent = !next ? '' : next.turn.startsWith('arrive') ? t('then_shelf') : next.turn === 'straight' ? '' : t(`then_${next.turn}`);
+    items.forEach((li, j) => { li.classList.toggle('on', j === i); li.classList.toggle('done', j < i); });
+    const isEnd = i === all.length - 1;
+    $('nav-hero').classList.toggle('arrive', isEnd);
+    $('nav-shelf').classList.toggle('hidden', !isEnd || !current.photo);
+    $('arrived-btn').classList.toggle('pulse', isEnd);
+    buzz(isEnd ? [30, 60, 30] : 15);
+    say(i === 0 ? `${t('say_go')} ${st.speech}` : st.speech);
+    if (isEnd && current.photo) setTimeout(() => $('nav-shelf').scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
+  }
+  function place(dist) {
+    const i = Math.min(Math.floor(dist), total - 1), r = dist - i;
+    const a = pts[i], b = pts[Math.min(i + 1, total)];
+    const x = a[0] + (b[0] - a[0]) * r, y = a[1] + (b[1] - a[1]) * r;
+    for (const el of [walker, halo]) { el.setAttribute('cx', x); el.setAttribute('cy', y); }
+    trail.setAttribute('points', [...pts.slice(0, i + 1), [x, y]].map((p) => p.join(',')).join(' '));
+  }
   const frame = (now) => {
-    const f = Math.min(1, (Math.max(0, now - t0) % cycle) / walkMs); // the first frame can be stamped before t0
-    const pos = f * (pts.length - 1), i = Math.floor(pos), r = pos - i;
-    const a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)];
-    walker.setAttribute('cx', a[0] + (b[0] - a[0]) * r);
-    walker.setAttribute('cy', a[1] + (b[1] - a[1]) * r);
-    const cur = f >= 1 ? items.length - 1 : stepOf[Math.min(i + 1, stepOf.length - 1)] ?? 0;
-    items.forEach((li, j) => li.classList.toggle('on', j === cur));
-    walkerRaf = requestAnimationFrame(frame);
+    if (last === null) last = now;
+    if (!paused) elapsed += Math.max(0, Math.min(100, now - last)); // the first frame can be stamped before the last
+    last = now;
+    let step = sched.findIndex((sc) => elapsed < sc.t0 + sc.dur);
+    let dist;
+    if (step < 0) { step = all.length - 1; dist = total; finished = true; }
+    else { const sc = sched[step]; dist = sc.c0 + (sc.c1 - sc.c0) * Math.min(1, (elapsed - sc.t0) / sc.dur); }
+    place(dist);
+    if (step !== shown) showStep(step);
+    if (!finished) $('nav-sub').textContent = all[step].sub || t('m_more', { n: Math.max(1, Math.ceil(sched[step].c1 - dist)) });
+    $('nav-bar').style.width = `${(dist / Math.max(1, total)) * 100}%`;
+    const left = Math.max(0, total - dist);
+    $('nav-eta').textContent = finished ? t('nav_there') : t('nav_eta', { m: Math.ceil(left), s: Math.max(1, Math.round((totalMs - elapsed) / 1000)) });
+    walkerRaf = finished ? 0 : requestAnimationFrame(frame);
   };
-  walkerRaf = requestAnimationFrame(frame);
+  const start = () => { stopWalker(); last = null; finished = false; walkerRaf = requestAnimationFrame(frame); };
+  $('nav-pause').onclick = () => {
+    paused = !paused;
+    $('nav-pause').textContent = paused ? '▶' : '⏸';
+    if (!paused && finished) { elapsed = 0; shown = -1; start(); }
+  };
+  $('nav-replay').onclick = () => { elapsed = 0; shown = -1; paused = false; $('nav-pause').textContent = '⏸'; start(); };
+  $('nav-speak').onclick = () => speak(all[Math.max(0, shown)].text);
+  $('nav-steps').onclick = (e) => {
+    const i = Number(e.target.closest('[data-step]')?.dataset.step);
+    if (Number.isNaN(i)) return;
+    elapsed = i < sched.length ? sched[i].t0 : totalMs;
+    shown = -1;
+    if (finished) start();
+  };
+  $('nav-pause').textContent = '⏸';
   navStarted = Date.now();
-  spokenAnswer = lines.map((l) => l[1]).join('. ');
-  say(spokenAnswer);
+  spokenAnswer = all.map((st) => st.text).join('. ');
+  start();
 }
 function renderArrived() {
   if (!current || !navRoute) return renderHome();
