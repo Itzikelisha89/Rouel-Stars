@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css">
-  <link rel="stylesheet" href="/css/shop.css">
+  <link rel="stylesheet" href="/css/app.css?v=3">
+  <link rel="stylesheet" href="/css/shop.css?v=3">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -44,6 +44,7 @@
         <span class="s-ico" aria-hidden="true">🔍</span>
         <input id="q" type="search" placeholder="למשל: סיר קטן" data-i18n-ph="search_ph" data-i18n-aria="search_aria" autocomplete="off" enterkeyhint="search" aria-label="חיפוש מוצר">
         <label id="cam" class="cam-btn hidden" aria-label="חיפוש לפי תמונה" data-i18n-aria="photo_aria">📷<input type="file" id="cam-input" accept="image/*" capture="environment" class="hidden"></label>
+        <button type="button" id="q-clear" class="q-clear hidden" aria-label="✕">✕</button>
         <button type="button" id="mic" class="mic-btn hidden" aria-label="חיפוש קולי" data-i18n-aria="voice_aria">🎤</button>
       </form>
     </div>
@@ -70,6 +71,7 @@
 
     <!-- search results -->
     <section id="results-view" class="view hidden">
+      <div class="results-top"><button type="button" class="back-btn" data-back data-i18n="back">→ חזרה</button><button type="button" class="back-btn" id="new-search" data-i18n="new_search">🔍 חיפוש חדש</button></div>
       <p id="status" class="status"></p>
       <div id="results" class="product-list"></div>
       <div id="no-results" class="card hidden">
@@ -223,6 +225,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js"></script>
+  <script type="module" src="/js/customer.js?v=3"></script>
 </body>
 </html>

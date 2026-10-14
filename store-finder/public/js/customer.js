@@ -231,6 +231,7 @@ async function runSearch(q) {
   const seq = ++searchSeq;
   lastQuery = q;
   $('q').value = q;
+  syncClear();
   setView('results');
   $('no-results').classList.add('hidden');
   $('status').innerHTML = `<span class="row"><span class="spinner"></span> ${t('searching')}</span>`;
@@ -300,6 +301,17 @@ $('cam-input').addEventListener('change', (e) => {
   const memo = {};
   if (file) go(() => photoSearch(file, memo));
 });
+// ✕ empties the box and opens the keyboard for the next product
+const syncClear = () => $('q-clear').classList.toggle('hidden', !$('q').value);
+$('q').addEventListener('input', syncClear);
+function newSearch() {
+  $('q').value = '';
+  syncClear();
+  if (document.body.dataset.view !== 'home') go(renderHome, location.pathname + (hereShelf ? `?at=${encodeURIComponent(hereShelf.id)}` : ''));
+  $('q').focus();
+}
+$('q-clear').addEventListener('click', newSearch);
+$('new-search').addEventListener('click', newSearch);
 $('search-form').addEventListener('submit', (e) => {
   e.preventDefault();
   voiceMode = false;

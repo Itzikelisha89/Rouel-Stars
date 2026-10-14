@@ -23,7 +23,9 @@ app.use((_req, res, next) => {
 });
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// pages and code always checked for a newer version, so phones never keep showing an old screen
+const fresh = (res) => res.setHeader('Cache-Control', 'no-cache');
+app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res, p) => { if (/\.(html|js|css|webmanifest)$/.test(p)) fresh(res); } }));
 app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
 
 const upload = multer({
@@ -732,7 +734,7 @@ app.get('/api/public/:slug/manifest.webmanifest', (req, res) => {
     icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
   });
 });
-app.get('/s/:slug', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'customer.html')));
+app.get('/s/:slug', (_req, res) => { fresh(res); res.sendFile(path.join(__dirname, 'public', 'customer.html')); });
 
 app.use((err, _req, res, _next) => {
   console.error(err);

@@ -149,6 +149,7 @@ const T = {
   deals_empty: { he: 'אין מבצעים כרגע, אבל שווה לבדוק שוב בקרוב 🙂', ar: 'لا توجد عروض حالياً، تحقق قريباً 🙂', ru: 'Сейчас акций нет, загляните позже 🙂', en: 'No deals right now, check back soon 🙂' },
   list_see_deals: { he: '🔥 לראות מבצעים', ar: '🔥 شاهد العروض', ru: '🔥 Смотреть акции', en: '🔥 See deals' },
   aisle_status: { he: '{a} · {n} מוצרים', ar: '{a} · {n} منتجات', ru: '{a} · товаров: {n}', en: '{a} · {n} items' },
+  new_search: { he: '🔍 חיפוש חדש', ar: '🔍 بحث جديد', ru: '🔍 Новый поиск', en: '🔍 New search' },
   see_all: { he: 'הכל ←', ar: 'الكل ←', ru: 'Все →', en: 'See all →' },
   also_try: { he: 'אולי זה יעזור:', ar: 'ربما يساعدك هذا:', ru: 'Может, это поможет:', en: 'Maybe this helps:' },
 

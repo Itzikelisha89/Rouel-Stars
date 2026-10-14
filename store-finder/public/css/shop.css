@@ -112,3 +112,6 @@ body.shop[data-view=detail] .wrap, body.shop[data-view=nav] .wrap { padding-bott
 #list-view > .route-head { align-items: center; margin-top: 8px; }
 #list-view .page-title { font-size: 1.3rem; }
 #list-meters { white-space: nowrap; flex: none; }
+.q-clear { flex: none; width: 40px; height: 40px !important; padding: 0 !important; border-radius: 50% !important; background: rgba(255,255,255,.1) !important; font-size: 1rem; color: #dfe6ff; }
+.results-top { display: flex; justify-content: space-between; gap: 8px; }
+.shop input[type=search]::-webkit-search-cancel-button { display: none; }
