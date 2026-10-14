@@ -71,34 +71,44 @@ export function shelfAt(map, cell) {
   return map.shelves.find((s) => cell.x >= s.x && cell.x < s.x + s.w && cell.y >= s.y && cell.y < s.y + s.h);
 }
 
-// Shortest walk from the entrance to a free cell touching the shelf.
+// Shortest walk from the entrance to a free cell touching the shelf. Among routes of the same
+// length it picks the one with the fewest turns (each turn costs a tiny extra), so directions read
+// "straight 5 m, right 13 m" instead of a staircase. Dijkstra over (cell, heading); grids are small.
 export function findPath(map, shelf, start = map.entrance) {
-  const blocked = new Uint8Array(map.cols * map.rows);
+  const W = map.cols, H = map.rows, N = W * H;
+  const blocked = new Uint8Array(N);
   for (const s of map.shelves) {
-    for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) blocked[y * map.cols + x] = 1;
+    for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) blocked[y * W + x] = 1;
   }
   const goal = (x, y) => x >= shelf.x - 1 && x <= shelf.x + shelf.w && y >= shelf.y - 1 && y <= shelf.y + shelf.h &&
     !((x === shelf.x - 1 || x === shelf.x + shelf.w) && (y === shelf.y - 1 || y === shelf.y + shelf.h)); // no diagonal corners
-  const prev = new Int32Array(map.cols * map.rows).fill(-1);
-  const startIdx = start.y * map.cols + start.x;
-  prev[startIdx] = startIdx;
-  const queue = [startIdx];
-  for (let head = 0; head < queue.length; head++) {
-    const idx = queue[head];
-    const x = idx % map.cols, y = Math.floor(idx / map.cols);
-    if (goal(x, y) && !blocked[idx]) {
+  const DIRS = [[0, -1], [1, 0], [-1, 0], [0, 1]]; // up first: facing into the store
+  const TURN = 0.001;
+  const cost = new Float64Array(N * 4).fill(Infinity);
+  const prev = new Int32Array(N * 4).fill(-1);
+  const startIdx = start.y * W + start.x;
+  const heap = []; // [cost, state]
+  const push = (c, st) => { heap.push([c, st]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0]; const last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  cost[startIdx * 4] = 0; push(0, startIdx * 4); // start heading: up
+  while (heap.length) {
+    const [c, st] = pop();
+    if (c > cost[st]) continue;
+    const idx = st >> 2, d = st & 3, x = idx % W, y = (idx / W) | 0;
+    if (idx !== startIdx && goal(x, y) && !blocked[idx]) {
       const path = [];
-      for (let i = idx; ; i = prev[i]) { path.push({ x: i % map.cols, y: Math.floor(i / map.cols) }); if (i === startIdx) break; }
+      for (let k = st; k !== -1; k = prev[k]) path.push({ x: (k >> 2) % W, y: ((k >> 2) / W) | 0 });
       return path.reverse();
     }
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (idx === startIdx && goal(x, y)) return [{ x, y }];
+    DIRS.forEach(([dx, dy], nd) => {
       const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= map.cols || ny >= map.rows) continue;
-      const n = ny * map.cols + nx;
-      if (prev[n] !== -1 || blocked[n]) continue;
-      prev[n] = idx;
-      queue.push(n);
-    }
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) return;
+      const n = ny * W + nx;
+      if (blocked[n]) return;
+      const ns = n * 4 + nd, nc = c + 1 + (nd !== d ? TURN : 0);
+      if (nc < cost[ns]) { cost[ns] = nc; prev[ns] = st; push(nc, ns); }
+    });
   }
   return null;
 }
@@ -170,4 +180,30 @@ export async function drawCrop(canvas, photoUrl, box, size = 240) {
     const dw = sw * scale, dh = sh * scale;
     ctx.drawImage(img, sx, sy, sw, sh, (size - dw) / 2, (size - dh) / 2, dw, dh);
   } catch { /* leave blank */ }
+}
+
+// Turn a walking path (grid cells) into spoken-style directions: go straight N m, turn right/left and
+// go N m, and on which hand the shelf will be at the end. Screen coordinates: y grows downwards,
+// so the cross product of two headings is positive for a right turn.
+export function directions(map, path, shelf) {
+  if (!path || path.length < 2) return { steps: [], side: 'front' };
+  const segs = [];
+  for (let i = 1; i < path.length; i++) {
+    const dx = path[i].x - path[i - 1].x, dy = path[i].y - path[i - 1].y;
+    const last = segs[segs.length - 1];
+    if (last && last.dx === dx && last.dy === dy) last.n++;
+    else segs.push({ dx, dy, n: 1 });
+  }
+  const steps = segs.map((s, i) => {
+    const p = i ? segs[i - 1] : { dx: 0, dy: -1 }; // standing at the entrance, facing into the store
+    const cross = p.dx * s.dy - p.dy * s.dx;
+    return { turn: cross > 0 ? 'right' : cross < 0 ? 'left' : 'straight', meters: s.n };
+  });
+  // Which hand is the shelf on, facing the last direction of walking?
+  const end = path[path.length - 1], h = segs[segs.length - 1];
+  const cx = Math.max(shelf.x, Math.min(end.x, shelf.x + shelf.w - 1)) - end.x;
+  const cy = Math.max(shelf.y, Math.min(end.y, shelf.y + shelf.h - 1)) - end.y;
+  const cross = h.dx * cy - h.dy * cx;
+  const side = cross > 0 ? 'right' : cross < 0 ? 'left' : 'front';
+  return { steps, side };
 }

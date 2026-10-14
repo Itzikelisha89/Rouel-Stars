@@ -1,5 +1,5 @@
 import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute } from '/js/map.js';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js';
 import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js';
 
 const $ = (id) => document.getElementById(id);
@@ -134,7 +134,13 @@ $('cam-input').addEventListener('change', (e) => {
   if (file) photoSearch(file);
 });
 
+function hideNav() {
+  $('nav-view').classList.add('hidden');
+  $('arrived-view').classList.add('hidden');
+  stopWalker();
+}
 function showList() {
+  hideNav();
   $('detail').classList.add('hidden');
   $('list-view').classList.add('hidden');
   $('no-results').classList.add('hidden');
@@ -144,6 +150,7 @@ function showList() {
 }
 
 function showDetail(p) {
+  hideNav();
   current = p;
   document.body.classList.add('searching');
   const shelf = shelfOf(p);
@@ -174,7 +181,9 @@ function showDetail(p) {
     spokenAnswer = [lang === 'he' ? p.name : '', aisleName(shelf), levelName(p.level), path && hereShelf?.id !== shelf.id ? t(here ? 'say_from_here' : 'say_from_entrance', { n }) : '']
       .filter(Boolean).join('. ');
     renderMap($('detail-map'), store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
+    navRoute = { shelf, path, here };
   }
+  $('go-btn').classList.toggle('hidden', !(shelf && navRoute?.path && navRoute.shelf === shelf && hereShelf?.id !== shelf.id));
   rememberProduct(p);
   track('view', { productId: p.id }).catch(() => {});
   resetFeedback();
@@ -201,6 +210,97 @@ $('search-form').addEventListener('submit', (e) => {
   $('q').blur();
   history.replaceState(null, '', `?q=${encodeURIComponent($('q').value.trim())}`);
   runSearch($('q').value);
+});
+
+// ---------- "take me there": step-by-step directions, the route walked on the map, arrival ----------
+// There is no GPS indoors: the blue dot previews the way; the real position updates when the shopper
+// scans an aisle's "you are here" sticker.
+let navRoute = null;
+let navStarted = 0;
+let walkerRaf = 0;
+function stopWalker() { cancelAnimationFrame(walkerRaf); walkerRaf = 0; }
+const SIDE_KEY = { left: 'step_arrive_left', right: 'step_arrive_right', front: 'step_arrive_front' };
+function showNav() {
+  if (!current || !navRoute?.path) return;
+  const { shelf, path, here } = navRoute;
+  $('detail').classList.add('hidden');
+  $('nav-view').classList.remove('hidden');
+  drawCrop($('nav-thumb'), current.image || current.photo, current.image ? null : current.box, 144);
+  $('nav-name').textContent = current.name;
+  $('nav-chips').innerHTML = [chip(`📍 ${aisleName(shelf)}`, 'o'), current.level && chip(levelName(current.level)), chip(t(here ? 'm_from_here' : 'm_from_entrance', { n: path.length - 1 }))].filter(Boolean).join('');
+  const dir = directions(store.map, path, shelf);
+  const ICON = { straight: '⬆', right: '➡', left: '⬅' };
+  const lines = dir.steps.map((st) => [ICON[st.turn], t(`step_${st.turn}`, { n: st.meters })]);
+  lines.push(['📍', `${t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) })} · ${current.level ? t('step_look', { l: levelName(current.level) }) : t('step_look_nolevel')}`]);
+  $('nav-steps').innerHTML = `<li class="muted" style="font-size:.9rem;border-top:none;padding-top:0">${escapeHtml(t(here ? 'nav_from_here' : 'nav_from_entrance'))}</li>` +
+    lines.map(([ico, txt], i) => `<li class="${i === lines.length - 1 ? 'last' : ''}"><span class="ico">${ico}</span><span>${escapeHtml(txt)}</span></li>`).join('');
+  const svgEl = $('nav-map');
+  renderMap(svgEl, store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
+  // the walker: walks the route at a calm pace, waits a moment at the shelf, then starts again
+  const CELL = 20;
+  const pts = path.map((c) => [c.x * CELL + CELL / 2, c.y * CELL + CELL / 2]);
+  const walker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  walker.setAttribute('r', 11); walker.setAttribute('class', 'map-walker');
+  svgEl.appendChild(walker);
+  // which step each cell of the path belongs to, to highlight the current instruction
+  const stepOf = []; let k = 0;
+  dir.steps.forEach((st, i) => { for (let m = 0; m < st.meters; m++) stepOf[++k] = i; });
+  stepOf[0] = 0;
+  const items = [...$('nav-steps').querySelectorAll('li:not(.muted)')];
+  const walkMs = Math.max(3000, (pts.length - 1) * 350), cycle = walkMs + 1500;
+  const t0 = performance.now();
+  stopWalker();
+  const frame = (now) => {
+    const f = Math.min(1, ((now - t0) % cycle) / walkMs);
+    const pos = f * (pts.length - 1), i = Math.floor(pos), r = pos - i;
+    const a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)];
+    walker.setAttribute('cx', a[0] + (b[0] - a[0]) * r);
+    walker.setAttribute('cy', a[1] + (b[1] - a[1]) * r);
+    const cur = f >= 1 ? items.length - 1 : stepOf[Math.min(i + 1, stepOf.length - 1)] ?? 0;
+    items.forEach((li, j) => li.classList.toggle('on', j === cur));
+    walkerRaf = requestAnimationFrame(frame);
+  };
+  walkerRaf = requestAnimationFrame(frame);
+  navStarted = Date.now();
+  spokenAnswer = lines.map((l) => l[1]).join('. ');
+  if (voiceMode) speak(spokenAnswer);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function showArrived() {
+  stopWalker();
+  const { shelf, path } = navRoute;
+  const dir = directions(store.map, path, shelf);
+  $('nav-view').classList.add('hidden');
+  $('arrived-view').classList.remove('hidden');
+  $('arr-where').textContent = [t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) }), levelName(current.level)].filter(Boolean).join(' · ');
+  $('arr-shot').classList.toggle('hidden', !current.photo);
+  if (current.photo) $('arr-photo').src = current.photo;
+  const mark = $('arr-mark');
+  mark.classList.toggle('hidden', !current.box);
+  if (current.box) Object.assign(mark.style, { left: `${current.box.x0 / 10}%`, top: `${current.box.y0 / 10}%`, width: `${(current.box.x1 - current.box.x0) / 10}%`, height: `${(current.box.y1 - current.box.y0) / 10}%` });
+  const secs = Math.max(1, Math.round((Date.now() - navStarted) / 1000));
+  $('arr-time').textContent = t('arrived_time', { s: secs < 60 ? t('secs', { n: secs }) : t('mins', { m: Math.floor(secs / 60), s: String(secs % 60).padStart(2, '0') }) });
+  $('arr-found').disabled = false;
+  $('arr-found').textContent = t('fb_found');
+  if (voiceMode) speak(`${t('arrived_title')} ${$('arr-where').textContent}`);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$('go-btn').addEventListener('click', showNav);
+$('nav-back').addEventListener('click', () => showDetail(current));
+$('arrived-btn').addEventListener('click', showArrived);
+$('arr-back').addEventListener('click', () => { showList(); $('q').focus(); });
+$('arr-found').addEventListener('click', async () => {
+  $('arr-found').disabled = true;
+  await track('found', { productId: current.id }).catch(() => {});
+  markPicked(current.id);
+  $('arr-found').textContent = t('thanks_found');
+});
+$('arr-notfound').addEventListener('click', () => {
+  // back to the product page with "what happened?" open, so the report reaches the staff
+  showDetail(current);
+  $('fb-ask').classList.add('hidden');
+  $('fb-reasons').classList.remove('hidden');
+  setTimeout(() => $('feedback').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
 });
 
 // ---------- deals and "shoppers also looked at" ----------
@@ -309,6 +409,7 @@ $('list-toggle').addEventListener('click', () => {
 let routeSpeech = '';
 function showListView() {
   document.body.classList.add('searching');
+  hideNav();
   for (const id of ['detail', 'results', 'status', 'no-results']) $(id).classList.add('hidden');
   $('list-view').classList.remove('hidden');
   $('list-bar').classList.add('hidden');

@@ -62,6 +62,7 @@
         <div id="detail-promo" class="promo-banner hidden"></div>
         <div class="d-chips" id="detail-chips"></div>
         <div class="row" style="justify-content:space-between;margin-top:6px"><div class="d-price" id="detail-price"></div><button type="button" id="speak" class="hidden" aria-label="השמע את המיקום" data-i18n-aria="speak_aria" data-i18n="speak_btn">🔊 השמע</button></div>
+        <button type="button" id="go-btn" class="go-btn" data-i18n="nav_go">🧭 קח אותי לשם</button>
         <button type="button" id="list-toggle" class="list-toggle">➕ הוספה לרשימת הקניות</button>
         <div class="route-card" id="shelf-card">
           <div class="route-head"><span data-i18n="shelf_looks">📷 כך נראה המדף</span><span class="chip" id="shelf-level"></span></div>
@@ -97,6 +98,36 @@
           </div>
           <p id="fb-done" class="ok hidden" style="margin:0"></p>
         </div>
+      </div>
+    </div>
+
+    <div id="nav-view" class="hidden">
+      <button id="nav-back" data-i18n="nav_back">→ חזרה למוצר</button>
+      <div class="card">
+        <div class="nav-head">
+          <canvas id="nav-thumb" class="nav-thumb"></canvas>
+          <div style="min-width:0"><div class="name" id="nav-name"></div><div class="d-chips" id="nav-chips" style="margin:6px 0 0"></div></div>
+        </div>
+        <ol class="nav-steps" id="nav-steps"></ol>
+        <div class="map-box" style="margin-top:12px;position:relative"><svg id="nav-map"></svg></div>
+        <p class="muted" style="font-size:.85rem;margin:8px 0 0" data-i18n="walk_preview">הנקודה הכחולה מראה את המסלול</p>
+        <p class="muted" style="font-size:.85rem;margin:4px 0 0" data-i18n="lost_hint">הלכת לאיבוד? סרקו את מדבקת "אתה כאן" בקצה המעבר.</p>
+        <button type="button" id="arrived-btn" class="arrived-btn" data-i18n="arrived_btn">✅ הגעתי</button>
+      </div>
+    </div>
+
+    <div id="arrived-view" class="hidden">
+      <div class="card arrived-card">
+        <div class="arr-check">✓</div>
+        <h2 class="arr-title" data-i18n="arrived_title">הגעת!</h2>
+        <p class="arr-where" id="arr-where"></p>
+        <div class="shelf-shot hidden" id="arr-shot"><img id="arr-photo" alt=""><div class="shelf-mark" id="arr-mark"></div></div>
+        <div class="chip" id="arr-time" style="margin-top:14px"></div>
+        <div class="fb-buttons" style="margin-top:18px">
+          <button type="button" class="fb-yes" id="arr-found" data-i18n="fb_found">✅ מצאתי</button>
+          <button type="button" class="fb-no" id="arr-notfound" data-i18n="fb_not_found">❌ לא מצאתי</button>
+        </div>
+        <button type="button" id="arr-back" style="margin-top:14px;width:100%" data-i18n="back_search">→ חזרה לחיפוש</button>
       </div>
     </div>
 
