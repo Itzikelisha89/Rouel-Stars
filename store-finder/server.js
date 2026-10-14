@@ -25,7 +25,7 @@ app.use((_req, res, next) => {
 // changes with every deploy, so open shopper pages know a newer version is live
 const BUILD = process.env.RAILWAY_DEPLOYMENT_ID || String(Date.now());
 app.get('/healthz', (_req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, build: BUILD }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' })); // a supermarket catalog import is a few MB
 // pages and code always checked for a newer version, so phones never keep showing an old screen
 const fresh = (res) => res.setHeader('Cache-Control', 'no-cache');
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res, p) => { if (/\.(html|js|css|webmanifest)$/.test(p)) fresh(res); } }));
@@ -74,6 +74,7 @@ function productRow(p) {
     image: p.image ? `/uploads/${p.image}` : null,
     promo: p.promo || '',
     active: p.active !== 0,
+    barcode: p.barcode || '',
   };
 }
 const PRODUCTS_QUERY = `SELECT products.*, photos.file FROM products
@@ -188,9 +189,9 @@ app.get('/api/products/export.csv', requireOwner, (req, res) => {
   const shelves = JSON.parse(req.store.map_json).shelves;
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = db.prepare('SELECT * FROM products WHERE store_id = ? ORDER BY shelf_id, name').all(req.store.id).map((p) =>
-    [p.name, shelves.find((s) => s.id === p.shelf_id)?.name ?? '', p.level, p.price, p.promo, p.keywords, p.description, p.active ? 'כן' : 'לא'].map(cell).join(','));
+    [p.name, shelves.find((s) => s.id === p.shelf_id)?.name ?? '', p.level, p.price, p.promo, p.keywords, p.description, p.active ? 'כן' : 'לא', p.barcode].map(cell).join(','));
   res.type('text/csv; charset=utf-8').attachment(`${req.store.slug}-products.csv`)
-    .send(`\ufeff${['שם', 'מעבר', 'מדף', 'מחיר', 'מבצע', 'מילות חיפוש', 'תיאור', 'מוצג'].join(',')}\n${rows.join('\n')}\n`);
+    .send(`\ufeff${['שם', 'מעבר', 'מדף', 'מחיר', 'מבצע', 'מילות חיפוש', 'תיאור', 'מוצג', 'ברקוד'].join(',')}\n${rows.join('\n')}\n`);
 });
 
 app.get('/api/me', requireStaff, (req, res) => {
@@ -235,7 +236,7 @@ app.post('/api/photos', requireOwner, upload.single('photo'), async (req, res) =
     .run(req.store.id, shelfId, file).lastInsertRowid);
 
   if (!ai.aiEnabled()) {
-    return res.json({ photo: { id: photoId, url: `/uploads/${file}` }, products: [], aiError: 'זיהוי אוטומטי כבוי (אין מפתח GEMINI_API_KEY או ANTHROPIC_API_KEY) — הוסף מוצרים ידנית' });
+    return res.json({ photo: { id: photoId, url: `/uploads/${file}` }, products: [], aiError: 'זיהוי אוטומטי כבוי: מוסיפים מוצרים ידנית ומסמנים אותם על התמונה (או מפעילים מפתח Gemini חינמי במסך הנהלת הרשת)' });
   }
   try {
     const detected = await ai.detectProducts(req.file.buffer, req.file.mimetype, shelf.name);
@@ -256,7 +257,7 @@ app.post('/api/photos', requireOwner, upload.single('photo'), async (req, res) =
 // Manager photographs a product, AI suggests name, description and search words for the form.
 app.post('/api/products/identify', requireOwner, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'צריך תמונה (JPG/PNG/WEBP עד 8MB)' });
-  if (!ai.aiEnabled()) return res.status(503).json({ error: 'זיהוי מתמונה כבוי: צריך מפתח GEMINI_API_KEY (חינמי) בשרת' });
+  if (!ai.aiEnabled()) return res.status(503).json({ error: 'זיהוי מתמונה כבוי: צריך מפתח Gemini חינמי (מכניסים אותו במסך הנהלת הרשת)' });
   try {
     res.json(await ai.identifyProduct(req.file.buffer, req.file.mimetype));
   } catch (err) {
@@ -310,6 +311,33 @@ app.post('/api/videos', requireOwner, upload.array('frames', 60), async (req, re
   res.json({ frames: frames.length, keptFrames: photoIds.size, products });
 });
 
+// Pilot readiness for the manager's start screen: per aisle, real photos, products and how many are
+// marked on a photo, plus the store-wide checklist.
+app.get('/api/store/setup', requireOwner, (req, res) => {
+  const shelves = JSON.parse(req.store.map_json).shelves;
+  const photos = db.prepare('SELECT shelf_id, COUNT(*) AS n, MAX(id) AS last FROM photos WHERE store_id = ? GROUP BY shelf_id').all(req.store.id);
+  const lastFile = db.prepare('SELECT file FROM photos WHERE id = ?');
+  const prods = db.prepare(`SELECT shelf_id, COUNT(*) AS n, SUM(photo_id IS NOT NULL AND box_json IS NOT NULL) AS marked,
+    SUM(price != '') AS priced FROM products WHERE store_id = ? AND active = 1 GROUP BY shelf_id`).all(req.store.id);
+  const ph = new Map(photos.map((r) => [r.shelf_id, r]));
+  const pr = new Map(prods.map((r) => [r.shelf_id, r]));
+  const aisles = shelves.map((s) => ({
+    id: s.id, name: s.name,
+    photos: ph.get(s.id)?.n || 0,
+    photo: ph.get(s.id) ? `/uploads/${lastFile.get(ph.get(s.id).last).file}` : null,
+    products: pr.get(s.id)?.n || 0,
+    marked: pr.get(s.id)?.marked || 0,
+  }));
+  const sum = (k) => prods.reduce((a, r) => a + (r[k] || 0), 0);
+  res.json({
+    aisles,
+    products: sum('n'), marked: sum('marked'), priced: sum('priced'),
+    entrance: Boolean(JSON.parse(req.store.map_json).entrance),
+    staffPinSet: Boolean(req.store.staff_pin_hash),
+    aiEnabled: ai.aiEnabled(), premiumVoice: Boolean(voiceKey()),
+  });
+});
+
 // The real shelf photos of an aisle (from photos and videos), and marking where a product is on one.
 app.get('/api/photos', requireStaff, (req, res) => {
   const rows = db.prepare(`SELECT photos.id, photos.file, photos.shelf_id, COUNT(products.id) AS products FROM photos
@@ -354,8 +382,11 @@ app.post('/api/products', requireOwner, (req, res) => {
 
 // Bulk import from a catalog file (parsed to rows in the browser). `shelf` is matched by name,
 // or by aisle number ("4" matches "מעבר 4 · פחים").
+// Catalog import from the store's own system (Excel/CSV). For a supermarket: the aisle may be missing
+// (then the department, then a default aisle the manager picks), and a re-import updates prices and
+// deals of products already in the system (matched by barcode, else by name) instead of duplicating them.
 app.post('/api/products/import', requireOwner, (req, res) => {
-  const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 5000) : [];
+  const rows = Array.isArray(req.body.rows) ? req.body.rows.slice(0, 20000) : [];
   const shelves = JSON.parse(req.store.map_json).shelves;
   const findShelf = (v) => {
     const t = String(v ?? '').trim();
@@ -363,19 +394,71 @@ app.post('/api/products/import', requireOwner, (req, res) => {
     return shelves.find((s) => s.name === t) || shelves.find((s) => s.name.startsWith(t)) ||
       (/^\d+$/.test(t) ? shelves.find((s) => new RegExp(`(^|\\D)${t}(\\D|$)`).test(s.name)) : null);
   };
-  const insert = db.prepare(`INSERT INTO products (store_id, shelf_id, name, description, keywords, level, price, promo)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  const byDepartment = (v) => {
+    const t = String(v ?? '').trim();
+    if (!t) return null;
+    return shelves.find((s) => s.name.includes(t)) || shelves.find((s) => t.split(/[\s,/]+/).some((w) => w.length > 2 && s.name.includes(w)));
+  };
+  const defaultShelf = shelves.find((s) => s.id === req.body.defaultShelfId) || null;
+  const existing = db.prepare('SELECT * FROM products WHERE store_id = ?').all(req.store.id);
+  const byBarcode = new Map(existing.filter((p) => p.barcode).map((p) => [p.barcode, p]));
+  const byName = new Map(existing.map((p) => [p.name.trim().toLowerCase(), p]));
+  const insert = db.prepare(`INSERT INTO products (store_id, shelf_id, name, description, keywords, level, price, promo, barcode)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const update = db.prepare(`UPDATE products SET shelf_id = ?, description = ?, keywords = ?, level = ?, price = ?, promo = ?, barcode = ? WHERE id = ?`);
   const skipped = [];
-  let added = 0;
-  rows.forEach((r, i) => {
-    const p = cleanProduct(r);
-    const shelf = findShelf(r.shelf);
-    if (!p.name) return skipped.push({ row: i + 2, reason: 'חסר שם מוצר' });
-    if (!shelf) return skipped.push({ row: i + 2, reason: `לא נמצא מדף "${r.shelf ?? ''}"` });
-    insert.run(req.store.id, shelf.id, p.name, p.description, p.keywords, p.level, p.price, p.promo);
-    added++;
-  });
-  res.json({ added, skipped: skipped.slice(0, 50), skippedCount: skipped.length });
+  let added = 0, updated = 0;
+  db.exec('BEGIN');
+  try {
+    rows.forEach((r, i) => {
+      const p = cleanProduct(r);
+      const barcode = String(r.barcode ?? '').replace(/\D/g, '').slice(0, 20);
+      if (!p.name) return skipped.push({ row: i + 2, reason: 'חסר שם מוצר' });
+      const shelf = findShelf(r.shelf) || byDepartment(r.department);
+      const match = (barcode && byBarcode.get(barcode)) || byName.get(p.name.toLowerCase());
+      if (match) {
+        // only what the file says changes; an empty cell keeps what the manager already set
+        update.run(shelf?.id || match.shelf_id, p.description || match.description, p.keywords || match.keywords, p.level || match.level,
+          p.price || match.price, 'promo' in r ? p.promo : match.promo, barcode || match.barcode, match.id);
+        updated++;
+        return;
+      }
+      const target = shelf || defaultShelf;
+      if (!target) return skipped.push({ row: i + 2, reason: `לא נמצא מעבר "${r.shelf || r.department || ''}"` });
+      const id = Number(insert.run(req.store.id, target.id, p.name, p.description, p.keywords, p.level, p.price, p.promo, barcode).lastInsertRowid);
+      const row = { id, name: p.name, barcode };
+      byName.set(p.name.toLowerCase(), row);
+      if (barcode) byBarcode.set(barcode, row);
+      added++;
+    });
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  res.json({ added, updated, skipped: skipped.slice(0, 50), skippedCount: skipped.length });
+});
+
+// Several products at once from the products list: move to an aisle, hide, show, delete.
+app.post('/api/products/bulk', requireOwner, (req, res) => {
+  const ids = (Array.isArray(req.body.ids) ? req.body.ids : []).map(Number).filter(Number.isInteger).slice(0, 5000);
+  const action = String(req.body.action || '');
+  if (!ids.length) return res.status(400).json({ error: 'לא נבחרו מוצרים' });
+  const own = db.prepare('SELECT id, image FROM products WHERE store_id = ? AND id = ?');
+  const rows = ids.map((id) => own.get(req.store.id, id)).filter(Boolean);
+  if (action === 'move' && !shelfExists(req.store, req.body.shelfId)) return res.status(400).json({ error: 'בחר מעבר' });
+  const stmt = {
+    move: db.prepare('UPDATE products SET shelf_id = ?, photo_id = NULL, box_json = NULL WHERE id = ?'),
+    hide: db.prepare('UPDATE products SET active = 0 WHERE id = ?'),
+    show: db.prepare('UPDATE products SET active = 1 WHERE id = ?'),
+    delete: db.prepare('DELETE FROM products WHERE id = ?'),
+  }[action];
+  if (!stmt) return res.status(400).json({ error: 'פעולה לא מוכרת' });
+  db.exec('BEGIN');
+  for (const r of rows) action === 'move' ? stmt.run(req.body.shelfId, r.id) : stmt.run(r.id);
+  db.exec('COMMIT');
+  if (action === 'delete') for (const r of rows) if (r.image) fs.rm(path.join(UPLOAD_DIR, r.image), { force: true }, () => {});
+  res.json({ changed: rows.length });
 });
 
 app.put('/api/products/:id', requireStaff, (req, res) => {
@@ -492,6 +575,24 @@ app.put('/api/hq/voice', requireHq, async (req, res) => {
   const r = await fetch(`https://api.elevenlabs.io/v1/voices/${TTS_VOICE}`, { headers: { 'xi-api-key': key } }).catch(() => null);
   if (!r || r.status === 401) return res.status(400).json({ error: 'ElevenLabs לא מכיר את המפתח הזה' });
   db.prepare("INSERT INTO settings (key, value) VALUES ('elevenlabs_key', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key);
+  res.json({ set: true });
+});
+
+// Headquarters turns on product recognition from photos and videos with a free Google Gemini key.
+app.get('/api/hq/ai', requireHq, (_req, res) => {
+  res.json({ set: ai.aiEnabled(), fromServer: Boolean(process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY) });
+});
+app.put('/api/hq/ai', requireHq, async (req, res) => {
+  const key = String(req.body.key || '').trim();
+  if (!key) {
+    db.prepare("DELETE FROM settings WHERE key = 'gemini_key'").run();
+    return res.json({ set: ai.aiEnabled() });
+  }
+  if (!/^[A-Za-z0-9_-]{20,200}$/.test(key)) return res.status(400).json({ error: 'המפתח לא נראה תקין' });
+  // listing the models is free and proves the key works
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': key } }).catch(() => null);
+  if (!r || !r.ok) return res.status(400).json({ error: 'Google לא מכיר את המפתח הזה' });
+  db.prepare("INSERT INTO settings (key, value) VALUES ('gemini_key', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key);
   res.json({ set: true });
 });
 
@@ -793,6 +894,8 @@ app.get('/api/public/:slug/staff-qr.svg', async (req, res) => {
 // twice. A daily character cap protects the plan's quota; past it the phone's own voice takes over.
 // The ElevenLabs key: from the server environment, or set by chain headquarters (stored on the server's
 // disk, never sent back to any browser).
+const storedSetting = (key) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value || '';
+ai.setKeySource(storedSetting);
 function voiceKey() {
   return process.env.ELEVENLABS_API_KEY || db.prepare("SELECT value FROM settings WHERE key = 'elevenlabs_key'").get()?.value || '';
 }

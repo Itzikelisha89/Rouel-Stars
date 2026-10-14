@@ -6,10 +6,14 @@ const Anthropic = require('@anthropic-ai/sdk');
 const MODEL = process.env.CLAUDE_MODEL || 'claude-opus-5-5';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 let client = null;
+// Keys can also be set by chain headquarters (stored on the server); the server plugs that in here.
+let storedKey = () => '';
+function setKeySource(fn) { storedKey = fn; }
+const geminiKey = () => process.env.GEMINI_API_KEY || storedKey('gemini_key') || '';
 
 function provider() {
   if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) return 'claude';
-  if (process.env.GEMINI_API_KEY) return 'gemini';
+  if (geminiKey()) return 'gemini';
   return null;
 }
 function aiEnabled() {
@@ -28,7 +32,7 @@ function toGeminiSchema(schema) {
 async function gemini({ system, parts, schema }) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey() },
     body: JSON.stringify({
       ...(system && { systemInstruction: { parts: [{ text: system }] } }),
       contents: [{ role: 'user', parts }],
@@ -321,4 +325,4 @@ async function locateShelf(imageBuffer, mediaType, shelves) {
   return [...new Set((Array.isArray(parsed.shelfIds) ? parsed.shelfIds : []).map(String))].filter((id) => ids.has(id)).slice(0, 3);
 }
 
-module.exports = { aiEnabled, provider, detectProducts, detectProductsInFrames, identifyProduct, locateShelf, expandQuery, toGeminiSchema };
+module.exports = { setKeySource, aiEnabled, provider, detectProducts, detectProductsInFrames, identifyProduct, locateShelf, expandQuery, toGeminiSchema };

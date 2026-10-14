@@ -20,8 +20,8 @@
 | `SEED_DEMO` | `1` | יוצר את סניפי ההדגמה של הסטוק (פעם אחת): `demo`, `demo-north`, `demo-south` |
 | `HQ_PASSWORD` | סיסמה חזקה להנהלת הרשת | מסך הנהלת רשת בכתובת `/hq.html`: כל הסניפים זה לצד זה |
 | `DEMO_PASSWORD` | סיסמה חזקה משלך | הסיסמה של חנות ההדגמה (במקום demo1234) |
-| `ELEVENLABS_API_KEY` | המפתח מ-elevenlabs.io (Profile → API Keys) | לא חובה: קול אמיתי וברור של נציג (עומר) במקום קול הטלפון |
-| `GEMINI_API_KEY` | המפתח מ-[aistudio.google.com](https://aistudio.google.com) | לא חובה: זיהוי מוצרים מתמונה ומסרטון, בחינם |
+| `ELEVENLABS_API_KEY` | המפתח מ-elevenlabs.io (Profile → API Keys) | לא חובה: קול אמיתי וברור של נציג (עומר) וחיפוש קולי באייפון. אפשר גם להכניס אותו במסך הנהלת הרשת |
+| `GEMINI_API_KEY` | המפתח מ-[aistudio.google.com](https://aistudio.google.com) | לא חובה: זיהוי מוצרים מתמונה ומסרטון, בחינם. אפשר גם להכניס אותו במסך הנהלת הרשת (`/hq.html`) |
 
 ## 4. כתובת
 **Settings → Networking → Generate Domain**. מקבלים כתובת כמו `https://store-finder-production.up.railway.app`.

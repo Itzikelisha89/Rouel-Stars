@@ -94,6 +94,7 @@ if (!db.prepare('PRAGMA table_info(products)').all().some((c) => c.name === 'pri
 const productCols = db.prepare('PRAGMA table_info(products)').all().map((c) => c.name);
 if (!productCols.includes('image')) db.exec('ALTER TABLE products ADD COLUMN image TEXT'); // the product's own photo, uploaded by the manager
 if (!productCols.includes('promo')) db.exec("ALTER TABLE products ADD COLUMN promo TEXT NOT NULL DEFAULT ''"); // deal text, e.g. "2 ב-50 ₪"
+if (!productCols.includes('barcode')) db.exec("ALTER TABLE products ADD COLUMN barcode TEXT NOT NULL DEFAULT ''"); // from the store's catalog, to update prices on re-import
 if (!productCols.includes('active')) db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1'); // 0 = hidden from shoppers
 if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'staff_pin_hash')) {
   db.exec('ALTER TABLE stores ADD COLUMN staff_pin_hash TEXT'); // workers' code, set by the manager

@@ -62,6 +62,16 @@ test('chain headquarters: off without HQ_PASSWORD, then branches side by side', 
       assert.equal(pub.premiumVoice, true);
       assert.equal(pub.voiceInput, true);
       await call('PUT', '/api/hq/voice', { token, body: { key: '' } });
+      // the same for the free Gemini key: checked with Google, then product recognition is on
+      global.fetch = async (url, opts) => (String(url).startsWith('https://generativelanguage.googleapis.com')
+        ? new Response('{}', { status: opts?.headers?.['x-goog-api-key'] === 'gemini_good_1234567890' ? 200 : 400 })
+        : realFetch(url, opts));
+      assert.equal((await call('PUT', '/api/hq/ai', { token, body: { key: 'gemini_bad_12345678901' } })).status, 400);
+      assert.equal((await call('GET', '/api/public/branch-b')).data.photoSearch, false);
+      assert.deepEqual((await call('PUT', '/api/hq/ai', { token, body: { key: 'gemini_good_1234567890' } })).data, { set: true });
+      assert.equal((await call('GET', '/api/public/branch-b')).data.photoSearch, true);
+      await call('PUT', '/api/hq/ai', { token, body: { key: '' } });
+      assert.equal((await call('GET', '/api/public/branch-b')).data.photoSearch, false);
       assert.equal((await call('GET', '/api/public/branch-b')).data.premiumVoice, false);
     } finally { global.fetch = realFetch; }
   } finally {

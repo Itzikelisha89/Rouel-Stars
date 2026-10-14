@@ -14,7 +14,9 @@ let mode = 'draw';
 // ---------- tabs ----------
 function showTab(name) {
   for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === name);
-  for (const t of ['map', 'photo', 'products', 'share', 'demand', 'alerts', 'report', 'settings']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
+  if (name === 'home') loadHome();
+  window.scrollTo({ top: 0 });
+  for (const t of ['home', 'map', 'photo', 'products', 'share', 'demand', 'alerts', 'report', 'settings']) $(`tab-${t}`).classList.toggle('hidden', t !== name);
   if (name === 'photo') renderPicker();
   if (name === 'products') loadProducts();
   if (name === 'share') loadShare();
@@ -161,38 +163,71 @@ $('photo-input').addEventListener('change', async (e) => {
   } catch (err) { $('photo-status').textContent = err.message; }
 });
 
-$('video-input').addEventListener('change', async (e) => {
+// Upload with a real progress bar (fetch can't report upload progress).
+function upload(url, form, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.upload.onload = () => onProgress(1);
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new Error(data.error || `שגיאה ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error('אין חיבור לאינטרנט. נסו שוב'));
+    xhr.send(form);
+  });
+}
+// An aisle video: the phone keeps the sharpest frames, uploads them, and the server saves them as real
+// shelf photos (and finds the products when AI is on). `ui(text, percent)` shows progress.
+async function processVideo(file, shelfId, ui) {
+  ui('מכין את הסרטון…', 2);
+  const frames = await extractFrames(file, { onProgress: (n, total) => ui(`בוחר את התמונות החדות מהסרטון… ${n}/${total}`, 2 + (n / total) * 43) });
+  if (!frames.length) throw new Error('לא הצלחתי לקרוא תמונות מהסרטון');
+  const form = new FormData();
+  form.append('shelfId', shelfId);
+  frames.forEach((f, i) => form.append('frames', f, `frame-${i}.jpg`));
+  const result = await upload('/api/videos', form, (f) => ui(f < 1 ? `מעלה… ${Math.round(f * 100)}%` : store.aiEnabled ? 'מזהה את המוצרים בסרטון… (עד 2 דקות)' : 'שומר את התמונות…', 45 + f * 50));
+  products = await api('/api/products');
+  return result;
+}
+function videoDone(result, shelfId) {
+  return result.ai === false
+    ? `✓ נשמרו ${result.keptFrames} תמונות אמיתיות של "${shelfName(shelfId)}". עכשיו מסמנים איפה כל מוצר`
+    : `✓ זוהו ${result.products.length} מוצרים ב"${shelfName(shelfId)}" מתוך ${result.frames} תמונות. כדאי לעבור עליהם`;
+}
+async function onPhotoTabVideo(e) {
   const file = e.target.files[0];
   e.target.value = '';
   const shelfId = $('photo-shelf').value;
   if (!file) return;
   if (!shelfId) return ($('photo-status').textContent = 'קודם צייר ושמור מדפים במפה');
-  const status = (text) => { $('photo-status').innerHTML = `<span class="row"><span class="spinner"></span> ${escapeHtml(text)}</span>`; };
+  const bar = $('photo-progress');
+  bar.classList.remove('hidden');
+  const ui = (text, pct) => { $('photo-status').innerHTML = `<span class="row"><span class="spinner"></span> ${escapeHtml(text)}</span>`; bar.firstElementChild.style.width = `${pct}%`; };
   try {
-    status('מכין את הסרטון…');
-    const frames = await extractFrames(file, { onProgress: (n, total) => status(`מכין את הסרטון… ${n}/${total}`) });
-    status(`מזהה מוצרים ב-${frames.length} תמונות מהסרטון… (עד 2 דקות)`);
-    const form = new FormData();
-    form.append('shelfId', shelfId);
-    frames.forEach((f, i) => form.append('frames', f, `frame-${i}.jpg`));
-    const result = await api('/api/videos', { method: 'POST', form });
+    const result = await processVideo(file, shelfId, ui);
     spotPhoto = null; // show the new frames first
     loadSpot();
+    $('photo-status').textContent = videoDone(result, shelfId);
     if (result.ai === false) {
-      $('photo-status').textContent = `נשמרו ${result.keptFrames} תמונות אמיתיות של "${shelfName(shelfId)}" מהסרטון ✓ עכשיו סמנו איפה כל מוצר 👇`;
       $('photo-result').classList.add('hidden');
       $('spot-card').scrollIntoView({ behavior: 'smooth' });
       return;
     }
-    $('photo-status').textContent = `זוהו ${result.products.length} מוצרים ב"${shelfName(shelfId)}" מתוך ${result.frames} תמונות בסרטון. אפשר לתקן בלשונית מוצרים.`;
     lastPhoto = null;
     $('photo-result').classList.remove('hidden');
     $('photo-preview').innerHTML = '';
     $('manual-add').classList.add('hidden');
     $('detected').innerHTML = '';
     for (const p of result.products) $('detected').appendChild(productItem(p));
-  } catch (err) { $('photo-status').textContent = err.message; }
-});
+  } catch (err) { $('photo-status').textContent = err.message; } finally { bar.classList.add('hidden'); }
+}
+$('video-input').addEventListener('change', onPhotoTabVideo);
+$('video-gallery').addEventListener('change', onPhotoTabVideo);
 
 function showPhotoResult(detected) {
   $('manual-add').classList.remove('hidden');
@@ -239,12 +274,16 @@ async function loadSpot() {
 function fillSpotProducts() {
   const shelfId = $('photo-shelf').value;
   const keep = spotWanted?.id ?? Number($('spot-product').value);
-  const here = products.filter((p) => p.shelfId === shelfId);
-  const other = products.filter((p) => p.shelfId !== shelfId);
-  const opt = (p) => `<option value="${p.id}">${p.photoId ? '✓' : '⚠️'} ${escapeHtml(p.name)}</option>`;
+  // a supermarket has thousands of products: the search box narrows the list
+  const q = $('spot-search').value.trim().toLowerCase();
+  const fits = (p) => !q || `${p.name} ${p.barcode || ''} ${p.keywords}`.toLowerCase().includes(q);
+  const here = products.filter((p) => p.shelfId === shelfId && fits(p));
+  const other = q ? products.filter((p) => p.shelfId !== shelfId && fits(p)).slice(0, 150) : [];
+  const opt = (p) => `<option value="${p.id}">${p.photoId && p.box ? '✓' : '⚠️'} ${escapeHtml(p.name)}</option>`;
   $('spot-product').innerHTML = `<optgroup label="${escapeHtml(shelfName(shelfId))}">${here.map(opt).join('')}</optgroup>` +
     (other.length ? `<optgroup label="ממעברים אחרים (יועבר למעבר הזה)">${other.map(opt).join('')}</optgroup>` : '');
-  const pick = products.find((p) => p.id === keep) || here.find((p) => !p.photoId) || here[0];
+  const keepP = products.find((p) => p.id === keep);
+  const pick = (keepP && (here.includes(keepP) || other.includes(keepP)) ? keepP : null) || here.find((p) => !(p.photoId && p.box)) || here[0] || other[0];
   if (pick) $('spot-product').value = pick.id;
   spotWanted = null;
 }
@@ -274,6 +313,7 @@ $('spot-frames').addEventListener('click', (e) => {
   renderSpot();
 });
 $('spot-product').addEventListener('change', renderSpot);
+$('spot-search').addEventListener('input', () => { fillSpotProducts(); renderSpot(); });
 {
   // tap = a box around the finger; drag = exactly the frame drawn
   let start = null;
@@ -335,6 +375,92 @@ function markOnShelf(p) {
   renderPicker();
   $('spot-card').scrollIntoView({ behavior: 'smooth' });
 }
+
+// ---------- home: is the store ready for the pilot? ----------
+const flagKey = (k) => `storeFinder:${k}:${store.slug}`;
+const getFlag = (k) => { try { return localStorage.getItem(flagKey(k)) === '1'; } catch { return false; } };
+const setFlag = (k) => { try { localStorage.setItem(flagKey(k), '1'); } catch { /* private mode */ } };
+let setup = null;
+async function loadHome() {
+  setup = await api('/api/store/setup').catch(() => null);
+  if (!setup) return;
+  const a = setup.aisles;
+  const shot = a.filter((x) => x.photos).length;
+  const withProducts = a.filter((x) => x.products).length;
+  const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+  const items = [
+    [a.length > 0 && setup.entrance, 'מפת החנות', a.length ? `${a.length} מעברים במפה` : 'מציירים את המעברים ומסמנים את הכניסה', 'לפתוח את המפה', () => showTab('map')],
+    [a.length > 0 && shot === a.length, 'סרטון לכל מעבר', `${shot} מתוך ${a.length} מעברים צולמו`, 'לצלם', () => $('aisle-board').scrollIntoView({ behavior: 'smooth' })],
+    [a.length > 0 && withProducts === a.length, 'מוצרים בכל מעבר', `${setup.products} מוצרים · ${withProducts} מתוך ${a.length} מעברים`, 'להוסיף / לייבא', () => showTab('products')],
+    [setup.products > 0 && setup.marked / setup.products >= 0.8, 'כל מוצר מסומן על המדף', `${setup.marked} מתוך ${setup.products} (${pct(setup.marked, setup.products)}%) מסומנים על תמונת המדף`, 'לסמן', () => openProducts({ show: 'unmarked' })],
+    [setup.products > 0 && setup.priced / setup.products >= 0.8, 'מחירים', `${pct(setup.priced, setup.products)}% מהמוצרים עם מחיר`, 'להוסיף מחירים', () => openProducts({ show: 'noprice' })],
+    [setup.staffPinSet, 'קוד לעובדים', setup.staffPinSet ? 'העובדים מקבלים קריאות של לקוחות בטלפון' : 'קובעים קוד, והעובדים נכנסים ממסך העובדים', 'לקבוע', () => showTab('settings')],
+    [getFlag('qr'), 'שלט כניסה ומדבקות "אתה כאן"', getFlag('qr') ? 'הודפסו' : 'מדפיסים שלט QR לכניסה ומדבקה לכל מעבר', 'להדפיס', () => showTab('share')],
+    [getFlag('tried'), 'בדיקה כמו לקוח', getFlag('tried') ? 'נבדק' : 'מחפשים 3 מוצרים מהטלפון והולכים אליהם', 'לפתוח', () => { setFlag('tried'); window.open(`/s/${store.slug}`, '_blank'); loadHome(); }],
+  ];
+  const done = items.filter((i) => i[0]).length;
+  const p = Math.round((done / items.length) * 100);
+  $('ready-pct').textContent = `${p}%`;
+  $('ready-arc').style.strokeDasharray = `${p} 100`;
+  $('ready-ring').classList.toggle('full', p === 100);
+  $('ready-sub').textContent = p === 100 ? 'הכל מוכן. בהצלחה בפיילוט! 🎉' : `${done} מתוך ${items.length} מוכנים. מה שנשאר:`;
+  $('ready-list').replaceChildren(...items.map(([ok, title, detail, cta, fn]) => {
+    const li = document.createElement('li');
+    li.className = ok ? 'ok' : '';
+    li.innerHTML = `<span class="rl-mark">${ok ? '✓' : ''}</span><span class="rl-main"><b>${escapeHtml(title)}</b><span class="muted">${escapeHtml(detail)}</span></span>`;
+    if (!ok) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = cta; b.addEventListener('click', fn);
+      li.append(b);
+    }
+    return li;
+  }), Object.assign(document.createElement('li'), { className: 'rl-extras', innerHTML:
+    `<span class="chip ${setup.premiumVoice ? 'o' : ''}">🔊 קול של עומר: ${setup.premiumVoice ? 'פעיל' : 'כבוי'}</span>
+     <span class="chip ${setup.aiEnabled ? 'o' : ''}">✨ זיהוי מוצרים מסרטון: ${setup.aiEnabled ? 'פעיל' : 'כבוי (אפשר להפעיל חינם במסך הנהלת הרשת)'}</span>` }));
+  $('board-sum').textContent = `${shot}/${a.length} צולמו`;
+  $('aisle-board').innerHTML = a.map((x) => `
+    <div class="aisle-card${x.photos ? ' has' : ''}" data-aisle="${escapeHtml(x.id)}">
+      <div class="ac-photo">${x.photo ? `<img src="${escapeHtml(x.photo)}" alt="" loading="lazy">` : '<span>🎥</span>'}</div>
+      <div class="ac-body">
+        <b class="ac-name">${escapeHtml(x.name)}</b>
+        <span class="muted ac-stats">📷 ${x.photos} תמונות · 📦 ${x.products} מוצרים · 📍 ${x.marked}/${x.products} מסומנים</span>
+        <span class="ac-bar"><i style="width:${pct(x.marked, x.products)}%"></i></span>
+        <span class="ac-actions">
+          <label class="btn primary">🎥 ${x.photos ? 'לצלם שוב' : 'לצלם'}<input type="file" accept="video/*" capture="environment" class="hidden" data-video></label>
+          <label class="btn">🖼️ מהגלריה<input type="file" accept="video/*" class="hidden" data-video></label>
+          <button type="button" data-mark>📍 לסמן</button>
+        </span>
+        <span class="ac-status hidden"></span>
+        <span class="up-progress hidden"><i></i></span>
+      </div>
+    </div>`).join('') || '<p class="muted">קודם מציירים את המעברים במפה.</p>';
+}
+$('aisle-board').addEventListener('change', async (e) => {
+  if (!e.target.matches('[data-video]')) return;
+  const file = e.target.files[0];
+  e.target.value = '';
+  const card = e.target.closest('[data-aisle]');
+  if (!file || !card) return;
+  const status = card.querySelector('.ac-status'), bar = card.querySelector('.up-progress');
+  status.classList.remove('hidden'); bar.classList.remove('hidden');
+  card.classList.add('busy');
+  try {
+    const result = await processVideo(file, card.dataset.aisle, (text, pct) => { status.textContent = text; bar.firstElementChild.style.width = `${pct}%`; });
+    await loadHome();
+    const fresh = $('aisle-board').querySelector(`[data-aisle="${CSS.escape(card.dataset.aisle)}"] .ac-status`);
+    if (fresh) { fresh.textContent = videoDone(result, card.dataset.aisle); fresh.classList.remove('hidden'); fresh.classList.add('ok'); }
+  } catch (err) {
+    status.textContent = err.message;
+    bar.classList.add('hidden');
+    card.classList.remove('busy');
+  }
+});
+$('aisle-board').addEventListener('click', (e) => {
+  if (!e.target.closest('[data-mark]')) return;
+  $('photo-shelf').value = e.target.closest('[data-aisle]').dataset.aisle;
+  showTab('photo');
+  setTimeout(() => $('spot-card').scrollIntoView({ behavior: 'smooth' }), 300);
+});
 
 // ---------- products: the manager controls every detail ----------
 function thumbFor(p, size = 168) {
@@ -468,19 +594,26 @@ function productItem(p) {
     if (i >= 0) products[i] = p;
   };
   const view = () => {
-    item.className = `product-item${p.active === false ? ' inactive' : ''}`;
+    item.className = `product-item row-item${p.active === false ? ' inactive' : ''}${selected.has(p.id) ? ' selected' : ''}`;
     item.innerHTML = '';
+    const pick = document.createElement('input');
+    pick.type = 'checkbox'; pick.className = 'ri-pick'; pick.checked = selected.has(p.id); pick.dataset.a = 'pick';
+    pick.setAttribute('aria-label', `בחירת ${p.name}`);
     const body = document.createElement('div');
+    body.className = 'ri-body';
+    const marked = p.photoId && p.box;
     body.innerHTML = `
-      <div class="name">${escapeHtml(p.name)}${p.promo ? ` <span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : ''}${p.active === false ? ' <span class="badge">🙈 מוסתר מלקוחות</span>' : ''}</div>
-      <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}${p.price ? ` · ${escapeHtml(formatPrice(p.price))}` : ''}</div>
-      ${p.description ? `<div class="meta pf-desc">${escapeHtml(p.description)}</div>` : ''}
-      <div class="meta">${escapeHtml(p.keywords)}</div>
-      <div class="row" style="margin-top:6px"><button data-a="edit">✏️ עריכה</button><button data-a="spot">📍 ${p.photoId ? 'מיקום בתמונה' : 'סימון בתמונת המדף'}</button><button data-a="toggle">${p.active === false ? '👁️ הצגה' : '🙈 הסתרה'}</button><button data-a="del" class="danger">מחיקה</button></div>`;
-    item.append(thumbFor(p), body);
+      <div class="name">${escapeHtml(p.name)}</div>
+      <div class="meta">📍 ${escapeHtml(shelfName(p.shelfId))}${p.level ? ` · ${escapeHtml(p.level)}` : ''}${p.price ? ` · <b class="price">${escapeHtml(formatPrice(p.price))}</b>` : ''}${p.barcode ? ` · <span dir="ltr">${escapeHtml(p.barcode)}</span>` : ''}</div>
+      <div class="ri-tags">${p.promo ? `<span class="promo-tag">🏷️ ${escapeHtml(p.promo)}</span>` : ''}${p.active === false ? '<span class="badge">🙈 מוסתר</span>' : ''}${marked ? '' : '<span class="badge warn">📍 לא מסומן</span>'}${p.price ? '' : '<span class="badge warn">💲 בלי מחיר</span>'}</div>`;
+    const acts = document.createElement('div');
+    acts.className = 'ri-acts';
+    acts.innerHTML = `<button data-a="edit" title="עריכה">✏️</button><button data-a="spot" title="סימון על תמונת המדף">📍</button><button data-a="toggle" title="${p.active === false ? 'הצגה ללקוחות' : 'הסתרה מלקוחות'}">${p.active === false ? '👁️' : '🙈'}</button><button data-a="del" class="danger" title="מחיקה">🗑️</button>`;
+    item.append(pick, thumbFor(p, 112), body, acts);
   };
   item.addEventListener('click', async (e) => {
     const a = e.target.dataset.a;
+    if (a === 'pick') { e.target.checked ? selected.add(p.id) : selected.delete(p.id); item.classList.toggle('selected', e.target.checked); updateBulk(); return; }
     if (a === 'edit') {
       item.className = 'product-item editing';
       productForm(item, p, { onSaved: (np) => { replace(np); view(); }, onCancel: view });
@@ -493,8 +626,10 @@ function productItem(p) {
     if (a === 'del' && confirm(`למחוק את "${p.name}"?`)) {
       await api(`/api/products/${p.id}`, { method: 'DELETE' });
       products = products.filter((x) => x.id !== p.id);
+      selected.delete(p.id);
       item.remove();
       $('product-count').textContent = products.length;
+      updateBulk();
     }
   });
   view();
@@ -512,22 +647,100 @@ $('new-product-btn').addEventListener('click', () => {
   });
 });
 
+// The list for a supermarket: thousands of products, so search + filters + a page at a time.
+const PAGE = 60;
+let pfShow = '';
+let pfLimit = PAGE;
+const selected = new Set();
 async function loadProducts() {
   products = await api('/api/products');
-  loadAlerts();
-  setInterval(loadAlerts, 15000);
+  fillAisleSelects();
   renderProducts();
 }
-function renderProducts() {
-  const q = $('product-filter').value.trim().toLowerCase();
-  const list = $('product-list');
-  list.innerHTML = '';
-  const shown = products.filter((p) => !q || `${p.name} ${p.keywords} ${shelfName(p.shelfId)}`.toLowerCase().includes(q));
-  for (const p of shown) list.appendChild(productItem(p));
-  if (!shown.length) list.innerHTML = '<p class="muted">אין מוצרים עדיין — צלם מדף בלשונית 2.</p>';
-  $('product-count').textContent = products.length;
+function fillAisleSelects() {
+  const opts = store.map.shelves.map((sh) => `<option value="${escapeHtml(sh.id)}">${escapeHtml(sh.name)}</option>`).join('');
+  const keep = $('pf-aisle').value;
+  $('pf-aisle').innerHTML = `<option value="">כל המעברים</option>${opts}`;
+  $('pf-aisle').value = keep;
+  $('bulk-aisle').innerHTML = `<option value="">📦 העברה למעבר…</option>${opts}`;
+  const keepDef = $('import-default').value;
+  $('import-default').innerHTML = `<option value="">— לדלג על מוצרים בלי מעבר —</option>${opts}`;
+  $('import-default').value = keepDef;
 }
-$('product-filter').addEventListener('input', renderProducts);
+function filteredProducts() {
+  const q = $('product-filter').value.trim().toLowerCase();
+  const aisle = $('pf-aisle').value;
+  return products.filter((p) => (!q || `${p.name} ${p.keywords} ${p.barcode || ''} ${shelfName(p.shelfId)}`.toLowerCase().includes(q))
+    && (!aisle || p.shelfId === aisle)
+    && (pfShow !== 'unmarked' || !(p.photoId && p.box))
+    && (pfShow !== 'noprice' || !p.price)
+    && (pfShow !== 'promo' || p.promo)
+    && (pfShow !== 'hidden' || p.active === false));
+}
+function renderProducts() {
+  const list = $('product-list');
+  const shown = filteredProducts();
+  list.replaceChildren(...shown.slice(0, pfLimit).map(productItem));
+  if (!products.length) list.innerHTML = '<p class="muted">אין מוצרים עדיין. מייבאים את קובץ המוצרים של החנות (למעלה), מסריטים מעבר, או מוסיפים מוצר חדש.</p>';
+  else if (!shown.length) list.innerHTML = '<p class="muted">לא נמצאו מוצרים לפי הסינון.</p>';
+  $('product-count').textContent = products.length;
+  $('pf-summary').textContent = shown.length === products.length ? '' : `מוצגים ${shown.length} מתוך ${products.length}`;
+  const rest = shown.length - pfLimit;
+  $('pf-more').classList.toggle('hidden', rest <= 0);
+  $('pf-more').textContent = `הצג עוד (${rest} נוספים)`;
+  updateBulk();
+}
+const refilter = () => { pfLimit = PAGE; renderProducts(); };
+$('product-filter').addEventListener('input', refilter);
+$('pf-aisle').addEventListener('change', refilter);
+$('pf-show').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-show]');
+  if (!b) return;
+  pfShow = b.dataset.show;
+  for (const x of $('pf-show').children) x.classList.toggle('on', x === b);
+  refilter();
+});
+$('pf-more').addEventListener('click', () => { pfLimit += PAGE * 2; renderProducts(); });
+// from the start screen: "show me what's not marked yet"
+function openProducts({ show = '', aisle = '' } = {}) {
+  pfShow = show;
+  for (const x of $('pf-show').children) x.classList.toggle('on', x.dataset.show === show);
+  $('product-filter').value = '';
+  showTab('products');
+  $('pf-aisle').value = aisle;
+}
+
+function updateBulk() {
+  for (const id of [...selected]) if (!products.some((p) => p.id === id)) selected.delete(id);
+  $('bulk-bar').classList.toggle('active', selected.size > 0);
+  $('bulk-bar').classList.toggle('hidden', !products.length);
+  $('bulk-acts').classList.toggle('hidden', !selected.size);
+  $('bulk-label').textContent = selected.size ? `${selected.size} נבחרו` : 'בחירת כל המוצגים';
+  const shown = filteredProducts();
+  $('bulk-all').checked = shown.length > 0 && shown.every((p) => selected.has(p.id));
+}
+$('bulk-all').addEventListener('change', (e) => {
+  for (const p of filteredProducts()) e.target.checked ? selected.add(p.id) : selected.delete(p.id);
+  renderProducts();
+});
+async function bulk(action, extra = {}) {
+  const ids = [...selected];
+  const names = { move: 'להעביר', hide: 'להסתיר', show: 'להציג', delete: 'למחוק' };
+  if (action === 'delete' && !confirm(`למחוק ${ids.length} מוצרים? אי אפשר לבטל.`)) return;
+  try {
+    const r = await api('/api/products/bulk', { method: 'POST', body: { ids, action, ...extra } });
+    selected.clear();
+    await loadProducts();
+    $('pf-summary').textContent = `✓ ${r.changed} מוצרים עודכנו (${names[action]})`;
+  } catch (err) { alert(err.message); }
+}
+$('bulk-bar').addEventListener('click', (e) => { const a = e.target.closest('[data-bulk]')?.dataset.bulk; if (a) bulk(a); });
+$('bulk-aisle').addEventListener('change', (e) => {
+  if (!e.target.value) return;
+  const name = shelfName(e.target.value);
+  if (confirm(`להעביר ${selected.size} מוצרים ל"${name}"? הסימון שלהם על תמונת המדף יימחק.`)) bulk('move', { shelfId: e.target.value });
+  e.target.value = '';
+});
 
 // ---------- catalog import ----------
 function parseCsv(text) {
@@ -554,26 +767,51 @@ function parseCsv(text) {
   return rows;
 }
 const COLUMNS = {
-  name: ['שם', 'שם מוצר', 'מוצר', 'name'], shelf: ['מעבר', 'מיקום', 'aisle', 'shelf'], keywords: ['מילות חיפוש', 'מילים נרדפות', 'keywords'],
-  level: ['מדף', 'קומת מדף', 'level'], price: ['מחיר', 'price'], description: ['תיאור', 'description'], promo: ['מבצע', 'promo'],
+  name: ['שם', 'שם מוצר', 'שם המוצר', 'שם פריט', 'מוצר', 'פריט', 'name', 'product'], shelf: ['מעבר', 'מיקום', 'aisle', 'shelf'], keywords: ['מילות חיפוש', 'מילים נרדפות', 'keywords'],
+  level: ['מדף', 'קומת מדף', 'level'], price: ['מחיר', 'מחיר לצרכן', 'מחיר מכירה', 'price'], description: ['תיאור', 'description'], promo: ['מבצע', 'promo'],
+  barcode: ['ברקוד', 'קוד פריט', 'מק"ט', 'מקט', 'barcode', 'ean', 'sku'], department: ['מחלקה', 'קטגוריה', 'department', 'category'],
 };
-$('import-template').href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿שם,מעבר,מדף,מחיר,מילות חיפוש\nפח סנסור DUBLIN 30 ליטר,4,מדף תחתון,199.90,"פח אשפה, פח חכם, פח למטבח"\n');
+// Excel files are read on the phone/computer with SheetJS, loaded only when one is chosen.
+function loadSheetJs() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    sc.onload = () => resolve(window.XLSX);
+    sc.onerror = () => reject(new Error('לא הצלחתי לפתוח קובץ Excel. אפשר לשמור אותו כ-CSV ולנסות שוב'));
+    document.head.appendChild(sc);
+  });
+}
+async function readTable(file) {
+  if (/\.xlsx?$/i.test(file.name)) {
+    const XLSX = await loadSheetJs();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' })
+      .map((r) => r.map((c) => String(c ?? ''))).filter((r) => r.some((c) => c.trim()));
+  }
+  return parseCsv(await file.text());
+}
+$('import-template').href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿שם,ברקוד,מחיר,מבצע,מעבר,מחלקה,מדף,מילות חיפוש\nחלב תנובה 3% 1 ליטר,7290004131074,6.90,,4,מוצרי חלב,מדף אמצעי,"חלב, חלב טרי"\nפח סנסור DUBLIN 30 ליטר,,199.90,השני ב-50%,6,,מדף תחתון,"פח אשפה, פח חכם"\n');
 $('import-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  const [header, ...data] = parseCsv(await file.text());
+  $('import-status').innerHTML = '<span class="row"><span class="spinner"></span> קורא את הקובץ…</span>';
+  let table;
+  try { table = await readTable(file); } catch (err) { $('import-status').textContent = err.message; return; }
+  const [header = [], ...data] = table;
   const idx = {};
   header.forEach((h, i) => {
     for (const [key, names] of Object.entries(COLUMNS)) if (!(key in idx) && names.includes(h.trim().toLowerCase())) idx[key] = i;
   });
-  if (!('name' in idx) || !('shelf' in idx)) return ($('import-status').textContent = 'חסרות עמודות "שם" ו"מעבר" בשורה הראשונה של הקובץ.');
+  if (!('name' in idx)) return ($('import-status').textContent = `לא מצאתי עמודת "שם" בשורה הראשונה. העמודות בקובץ: ${header.slice(0, 8).join(', ')}`);
+  if (!('shelf' in idx) && !('department' in idx) && !$('import-default').value) return ($('import-status').textContent = 'בקובץ אין עמודת "מעבר" או "מחלקה": בחרו למעלה לאיזה מעבר להכניס את המוצרים (ואחר כך אפשר להעביר בקבוצות).');
   const rows = data.map((r) => Object.fromEntries(Object.entries(idx).map(([k, i]) => [k, r[i] ?? ''])));
-  $('import-status').textContent = `מייבא ${rows.length} מוצרים…`;
+  $('import-status').innerHTML = `<span class="row"><span class="spinner"></span> מייבא ${rows.length} שורות…</span>`;
   try {
-    const res = await api('/api/products/import', { method: 'POST', body: { rows } });
-    $('import-status').textContent = `נוספו ${res.added} מוצרים.` + (res.skippedCount ? ` ${res.skippedCount} שורות דולגו: ${res.skipped.slice(0, 5).map((s) => `שורה ${s.row} (${s.reason})`).join(', ')}` : '');
-    loadProducts();
+    const res = await api('/api/products/import', { method: 'POST', body: { rows, defaultShelfId: $('import-default').value } });
+    $('import-status').textContent = `✓ נוספו ${res.added} מוצרים חדשים, עודכנו ${res.updated}.` + (res.skippedCount ? ` ${res.skippedCount} שורות דולגו: ${res.skipped.slice(0, 5).map((s) => `שורה ${s.row} (${s.reason})`).join(', ')}` : '');
+    await loadProducts();
   } catch (err) { $('import-status').textContent = err.message; }
 });
 
@@ -755,6 +993,9 @@ $('export-btn').addEventListener('click', async () => {
   $('rows').value = map.rows;
   drawEditor();
   products = await api('/api/products');
+  fillAisleSelects();
+  loadHome();
+  window.addEventListener('beforeprint', () => setFlag('qr'));
   loadAlerts();
   setInterval(loadAlerts, 15000);
   if (!store.aiEnabled) $('photo-status').textContent = 'זיהוי אוטומטי כבוי: מצלמים או מסריטים את המעבר, ומסמנים כל מוצר על התמונה האמיתית (למטה).';

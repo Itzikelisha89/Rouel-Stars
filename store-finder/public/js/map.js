@@ -167,7 +167,15 @@ function loadImage(url) {
 export async function drawCrop(canvas, photoUrl, box, size = 240) {
   const ctx = canvas.getContext('2d');
   canvas.width = size; canvas.height = size;
-  if (!photoUrl) return;
+  // no photo yet (e.g. a product imported from the catalog): a soft tile with a shopping bag
+  const placeholder = () => {
+    const g = ctx.createLinearGradient(0, 0, size, size);
+    g.addColorStop(0, '#2a3566'); g.addColorStop(1, '#1a2246');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+    ctx.font = `${Math.round(size * 0.42)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🛍️', size / 2, size / 2 + size * 0.03);
+  };
+  if (!photoUrl) return placeholder();
   try {
     const img = await loadImage(photoUrl);
     const b = box || { x0: 0, y0: 0, x1: 1000, y1: 1000 };
@@ -179,7 +187,7 @@ export async function drawCrop(canvas, photoUrl, box, size = 240) {
     const scale = Math.min(size / sw, size / sh);
     const dw = sw * scale, dh = sh * scale;
     ctx.drawImage(img, sx, sy, sw, sh, (size - dw) / 2, (size - dh) / 2, dw, dh);
-  } catch { /* leave blank */ }
+  } catch { placeholder(); }
 }
 
 // Turn a walking path (grid cells) into spoken-style directions: go straight N m, turn right/left and

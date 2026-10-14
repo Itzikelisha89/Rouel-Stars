@@ -52,7 +52,7 @@ test('full owner -> customer flow', async () => {
   form.append('photo', new Blob([JPEG], { type: 'image/jpeg' }), 'shelf.jpg');
   r = await call('POST', '/api/photos', { token, form });
   assert.equal(r.status, 200);
-  assert.match(r.data.aiError, /ANTHROPIC_API_KEY/);
+  assert.match(r.data.aiError, /Gemini/);
   const photoId = r.data.photo.id;
   assert.equal((await fetch(base + r.data.photo.url)).status, 200);
 

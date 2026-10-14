@@ -12,12 +12,13 @@
   <header class="topbar">
     <div class="brand"><svg class="brand-pin" viewBox="0 0 160 200" aria-hidden="true"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/><circle cx="80" cy="72" r="26" fill="#0b1224"/></svg><span id="store-name">…</span></div>
     <div class="row">
-      <a class="btn" id="customer-link" target="_blank">תצוגת לקוח ↗</a>
-      <button id="logout">יציאה</button>
+      <a class="btn" id="customer-link" target="_blank" title="תצוגת לקוח">👁️<span class="hide-sm">&nbsp;תצוגת לקוח</span></a>
+      <button id="logout" title="יציאה">🚪<span class="hide-sm">&nbsp;יציאה</span></button>
     </div>
   </header>
   <nav class="tabs" id="tabs">
-    <button data-tab="map" class="active">1. מפת החנות</button>
+    <button data-tab="home" class="active">🏠 בית</button>
+    <button data-tab="map">1. מפת החנות</button>
     <button data-tab="photo">2. צילום מדף</button>
     <button data-tab="products">3. מוצרים</button>
     <button data-tab="share">4. שלטי QR</button>
@@ -28,8 +29,27 @@
   </nav>
 
   <main class="wrap">
+    <!-- HOME: ready for the pilot? -->
+    <section id="tab-home">
+      <div class="card ready-card">
+        <div class="ready-head">
+          <div class="ready-ring" id="ready-ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" class="rr-bg"/><circle cx="18" cy="18" r="15.9" class="rr-fg" id="ready-arc"/></svg><b id="ready-pct">0%</b></div>
+          <div><h2 style="margin:0">מוכנים לפיילוט?</h2><p class="muted" style="margin:4px 0 0" id="ready-sub">…</p></div>
+        </div>
+        <ol class="ready-list" id="ready-list"></ol>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:baseline">
+          <h2 style="margin:0">🎥 המעברים בחנות</h2>
+          <span class="muted" id="board-sum"></span>
+        </div>
+        <p class="muted">לכל מעבר: מסריטים פעם אחת לאורך המעבר (30–60 שניות, הטלפון בגובה המדפים). הלקוחות רואים את המדף האמיתי, ומסמנים עליו איפה כל מוצר.</p>
+        <div class="aisle-board" id="aisle-board"></div>
+      </div>
+    </section>
+
     <!-- MAP -->
-    <section id="tab-map">
+    <section id="tab-map" class="hidden">
       <div class="card">
         <h2>מפת החנות</h2>
         <p class="muted">כל משבצת ≈ מטר. גרור על המפה כדי לצייר מדף או מעבר, ותן לו שם (למשל "מעבר 4 – כלי בישול").</p>
@@ -60,13 +80,14 @@
         <div class="map-box" style="margin-top:10px"><svg id="map-picker"></svg></div>
         <label class="btn primary" style="margin-top:12px;width:100%">
           📷 צילום / בחירת תמונה
-          <input id="photo-input" type="file" accept="image/*" capture="environment" class="hidden">
+          <input id="photo-input" type="file" accept="image/*" class="hidden">
         </label>
         <div id="video-box">
-          <label class="btn" style="margin-top:10px;width:100%">
-            🎥 סרטון של כל המעבר
-            <input id="video-input" type="file" accept="video/*" capture="environment" class="hidden">
-          </label>
+          <div class="row" style="margin-top:10px">
+            <label class="btn grow" style="margin:0">🎥 צילום סרטון עכשיו<input id="video-input" type="file" accept="video/*" capture="environment" class="hidden"></label>
+            <label class="btn grow" style="margin:0">🖼️ סרטון מהגלריה<input id="video-gallery" type="file" accept="video/*" class="hidden"></label>
+          </div>
+          <div class="up-progress hidden" id="photo-progress"><i></i></div>
           <p class="muted" style="font-size:.88rem;margin:6px 0 0">הולכים לאט לאורך המעבר (30–60 שניות), הטלפון בגובה המדפים. נשמרות התמונות החדות ביותר מהסרטון, והלקוח רואה את המדף האמיתי.</p>
         </div>
         <p id="photo-status" class="muted" style="margin-top:10px"></p>
@@ -78,6 +99,7 @@
         <p class="muted hidden" id="spot-empty">אין עדיין תמונות של המעבר הזה. צלמו אותו או העלו סרטון 👆</p>
         <div id="spot-editor" class="hidden">
           <label for="spot-product">מוצר</label>
+          <input id="spot-search" type="search" placeholder="🔍 חיפוש מוצר (גם ממעבר אחר או מהקטלוג)…" autocomplete="off" style="margin-bottom:6px">
           <select id="spot-product"></select>
           <div class="spot-photo" id="spot-photo"><img id="spot-img" alt="תמונת המדף" draggable="false"><div id="spot-marks"></div><div class="spot-box hidden" id="spot-box"></div></div>
           <p class="muted" style="font-size:.88rem;margin:6px 0 0">לחצו על המוצר בתמונה, או גררו מסגרת סביבו.</p>
@@ -109,21 +131,45 @@
       <div class="card">
         <div class="row" style="margin-bottom:12px">
           <h2 class="grow" style="margin:0">מוצרים <span class="badge" id="product-count">0</span></h2>
-          <input class="grow" id="product-filter" placeholder="סינון…">
           <button type="button" class="primary" id="new-product-btn">➕ מוצר חדש</button>
         </div>
         <div id="new-product" class="hidden"></div>
         <datalist id="levels"><option value="מדף עליון"><option value="מדף אמצעי"><option value="מדף תחתון"><option value="מדף שני מלמעלה"><option value="מדף שני מלמטה"><option value="בקצה המעבר"><option value="על הרצפה"></datalist>
-        <details class="import-box">
-          <summary>📥 ייבוא קטלוג מקובץ (Excel / CSV)</summary>
-          <p class="muted" style="margin-top:8px">שומרים את קובץ האקסל בפורמט CSV ובוחרים אותו כאן. עמודות: <b>שם</b>, <b>מעבר</b> (שם המדף כמו במפה, או רק המספר שלו), ואם יש: <b>מילות חיפוש</b>, <b>מדף</b>, <b>מחיר</b>, <b>תיאור</b>.</p>
-          <div class="row">
-            <label class="btn primary" style="margin:0">בחירת קובץ<input type="file" id="import-file" accept=".csv,text/csv,.txt" class="hidden"></label>
+        <details class="import-box" id="import-box">
+          <summary>📥 ייבוא הקטלוג של החנות (Excel / CSV)</summary>
+          <p class="muted" style="margin-top:8px">מעלים את קובץ המוצרים מהקופה או מהמשרד, כמו שהוא. עמודות שהמערכת מזהה: <b>שם</b> (חובה), <b>ברקוד</b>, <b>מחיר</b>, <b>מבצע</b>, <b>מעבר</b> או <b>מחלקה</b>, <b>מדף</b>, <b>מילות חיפוש</b>, <b>תיאור</b>.<br>
+          ייבוא חוזר <b>מעדכן</b> מחירים ומבצעים של מוצרים שכבר קיימים (לפי ברקוד או שם), בלי כפילויות.</p>
+          <label for="import-default">מוצרים בלי מעבר ייכנסו ל:</label>
+          <select id="import-default"></select>
+          <div class="row" style="margin-top:10px">
+            <label class="btn primary" style="margin:0">בחירת קובץ<input type="file" id="import-file" accept=".xlsx,.xls,.csv,text/csv,.txt" class="hidden"></label>
             <a class="btn" id="import-template" download="תבנית-קטלוג.csv">הורדת תבנית</a>
           </div>
           <p id="import-status" class="muted" style="margin-top:8px"></p>
         </details>
-        <div class="product-list" id="product-list"></div>
+        <div class="pf-filters">
+          <input id="product-filter" type="search" placeholder="🔍 חיפוש לפי שם, מילה או ברקוד…" autocomplete="off">
+          <select id="pf-aisle"></select>
+          <div class="pf-show" id="pf-show">
+            <button type="button" data-show="" class="on">הכל</button>
+            <button type="button" data-show="unmarked">📍 לא מסומנים על המדף</button>
+            <button type="button" data-show="noprice">💲 בלי מחיר</button>
+            <button type="button" data-show="promo">🏷️ במבצע</button>
+            <button type="button" data-show="hidden">🙈 מוסתרים</button>
+          </div>
+        </div>
+        <div class="bulk-bar" id="bulk-bar">
+          <label class="pf-check" style="margin:0"><input type="checkbox" id="bulk-all"> <span id="bulk-label">בחירת כל המוצגים</span></label>
+          <span class="bulk-acts hidden" id="bulk-acts">
+            <select id="bulk-aisle"></select>
+            <button type="button" data-bulk="hide">🙈 הסתרה</button>
+            <button type="button" data-bulk="show">👁️ הצגה</button>
+            <button type="button" data-bulk="delete" class="danger">🗑️ מחיקה</button>
+          </span>
+        </div>
+        <p class="muted" id="pf-summary" style="margin:8px 0"></p>
+        <div class="product-list compact" id="product-list"></div>
+        <button type="button" id="pf-more" class="hidden" style="width:100%;margin-top:12px"></button>
       </div>
     </section>
 

@@ -45,6 +45,17 @@
         <p class="muted">חיפושים שלא נמצאו ובקשות "תביאו את זה", מכל הסניפים יחד. מוצר שמבוקש בכמה סניפים הוא החלטת רכש של הרשת.</p>
         <div id="missing" class="rank"></div>
       </div>
+      <form class="card" id="ai-form">
+        <h2>✨ זיהוי מוצרים מתמונה ומסרטון (חינם)</h2>
+        <p class="muted" id="ai-state">…</p>
+        <p class="muted" style="font-size:.9rem">מפתח חינמי מ-<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (נכנסים עם חשבון Google ← Create API key). מסרטון של מעבר המערכת מזהה את כל המוצרים ומסמנת אותם על המדף, ולקוחות יכולים לחפש לפי תמונה.</p>
+        <div class="row">
+          <input class="grow" type="password" id="ai-key" placeholder="המפתח של Gemini" autocomplete="off">
+          <button class="primary" type="submit">שמירה</button>
+          <button type="button" class="danger" id="ai-off">כיבוי</button>
+        </div>
+        <p id="ai-msg" class="ok" style="margin:10px 0 0"></p>
+      </form>
       <form class="card" id="voice-form">
         <h2>🔊 קול אמיתי של נציג (עומר)</h2>
         <p class="muted" id="voice-state">…</p>

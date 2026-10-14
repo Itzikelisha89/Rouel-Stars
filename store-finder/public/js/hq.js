@@ -110,6 +110,28 @@ $('hq-login').addEventListener('submit', async (e) => {
 });
 $('logout').addEventListener('click', () => { setHq(null); showLogin(); });
 
+async function loadAi() {
+  const v = await hq('/api/hq/ai').catch(() => null);
+  if (!v) return;
+  $('ai-state').textContent = v.set ? '✅ פעיל: סרטון של מעבר הופך לרשימת מוצרים מסומנים על המדף.' : '⚪ כבוי: מוסיפים מוצרים ידנית או מקובץ, ומסמנים אותם על תמונת המדף.';
+  $('ai-off').classList.toggle('hidden', !v.set || v.fromServer);
+}
+$('ai-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('ai-msg').textContent = 'בודק את המפתח…';
+  try {
+    await hq('/api/hq/ai', { method: 'PUT', body: { key: $('ai-key').value } });
+    $('ai-key').value = '';
+    $('ai-msg').textContent = 'נשמר ✓';
+  } catch (err) { $('ai-msg').textContent = err.message; }
+  loadAi();
+});
+$('ai-off').addEventListener('click', async () => {
+  await hq('/api/hq/ai', { method: 'PUT', body: { key: '' } }).catch(() => {});
+  $('ai-msg').textContent = 'הזיהוי כובה';
+  loadAi();
+});
+
 async function loadVoice() {
   const v = await hq('/api/hq/voice').catch(() => null);
   if (!v) return;
@@ -135,6 +157,6 @@ $('voice-off').addEventListener('click', async () => {
 async function start() {
   $('login-view').classList.add('hidden');
   $('app-view').classList.remove('hidden');
-  try { await load(); loadVoice(); } catch { /* 401 already shows the sign-in */ }
+  try { await load(); loadVoice(); loadAi(); } catch { /* 401 already shows the sign-in */ }
 }
 if (getHq()) start(); else showLogin();
