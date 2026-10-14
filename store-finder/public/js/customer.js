@@ -142,6 +142,24 @@ window.addEventListener('popstate', (e) => {
 });
 document.addEventListener('click', (e) => { if (e.target.closest('[data-back]')) history.back(); });
 
+// ---------- staying up to date ----------
+// Phones keep a tab open for days. When a new version goes live, reload at a calm moment: right away
+// on the home screen, otherwise the next time the shopper comes back to it (the list is kept).
+let build = null;
+let updateReady = false;
+async function checkBuild() {
+  const b = await fetch('/healthz', { cache: 'no-store' }).then((r) => r.json()).then((d) => d.build).catch(() => null);
+  if (!b) return;
+  if (build === null) build = b;
+  else if (b !== build) {
+    updateReady = true;
+    if (document.body.dataset.view === 'home') location.reload();
+  }
+}
+checkBuild();
+setInterval(checkBuild, 2 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkBuild(); });
+
 // ---------- home: the buddy ----------
 function greeting() {
   const h = new Date().getHours();
@@ -150,6 +168,7 @@ function greeting() {
 let returning = false;
 try { returning = Boolean(localStorage.getItem(SEEN_KEY)); localStorage.setItem(SEEN_KEY, '1'); } catch { /* private mode */ }
 function renderHome() {
+  if (updateReady) return location.reload();
   setView('home');
   current = null;
   $('greet-title').textContent = t('buddy_intro', { g: greeting() });

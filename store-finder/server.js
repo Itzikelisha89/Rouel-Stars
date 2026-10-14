@@ -21,7 +21,9 @@ app.use((_req, res, next) => {
   res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'SAMEORIGIN' });
   next();
 });
-app.get('/healthz', (_req, res) => res.json({ ok: true }));
+// changes with every deploy, so open shopper pages know a newer version is live
+const BUILD = process.env.RAILWAY_DEPLOYMENT_ID || String(Date.now());
+app.get('/healthz', (_req, res) => res.set('Cache-Control', 'no-store').json({ ok: true, build: BUILD }));
 app.use(express.json({ limit: '1mb' }));
 // pages and code always checked for a newer version, so phones never keep showing an old screen
 const fresh = (res) => res.setHeader('Cache-Control', 'no-cache');
