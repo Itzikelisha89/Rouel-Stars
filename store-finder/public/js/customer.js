@@ -18,7 +18,7 @@ let trending = [];
 // ---------- voice: a real, clear human voice (premium, from the server) or the phone's own ----------
 const canSpeak = 'speechSynthesis' in window;
 function forSpeech(text) {
-  return text.replace(/₪/g, ' שקל').replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/(\d)\s*מ['׳]/g, '$1 מטר').replace(/[·|/]/g, ',');
+  return text.replace(/₪\s*([\d.,]+)/g, '$1 שקלים').replace(/([\d.,]+)\s*₪/g, '$1 שקלים').replace(/₪/g, ' שקל').replace(/ס["״]מ/g, 'סנטימטר').replace(/מ["״]ל/g, 'מיליליטר').replace(/(\d)\s*מ['׳]/g, '$1 מטר').replace(/[·|/]/g, ',');
 }
 // Phones only allow sound after a tap, so the audio element is unlocked on the first touch and reused.
 const player = new Audio();
@@ -129,15 +129,16 @@ function markBox(el, box) {
 // ---------- screens and the phone's back button ----------
 // Every screen is a step in the browser history, so "back" on the phone moves between screens
 // instead of leaving the store.
-const VIEWS = ['home-view', 'home-extra', 'results-view', 'deals-view', 'detail', 'nav-view', 'arrived-view', 'list-view'];
+const VIEWS = ['home-view', 'home-extra', 'results-view', 'deals-view', 'detail', 'nav-view', 'arrived-view', 'list-view', 'tour-view'];
 const SHOWS = {
   home: ['home-view', 'home-extra'], results: ['results-view'], deals: ['deals-view'],
-  detail: ['detail'], nav: ['nav-view'], arrived: ['arrived-view'], list: ['list-view'],
+  detail: ['detail'], nav: ['nav-view'], arrived: ['arrived-view'], list: ['list-view'], tour: ['tour-view'],
 };
-const TAB_OF = { home: 'home', results: 'home', deals: 'deals', list: 'list' };
+const TAB_OF = { home: 'home', results: 'home', deals: 'deals', list: 'list', tour: 'home' };
 function setView(name) {
   stopWalker();
   $('upsell-sheet').classList.add('hidden');
+  $('tour-sheet').classList.add('hidden');
   for (const id of VIEWS) $(id).classList.toggle('hidden', !SHOWS[name].includes(id));
   $('search-wrap').classList.toggle('hidden', !['home', 'results'].includes(name));
   document.body.dataset.view = name;
@@ -200,7 +201,7 @@ $('buddy-face').addEventListener('click', () => speak(greetingSpeech()));
 // Phones only allow sound after a touch: Omer says hello on the shopper's first tap on the home screen
 // (not when it's the microphone, he'd be talking into it).
 document.addEventListener('pointerdown', (e) => {
-  if (e.target.closest('#mic, #talk-btn, #talk-toggle, #buddy-face, #lang') || document.body.dataset.view !== 'home') return;
+  if (e.target.closest('#mic, #talk-btn, #talk-toggle, #buddy-face, #lang, #tour-card') || document.body.dataset.view !== 'home') return;
   setTimeout(() => say(greetingSpeech()), 150);
 }, { once: true });
 $('continue-card').addEventListener('click', () => go(renderListView));
@@ -744,6 +745,112 @@ function setHere(shelf) {
   } else if (v === 'list') renderListView();
 }
 
+// ---------- virtual tour: the real aisles, in walking order, shoppable ----------
+let tour = null; // { aisles, i }
+async function loadTour() {
+  if (tour) return tour;
+  const aisles = await api(pub('/tour')).catch(() => []);
+  // walking order from the entrance, the way you'd actually go through the store
+  const shelves = aisles.map((a) => store.map.shelves.find((s) => s.id === a.shelfId)).filter(Boolean);
+  const order = planRoute(store.map, shelves, store.map.entrance).legs.map((l) => l.shelf.id);
+  aisles.sort((a, b) => order.indexOf(a.shelfId) - order.indexOf(b.shelfId));
+  tour = { aisles, i: 0 };
+  return tour;
+}
+async function prepTourCard() {
+  const tr = await loadTour();
+  const first = tr.aisles.find((a) => a.photos.length);
+  $('tour-card').classList.toggle('hidden', !tr.aisles.length);
+  if (first) $('tour-card-bg').style.backgroundImage = `url("${first.photos[0].url}")`;
+}
+function openTour(i = tour?.i || 0) { go(() => renderTour(i)); }
+$('tour-card').addEventListener('click', () => { buzz(); openTour(0); });
+function renderTour(i) {
+  if (!tour?.aisles.length) return renderHome();
+  setView('tour');
+  tour.i = Math.max(0, Math.min(tour.aisles.length - 1, i));
+  const a = tour.aisles[tour.i];
+  const shelf = store.map.shelves.find((s) => s.id === a.shelfId);
+  $('tour-count').textContent = t('tour_count', { i: tour.i + 1, n: tour.aisles.length });
+  $('tour-name').textContent = aisleName(shelf);
+  // the photos, swiped sideways, each with tappable product spots
+  const stage = $('tour-stage');
+  stage.scrollLeft = 0;
+  if (a.photos.length) {
+    stage.innerHTML = a.photos.map((ph, k) => `<div class="tour-shot"><div class="shot-wrap"><img src="${escapeHtml(ph.url)}" alt="" draggable="false">${ph.products.map((p) => {
+      const cx = (p.box.x0 + p.box.x1) / 20, cy = (p.box.y0 + p.box.y1) / 20;
+      return `<button type="button" class="hot${inList(p.id) ? ' in' : ''}${p.promo ? ' deal' : ''}" data-hot="${p.id}" data-shot="${k}" style="left:${cx}%;top:${cy}%" aria-label="${escapeHtml(p.name)}"><span class="hot-dot"></span>${p.price ? `<span class="hot-tag">${escapeHtml(formatPrice(p.price))}</span>` : ''}</button>`;
+    }).join('')}</div></div>`).join('');
+  } else {
+    stage.innerHTML = `<div class="tour-shot"><div class="shot-empty"><span>🛒</span><b>${escapeHtml(aisleName(shelf))}</b><span class="muted">${escapeHtml(t('tour_nophoto'))}</span></div></div>`;
+  }
+  $('tour-dots').innerHTML = a.photos.length > 1 ? a.photos.map((_, k) => `<i class="${k ? '' : 'on'}"></i>`).join('') : '';
+  $('tour-hint').classList.toggle('hidden', !a.photos.some((ph) => ph.products.length));
+  $('tour-prev').disabled = tour.i === 0;
+  $('tour-next').textContent = tour.i === tour.aisles.length - 1 ? t('tour_done') : t('tour_next');
+  $('tour-products').replaceChildren(...a.products.slice(0, 20).map((p) => miniCard(p)));
+  $('tour-products-title').classList.toggle('hidden', !a.products.length);
+  renderMap($('tour-map'), store.map, { targetShelfId: a.shelfId, ...mapLabels() });
+  const deals = a.products.filter((p) => p.promo).length;
+  say(`${aisleName(shelf, { short: lang !== 'he' })}. ${t('tour_n', { n: a.products.length })}${deals ? ` ${t('tour_deals', { n: deals })}` : ''}`);
+}
+$('tour-stage').addEventListener('scroll', () => {
+  const st = $('tour-stage');
+  const k = Math.round(Math.abs(st.scrollLeft) / Math.max(1, st.clientWidth));
+  [...$('tour-dots').children].forEach((d, j) => d.classList.toggle('on', j === k));
+}, { passive: true });
+const stepTour = (d) => {
+  buzz();
+  if (d > 0 && tour.i === tour.aisles.length - 1) return go(renderListView);
+  screens[at] = () => renderTour(tour.i + d);
+  history.replaceState({ i: at }, '');
+  renderTour(tour.i + d);
+};
+$('tour-prev').addEventListener('click', () => stepTour(-1));
+$('tour-next').addEventListener('click', () => stepTour(1));
+$('tour-speak').addEventListener('click', () => { const a = tour.aisles[tour.i]; speak(`${aisleName(store.map.shelves.find((s) => s.id === a.shelfId))}. ${t('tour_n', { n: a.products.length })}`); });
+// swipe on the last photo goes to the next aisle, like walking on
+let tourTouch = null;
+$('tour-stage').addEventListener('touchstart', (e) => { tourTouch = e.touches[0].clientX; }, { passive: true });
+$('tour-stage').addEventListener('touchend', (e) => {
+  if (tourTouch === null) return;
+  const dx = e.changedTouches[0].clientX - tourTouch, st = $('tour-stage');
+  tourTouch = null;
+  const atEnd = Math.abs(st.scrollLeft) + st.clientWidth >= st.scrollWidth - 4, atStart = Math.abs(st.scrollLeft) < 4;
+  const forward = document.documentElement.dir === 'rtl' ? dx > 60 : dx < -60, back = document.documentElement.dir === 'rtl' ? dx < -60 : dx > 60;
+  if (forward && atEnd && tour.i < tour.aisles.length - 1) stepTour(1);
+  else if (back && atStart && tour.i > 0) stepTour(-1);
+});
+let tourPick = null;
+$('tour-stage').addEventListener('click', (e) => {
+  const hot = e.target.closest('[data-hot]');
+  if (!hot) return;
+  const a = tour.aisles[tour.i];
+  tourPick = a.photos[Number(hot.dataset.shot)].products.find((p) => p.id === Number(hot.dataset.hot));
+  if (!tourPick) return;
+  buzz(10);
+  drawCrop($('tp-thumb'), tourPick.image || tourPick.photo, tourPick.image ? null : tourPick.box, 200);
+  $('tp-name').textContent = tourPick.name;
+  $('tp-price').textContent = tourPick.price ? formatPrice(tourPick.price) : '';
+  $('tp-promo').innerHTML = tourPick.promo ? `<span class="promo-tag">🏷️ ${escapeHtml(tourPick.promo)}</span>` : '';
+  paintTourAdd();
+  $('tour-sheet').classList.remove('hidden');
+  say(lang === 'he' ? `${shortName(tourPick)}${tourPick.price ? `, ${formatPrice(tourPick.price)}` : ''}${tourPick.promo ? `. ${tourPick.promo}` : ''}` : '');
+});
+function paintTourAdd() {
+  const on = tourPick && inList(tourPick.id);
+  $('tp-add').textContent = t(on ? 'in_short' : 'add_short');
+  $('tp-add').classList.toggle('on', Boolean(on));
+}
+$('tp-add').addEventListener('click', () => {
+  if (!tourPick) return;
+  $('tour-sheet').classList.add('hidden');
+  toggleList(tourPick);
+  for (const h of document.querySelectorAll(`[data-hot="${tourPick.id}"]`)) h.classList.toggle('in', inList(tourPick.id));
+});
+$('tp-more').addEventListener('click', () => { $('tour-sheet').classList.add('hidden'); if (tourPick) openProduct(tourPick); });
+$('tour-sheet').addEventListener('click', (e) => { if (e.target === $('tour-sheet')) $('tour-sheet').classList.add('hidden'); });
+
 // ---------- request a product the store doesn't carry ----------
 $('request-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1119,9 +1226,10 @@ function listen() {
     history.replaceState({ i: 0 }, '', location.pathname + (hereShelf ? `?at=${encodeURIComponent(hereShelf.id)}` : ''));
     renderHome();
     loadHome();
+    prepTourCard();
     const q = params.get('q');
     const lastId = hereShelf && !q ? recentProductId() : null;
-    if (q) search(q);
+    if (params.get('tour')) { await loadTour(); openTour(0); } else if (q) search(q);
     else if (lastId) {
       // Scanned an aisle sticker mid-trip: continue to the product chosen a moment ago.
       const p = await api(pub(`/products/${lastId}`)).catch(() => null);

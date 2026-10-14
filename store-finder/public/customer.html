@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=10">
-  <link rel="stylesheet" href="/css/shop.css?v=10">
+  <link rel="stylesheet" href="/css/app.css?v=11">
+  <link rel="stylesheet" href="/css/shop.css?v=11">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -51,6 +51,11 @@
 
     <section id="home-extra" class="view">
       <button type="button" id="talk-btn" class="talk-btn hidden" data-i18n="talk_btn">🎤 פשוט תגיד לי</button>
+      <button type="button" id="tour-card" class="tour-card hidden">
+        <span class="tc-bg" id="tour-card-bg"></span>
+        <span class="tc-text"><b data-i18n="tour_title">🎥 סיור וירטואלי בחנות</b><span data-i18n="tour_sub">טיילו בין המדפים האמיתיים והוסיפו לעגלה</span></span>
+        <span class="tc-go">▶</span>
+      </button>
       <button type="button" class="where-btn" data-where data-i18n="where_home">📍 איפה אני? צלם מדף ואכוון אותך</button>
       <div id="here-banner" class="here-banner hidden"></div>
       <button type="button" id="continue-card" class="continue-card hidden">
@@ -161,6 +166,25 @@
       </div>
     </section>
 
+    <!-- virtual tour: walk the real aisles, tap a product, into the cart -->
+    <section id="tour-view" class="view hidden">
+      <div class="tour-top">
+        <button type="button" class="nav-close" data-back aria-label="✕">✕</button>
+        <div class="tour-title"><div class="tt-kicker" id="tour-count"></div><div class="tt-name" id="tour-name"></div></div>
+        <button type="button" class="nav-close" id="tour-speak" aria-label="🔊">🔊</button>
+      </div>
+      <div class="tour-stage" id="tour-stage"></div>
+      <div class="tour-dots" id="tour-dots"></div>
+      <p class="tour-hint" id="tour-hint" data-i18n="tour_hint">👆 לוחצים על מוצר בתמונה כדי להוסיף לעגלה</p>
+      <div class="tour-nav">
+        <button type="button" id="tour-prev" data-i18n="tour_prev">→ הקודם</button>
+        <button type="button" id="tour-next" class="primary" data-i18n="tour_next">למעבר הבא ←</button>
+      </div>
+      <h2 class="sec-title" id="tour-products-title" data-i18n="tour_here">🛒 במעבר הזה</h2>
+      <div class="deals-row" id="tour-products"></div>
+      <div class="map-box tour-map"><svg id="tour-map"></svg></div>
+    </section>
+
     <!-- arrived -->
     <section id="arrived-view" class="view hidden">
       <div class="card arrived-card">
@@ -223,6 +247,16 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <div id="tour-sheet" class="sheet hidden" role="dialog" aria-modal="true">
+    <div class="sheet-card tour-pick">
+      <div class="tp-row"><canvas id="tp-thumb"></canvas><div class="tp-main"><b id="tp-name"></b><span class="d-price" id="tp-price"></span><span id="tp-promo"></span></div></div>
+      <div class="tp-actions">
+        <button type="button" class="primary" id="tp-add"></button>
+        <button type="button" id="tp-more" data-i18n="tour_details">פרטים ומסלול</button>
+      </div>
+    </div>
+  </div>
+
   <div id="upsell-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="up-title">
     <div class="sheet-card upsell-card">
       <div class="up-head"><span class="up-check">✓</span><div style="min-width:0"><div class="up-added" id="up-added"></div><div class="muted" data-i18n="up_added">נוסף לרשימה</div></div></div>
@@ -271,6 +305,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=10"></script>
+  <script type="module" src="/js/customer.js?v=11"></script>
 </body>
 </html>

@@ -807,6 +807,24 @@ app.get('/api/public/:slug/home', (req, res) => {
 });
 
 // Deals for the shopper's home screen.
+// Virtual tour: every aisle with its real shelf photos and the products marked on each photo, plus the
+// aisle's other products (not marked yet) so every aisle can be browsed and shopped from home.
+app.get('/api/public/:slug/tour', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 ORDER BY products.promo = '', products.name`).all(store.id);
+  const photos = db.prepare('SELECT id, shelf_id, file FROM photos WHERE store_id = ? ORDER BY id').all(store.id);
+  const aisles = JSON.parse(store.map_json).shelves.map((s) => {
+    const items = products.filter((p) => p.shelf_id === s.id);
+    const shots = photos.filter((ph) => ph.shelf_id === s.id)
+      .map((ph) => ({ url: `/uploads/${ph.file}`, products: items.filter((p) => p.photo_id === ph.id && p.box_json).map(productRow) }))
+      .filter((ph, i, all) => ph.products.length || all.every((x) => !x.products.length) && i >= all.length - 4) // photos with marks; else the last few
+      .slice(-6);
+    return { shelfId: s.id, name: s.name, photos: shots, products: items.map(productRow) };
+  }).filter((a) => a.products.length || a.photos.length);
+  res.json(aisles);
+});
+
 // Everything on one aisle, for the department tiles on the shopper's home screen.
 app.get('/api/public/:slug/aisle/:shelfId', (req, res) => {
   const store = getStoreBySlug(req.params.slug);
