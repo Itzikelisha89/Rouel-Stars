@@ -41,6 +41,13 @@ test('shopper home: trending searches, departments, aisle products, app manifest
     assert.match(m.type, /manifest\+json/);
     assert.equal(m.data.start_url, '/s/home-store');
     assert.equal((await call('GET', '/api/public/nope/home')).status, 404);
+
+    // "where am I?": no shelf photos yet, and without an AI key the phone does the matching itself
+    assert.deepEqual((await call('GET', '/api/public/home-store/shelf-photos')).data, []);
+    const form = new FormData();
+    form.append('image', new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' }), 'shelf.jpg');
+    const loc = await (await fetch(`${base}/api/public/home-store/locate`, { method: 'POST', body: form })).json();
+    assert.deepEqual(loc, { shelfIds: [], ai: false });
   } finally {
     server.close();
   }

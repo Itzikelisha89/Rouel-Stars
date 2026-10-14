@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=3">
-  <link rel="stylesheet" href="/css/shop.css?v=3">
+  <link rel="stylesheet" href="/css/app.css?v=5">
+  <link rel="stylesheet" href="/css/shop.css?v=5">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -51,6 +51,7 @@
 
     <section id="home-extra" class="view">
       <button type="button" id="talk-btn" class="talk-btn hidden" data-i18n="talk_btn">🎤 פשוט תגיד לי</button>
+      <button type="button" class="where-btn" data-where data-i18n="where_home">📍 איפה אני? צלם מדף ואכוון אותך</button>
       <div id="here-banner" class="here-banner hidden"></div>
       <button type="button" id="continue-card" class="continue-card hidden">
         <span class="cc-ico">🛒</span><span class="cc-text" id="continue-text"></span><span class="cc-go" data-i18n="continue_go">ממשיכים ←</span>
@@ -129,6 +130,7 @@
     <section id="nav-view" class="view hidden">
       <button type="button" class="back-btn" data-back data-i18n="nav_back">→ חזרה למוצר</button>
       <div id="nav-here" class="here-banner hidden" style="margin:0 0 12px"></div>
+      <button type="button" class="where-btn" data-where data-i18n="where_btn">📍 לא בכניסה? צלם את המדף שמולך</button>
       <div class="card">
         <div class="nav-head">
           <canvas id="nav-thumb" class="nav-thumb"></canvas>
@@ -212,6 +214,19 @@
     </div>
   </div>
 
+  <div id="locate-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="loc-title">
+    <div class="sheet-card loc-card">
+      <h2 id="loc-title" data-i18n="loc_title">📍 איפה אתה עומד?</h2>
+      <p class="muted" data-i18n="loc_sub">צלם את המדף שמולך ואחשב את הדרך מהמקום שלך.</p>
+      <label class="btn primary big-btn" id="loc-cam"><span data-i18n="loc_cam">📷 צלם את המדף שמולך</span><input type="file" id="loc-input" accept="image/*" capture="environment" class="hidden"></label>
+      <p id="loc-status" class="loc-status hidden"></p>
+      <div id="loc-guesses" class="loc-guesses"></div>
+      <p class="muted" style="margin:14px 0 8px" data-i18n="loc_or_map">או לחצו על המעבר שלידכם:</p>
+      <div class="map-box"><svg id="loc-map"></svg></div>
+      <button type="button" id="loc-cancel" style="width:100%;margin-top:12px" data-i18n="cancel">ביטול</button>
+    </div>
+  </div>
+
   <div id="help-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
     <div class="sheet-card">
       <h2 id="help-title" data-i18n="help_title">🙋 לקרוא לעובד?</h2>
@@ -225,6 +240,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=3"></script>
+  <script type="module" src="/js/customer.js?v=5"></script>
 </body>
 </html>

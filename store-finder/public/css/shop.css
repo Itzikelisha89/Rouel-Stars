@@ -115,3 +115,17 @@ body.shop[data-view=detail] .wrap, body.shop[data-view=nav] .wrap { padding-bott
 .q-clear { flex: none; width: 40px; height: 40px !important; padding: 0 !important; border-radius: 50% !important; background: rgba(255,255,255,.1) !important; font-size: 1rem; color: #dfe6ff; }
 .results-top { display: flex; justify-content: space-between; gap: 8px; }
 .shop input[type=search]::-webkit-search-cancel-button { display: none; }
+
+/* where am I */
+.where-btn { width: 100%; margin: 0 0 12px; padding: 13px 14px; border-radius: 16px; background: rgba(111, 147, 255, .14); border: 1px solid rgba(111, 147, 255, .45); color: #c9d6ff; font-weight: 800; }
+#home-extra .where-btn { margin-top: 10px; }
+.loc-card { max-height: 88vh; overflow-y: auto; }
+.loc-card .big-btn { display: flex; }
+.loc-status { margin: 12px 0 8px; font-weight: 700; text-align: center; }
+.loc-guesses { display: grid; gap: 8px; }
+.loc-guess { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 12px; padding: 8px; text-align: start; border-radius: 16px; }
+.loc-guess img { width: 64px; height: 48px; object-fit: cover; border-radius: 10px; }
+.loc-guess .lg-yes { font-size: .85rem; color: var(--muted); }
+.loc-guess.best { border-color: rgba(34, 197, 94, .6); background: rgba(34, 197, 94, .12); }
+.loc-guess.best .lg-yes { color: #8ff0b0; }
+#loc-map .map-shelf rect { cursor: pointer; }

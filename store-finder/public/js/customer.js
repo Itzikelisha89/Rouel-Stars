@@ -1,5 +1,6 @@
 import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js';
 import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js';
+import { rankShelves } from '/js/locate.js';
 import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js';
 
 const $ = (id) => document.getElementById(id);
@@ -353,7 +354,7 @@ function openProduct(p, { replace = false } = {}) {
   if (replace) { screens[at] = () => renderDetail(p); history.replaceState({ i: at }, ''); renderDetail(p); }
   else go(() => renderDetail(p));
 }
-function renderDetail(p) {
+function renderDetail(p, { quiet = false } = {}) {
   current = p;
   setView('detail');
   const shelf = shelfOf(p);
@@ -382,7 +383,7 @@ function renderDetail(p) {
   $('detail-chips').innerHTML = chips.filter(Boolean).join('');
   $('go-btn').classList.toggle('hidden', !navRoute);
   rememberProduct(p);
-  track('view', { productId: p.id }).catch(() => {});
+  if (!quiet) track('view', { productId: p.id }).catch(() => {});
   updateListToggle();
   $('speak').classList.toggle('hidden', !voiceOk());
   if (voiceMode) speak(spokenAnswer);
@@ -423,10 +424,20 @@ function renderNav() {
   const dir = directions(store.map, path, shelf);
   const ICON = { straight: '⬆', right: '➡', left: '⬅' };
   const lines = dir.steps.map((st) => [ICON[st.turn], t(`step_${st.turn}`, { n: st.meters })]);
+  // From an aisle we don't know which way the shopper faces, so the first step names a landmark.
+  if (here && dir.steps.length && path.length > 1) {
+    const [a, b] = path, e = store.map.entrance, n = dir.steps[0].meters;
+    const toEntrance = Math.abs(b.x - e.x) + Math.abs(b.y - e.y) < Math.abs(a.x - e.x) + Math.abs(a.y - e.y);
+    const sideways = a.y === b.y;
+    const toward = sideways && (Math.sign(shelf.x - a.x) === Math.sign(b.x - a.x) ? shelf : store.map.shelves.filter((s) => s.id !== hereShelf?.id && Math.sign(s.x - a.x) === Math.sign(b.x - a.x))
+      .sort((s1, s2) => Math.abs(s1.x - a.x) - Math.abs(s2.x - a.x))[0]);
+    lines[0] = ['🚶', toward ? t('step_toward', { n, a: aisleName(toward, { short: true }) }) : t(toEntrance ? 'step_to_entrance' : 'step_from_entrance', { n })];
+  }
   lines.push(['📍', `${t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) })} · ${current.level ? t('step_look', { l: levelName(current.level) }) : t('step_look_nolevel')}`]);
   $('nav-steps').innerHTML = `<li class="muted" style="font-size:.9rem;border-top:none;padding-top:0">${escapeHtml(t(here ? 'nav_from_here' : 'nav_from_entrance'))}</li>` +
     lines.map(([ico, txt], i) => `<li class="${i === lines.length - 1 ? 'last' : ''}"><span class="ico">${ico}</span><span>${escapeHtml(txt)}</span></li>`).join('');
   $('nav-here').classList.toggle('hidden', !here);
+  for (const b of document.querySelectorAll('[data-where]')) b.textContent = t(hereShelf ? 'where_again' : b.closest('#nav-view') ? 'where_btn' : 'where_home');
   if (here) $('nav-here').textContent = `${t('here', { name: aisleName(hereShelf) })} · ${t('m_from_here', { n: path.length - 1 })}`;
   const svgEl = $('nav-map');
   renderMap(svgEl, store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
@@ -444,7 +455,7 @@ function renderNav() {
   const walkMs = Math.max(3000, (pts.length - 1) * 350), cycle = walkMs + 1500;
   const t0 = performance.now();
   const frame = (now) => {
-    const f = Math.min(1, ((now - t0) % cycle) / walkMs);
+    const f = Math.min(1, (Math.max(0, now - t0) % cycle) / walkMs); // the first frame can be stamped before t0
     const pos = f * (pts.length - 1), i = Math.floor(pos), r = pos - i;
     const a = pts[i], b = pts[Math.min(i + 1, pts.length - 1)];
     walker.setAttribute('cx', a[0] + (b[0] - a[0]) * r);
@@ -541,6 +552,71 @@ async function goToItem(id) {
   if (!navRoute) return; // it's in this very aisle
   const route = navRoute;
   go(() => { current = p; navRoute = route; renderNav(); });
+}
+
+// ---------- "where am I?": photo of the shelf in front of you, or a tap on the map ----------
+let shelfPhotos = null;
+function openLocate() {
+  buzz();
+  $('loc-status').classList.add('hidden');
+  $('loc-guesses').innerHTML = '';
+  renderMap($('loc-map'), store.map, { here: hereShelf && aisleSpot(store.map, hereShelf), onShelfClick: setHere, ...mapLabels() });
+  $('locate-sheet').classList.remove('hidden');
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-where]')) openLocate(); });
+$('loc-cancel').addEventListener('click', () => $('locate-sheet').classList.add('hidden'));
+$('locate-sheet').addEventListener('click', (e) => { if (e.target === $('locate-sheet')) $('locate-sheet').classList.add('hidden'); });
+$('loc-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  $('loc-status').innerHTML = `<span class="row"><span class="spinner"></span> ${t('loc_thinking')}</span>`;
+  $('loc-status').classList.remove('hidden');
+  $('loc-guesses').innerHTML = '';
+  try {
+    shelfPhotos ||= await api(pub('/shelf-photos'));
+    // the AI guess when the store has it; otherwise (and as a backup) compare with the shelf photos
+    const form = new FormData();
+    form.append('image', await resizeImage(file, 1024), 'shelf.jpg');
+    const [aiGuess, ranked] = await Promise.all([
+      store.photoSearch ? api(pub('/locate'), { method: 'POST', form }).catch(() => ({ shelfIds: [] })) : { shelfIds: [] },
+      rankShelves(file, shelfPhotos).catch(() => []),
+    ]);
+    const ids = [...new Set([...aiGuess.shelfIds, ...ranked.filter((r) => r.score >= ranked[0].score - 0.05).map((r) => r.shelfId)])].slice(0, 3);
+    const guesses = ids.map((id) => store.map.shelves.find((s) => s.id === id)).filter(Boolean);
+    if (!guesses.length) { $('loc-status').textContent = t('loc_none'); return; }
+    $('loc-status').textContent = t('loc_guess');
+    renderMap($('loc-map'), store.map, { targetShelfId: guesses[0].id, onShelfClick: setHere, ...mapLabels() });
+    $('loc-guesses').replaceChildren(...guesses.map((s, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `loc-guess${i ? '' : ' best'}`;
+      const photo = shelfPhotos.find((x) => x.shelfId === s.id)?.urls[0];
+      b.innerHTML = `${photo ? `<img src="${escapeHtml(photo)}" alt="">` : ''}<span class="lg-name">${escapeHtml(aisleName(s))}</span><span class="lg-yes">${escapeHtml(t('loc_yes'))}</span>`;
+      b.addEventListener('click', () => setHere(s));
+      return b;
+    }));
+    buzz(15);
+  } catch (err) { $('loc-status').textContent = err.message; }
+});
+function setHere(shelf) {
+  hereShelf = shelf;
+  buzz(25);
+  $('locate-sheet').classList.add('hidden');
+  $('here-banner').textContent = t('here', { name: aisleName(shelf) });
+  $('here-banner').classList.remove('hidden');
+  toast(t('loc_done', { a: aisleName(shelf, { short: true }) }));
+  const v = document.body.dataset.view;
+  if ((v === 'nav' || v === 'detail') && current) {
+    const p = current;
+    renderDetail(p, { quiet: true }); // routes again, from where the shopper stands
+    if (v === 'nav' && navRoute) {
+      const route = navRoute;
+      screens[at] = () => { current = p; navRoute = route; renderNav(); };
+      renderNav();
+      if (store.premiumVoice || canSpeak) speak(spokenAnswer);
+    } else screens[at] = () => renderDetail(p, { quiet: true });
+  } else if (v === 'list') renderListView();
 }
 
 // ---------- request a product the store doesn't carry ----------

@@ -284,4 +284,41 @@ async function expandQuery(query) {
   return terms;
 }
 
-module.exports = { aiEnabled, provider, detectProducts, detectProductsInFrames, identifyProduct, expandQuery, toGeminiSchema };
+// "Where am I?": the shopper photographs the shelf in front of them; pick the aisle from what's on it.
+const LOCATE_SCHEMA = {
+  type: 'object',
+  properties: {
+    shelfIds: { type: 'array', items: { type: 'string' }, description: 'מזהי המעברים הסבירים, מהסביר ביותר, עד 3' },
+  },
+  required: ['shelfIds'],
+  additionalProperties: false,
+};
+async function locateShelf(imageBuffer, mediaType, shelves) {
+  const list = shelves.map((s) => `${s.id}: ${s.name} — ${s.products.join(', ')}`).join('\n');
+  const system = 'אתה עוזר בחנות. מקבלים תמונה שלקוח צילם של המדף שמולו, ורשימת מעברים בחנות עם המוצרים בכל מעבר. ' +
+    'החזר את מזהי המעברים שהכי סביר שהלקוח עומד מולם, לפי המוצרים שרואים בתמונה. אם אין שום רמז, החזר רשימה ריקה.';
+  const text = `המעברים בחנות:\n${list}\n\nליד איזה מעבר הלקוח עומד?`;
+  let parsed;
+  if (provider() === 'gemini') {
+    parsed = await gemini({ system, schema: LOCATE_SCHEMA, parts: [{ inline_data: { mime_type: mediaType, data: imageBuffer.toString('base64') } }, { text }] });
+  } else {
+    const response = await getClient().beta.messages.create({
+      model: MODEL,
+      max_tokens: 500,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: LOCATE_SCHEMA } },
+      system,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBuffer.toString('base64') } },
+        { type: 'text', text },
+      ] }],
+    });
+    if (response.stop_reason === 'refusal') throw new Error('המודל סירב לעבד את התמונה');
+    parsed = JSON.parse(response.content.filter((b) => b.type === 'text').map((b) => b.text).join(''));
+  }
+  const ids = new Set(shelves.map((s) => s.id));
+  return [...new Set((Array.isArray(parsed.shelfIds) ? parsed.shelfIds : []).map(String))].filter((id) => ids.has(id)).slice(0, 3);
+}
+
+module.exports = { aiEnabled, provider, detectProducts, detectProductsInFrames, identifyProduct, locateShelf, expandQuery, toGeminiSchema };

@@ -569,6 +569,38 @@ function searchTerms(terms, products) {
   }
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, 10);
 }
+// "Where am I?": the store's own shelf photos, so the phone can compare the shopper's photo to them
+// (free, no AI), and an AI guess when a key is set.
+app.get('/api/public/:slug/shelf-photos', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  const rows = db.prepare('SELECT shelf_id, file FROM photos WHERE store_id = ? ORDER BY id DESC').all(store.id);
+  const perShelf = new Map();
+  for (const r of rows) {
+    const list = perShelf.get(r.shelf_id) || [];
+    if (list.length < 3) list.push(`/uploads/${r.file}`);
+    perShelf.set(r.shelf_id, list);
+  }
+  res.json([...perShelf].map(([shelfId, urls]) => ({ shelfId, urls })));
+});
+app.post('/api/public/:slug/locate', upload.single('image'), async (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (!req.file) return res.status(400).json({ error: 'צריך תמונה' });
+  if (!ai.aiEnabled()) return res.json({ shelfIds: [], ai: false });
+  if (rateLimited(`locate:${req.ip}`, 6)) return res.status(429).json({ error: 'יותר מדי תמונות, נסו שוב בעוד דקה' });
+  const products = db.prepare('SELECT shelf_id, name FROM products WHERE store_id = ? AND active = 1').all(store.id);
+  const shelves = JSON.parse(store.map_json).shelves.map((s) => ({
+    id: s.id, name: s.name, products: products.filter((p) => p.shelf_id === s.id).slice(0, 15).map((p) => p.name),
+  }));
+  try {
+    res.json({ shelfIds: await ai.locateShelf(req.file.buffer, req.file.mimetype, shelves), ai: true });
+  } catch (err) {
+    console.error('locate failed:', err.message);
+    res.json({ shelfIds: [], ai: false });
+  }
+});
+
 app.post('/api/public/:slug/photo-search', upload.single('image'), async (req, res) => {
   const store = getStoreBySlug(req.params.slug);
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
