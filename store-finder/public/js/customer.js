@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=25';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=25';
-import { rankShelves } from '/js/locate.js?v=25';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=25';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=25';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=26';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=26';
+import { rankShelves } from '/js/locate.js?v=26';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=26';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=26';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -1226,7 +1226,8 @@ function paintHunt() {
   if (!hunt?.on) return el.classList.add('hidden');
   const st = huntState();
   el.classList.remove('hidden');
-  el.textContent = st.code ? t('hunt_won_chip') : t('hunt_chip', { n: st.found.length });
+  el.textContent = st.code ? t('hunt_won_chip') : `🎁 ${st.found.length}/3`;
+  el.title = t('hunt_chip', { n: st.found.length });
   el.classList.toggle('won', Boolean(st.code));
 }
 async function foundTreasure(p) {
@@ -1274,7 +1275,9 @@ async function render3d({ productId = null, shelfId = null } = {}) {
         inCart: (id) => inList(id),
         isGold: (id) => isTreasure(id),
         where: (shelf) => {
-          $('s3d-where').textContent = shelf ? aisleName(shelf) : t('s3d_walk');
+          // two lines: the aisle number big, the department under it, never cut off
+          const parts = shelf ? shelf.name.split('·').map((x) => x.trim()) : [];
+          $('s3d-where').innerHTML = shelf ? `<b>${escapeHtml(parts[0] || aisleName(shelf, { short: true }))}</b><small>${escapeHtml(parts.slice(1).join(' · '))}</small>` : `<b>${escapeHtml(t('s3d_walk'))}</b>`;
           clearTimeout(s3d?.sayTimer);
           if (shelf && s3d) s3d.sayTimer = setTimeout(() => { if (s3d.whereId === shelf.id && !s3d.path) say(aisleName(shelf, { short: lang !== 'he' })); }, 1200);
         },

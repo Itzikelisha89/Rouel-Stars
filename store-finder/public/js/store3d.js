@@ -2,7 +2,7 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
-import { drawCrop } from '/js/map.js?v=25';
+import { drawCrop } from '/js/map.js?v=26';
 
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
@@ -208,7 +208,8 @@ export class Store3D {
     const T = this.THREE, map = this.map;
     LIN = T;
     const r = this.renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    this.pr = Math.min(1.75, window.devicePixelRatio || 1); // sharp enough on a phone, and lighter than 2-3×
+    r.setPixelRatio(this.pr);
     r.outputEncoding = T.sRGBEncoding;
     r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
     this.el.appendChild(r.domElement);
@@ -802,6 +803,14 @@ export class Store3D {
     });
   }
 
+  // a phone that can't keep up gets a lighter picture instead of a stutter
+  adaptQuality(now) {
+    this.fpsT ||= now; this.fpsN = (this.fpsN || 0) + 1;
+    if (now - this.fpsT < 2.5) return;
+    const fps = this.fpsN / (now - this.fpsT);
+    this.fpsT = now; this.fpsN = 0;
+    if (fps < 26 && this.pr > 1) { this.pr = Math.max(1, this.pr - 0.35); this.renderer.setPixelRatio(this.pr); this.resize(); }
+  }
   frame() {
     const T = this.THREE, dt = Math.min(0.1, this.clock.getDelta()); // a slow phone still walks at the right pace
     const now = performance.now() / 1000;
@@ -898,12 +907,22 @@ export class Store3D {
       if (this.cartBounce >= Math.PI) this.cartBounce = undefined;
     }
     this.renderer.render(this.scene, this.camera);
+    this.adaptQuality(now);
     this.reportWhere();
   }
   reportWhere() {
     const t = performance.now();
     if (t - (this.lastWhere || 0) < 400) return;
     this.lastWhere = t;
+    // what's in front of your eyes: look straight ahead up to 4 m, the first shelf you'd hit
+    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
+    for (let d = 0.3; d <= 4; d += 0.2) {
+      const x = this.pos.x + fx * d, z = this.pos.z + fz * d;
+      if (this.free(x, z)) continue;
+      const hit = this.map.shelves.find((s) => /^a/.test(s.id) && x >= s.x && x < s.x + s.w && z >= s.y && z < s.y + s.h);
+      if (hit) { if (hit.id !== this.whereId) { this.whereId = hit.id; this.on.where(hit); } return; }
+      break;
+    }
     let best = null, bd = 1.8;
     for (const s of this.map.shelves) {
       if (!/^a/.test(s.id)) continue;

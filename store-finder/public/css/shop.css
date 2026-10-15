@@ -359,3 +359,8 @@ body.in3d { overflow: hidden; }
 .s3d-topic.theme { background: linear-gradient(135deg, rgba(255, 138, 42, .9), rgba(255, 61, 110, .9)); border: 0; }
 .s3d-topic.on { outline: 3px solid #ffd166; transform: scale(1.05); }
 .s3d-mini { top: calc(116px + env(safe-area-inset-top, 0px)) !important; }
+/* a clean top: close, where you are (two lines), cart */
+.s3d-where { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.s3d-where b { font-size: 1.05rem; font-weight: 900; }
+.s3d-where small { font-size: .78rem; font-weight: 700; opacity: .85; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s3d-hunt { position: absolute; top: calc(116px + env(safe-area-inset-top, 0px)); inset-inline-start: 12px; z-index: 4; }
