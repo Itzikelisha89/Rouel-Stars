@@ -38,7 +38,7 @@ function seedBranch(SLUG, NAME, o) {
   const salt = crypto.randomBytes(16).toString('hex');
   const map = {
     cols: 44, rows: 25, entrance: { x: 20, y: 24 },
-    shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר', "הלבשה ופיג'מות", 'צעצועים ומשחקים']
+    shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר', "הלבשה ופיג'מות", 'צעצועים, יצירה וסקוויזים']
       .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4, 0, 40][i], y: 4, w: 2, h: 15 })),
   };
   const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
@@ -66,7 +66,7 @@ function seedBranch(SLUG, NAME, o) {
   // Deals the manager marked, for the shopper's home screen.
   for (const [match, promo] of [['ORIENT 20', '20% הנחה השבוע'], ['תיק גב Marshmelo', '2 ב-150 ₪'], ['MOOSH בצבעי פסטל', '3 ב-60 ₪'],
     ['סט מצעים URBAN לילדים', 'מחיר מבצע'], ['פח סנסור DUBLIN', 'השני ב-50%'], ['קורקינט MAXI 3 גלגלים ידית מתקפלת', 'מבצע חגים'],
-    ["פיג'מת בנות קטיפה פנדה", 'מבצע חורף'], ['FOOTBALL KIDI', 'מבצע חורף']]) {
+    ["פיג'מת בנות קטיפה פנדה", 'מבצע חורף'], ['מארז 3 סקוויזים', '2 ב-50 ₪'], ['ערכת סליים', 'מבצע!'], ['FOOTBALL KIDI', 'מבצע חורף']]) {
     db.prepare("UPDATE products SET promo = ? WHERE store_id = ? AND name LIKE '%' || ? || '%'").run(promo, storeId, match);
   }
   // buying from the couch: the daily treasure hunt's prize, and pickup orders over the pilot month
