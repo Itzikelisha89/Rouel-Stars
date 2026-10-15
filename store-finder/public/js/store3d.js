@@ -445,6 +445,7 @@ export class Store3D {
       }
     });
     this.buildPopouts(s, open, len, alongZ);
+    if (!wall) this.buildStand(s, alongZ, cx, cz);
     // aisle signs hanging at both ends of the shelf
     const short = s.name.split('·').slice(0, 2).join('·').trim();
     const [num, ...rest] = short.split('·');
@@ -527,16 +528,43 @@ export class Store3D {
   buildPopouts(s, sides, len, alongZ) {
     const items = (this.byShelf.get(s.id)?.products || []).filter((p) => p.photo || p.image);
     if (!items.length || !sides.length) return;
-    const slots = Math.max(1, Math.min(13, Math.floor((len - 1.0) / 1.05)));
-    const rows = items.length > slots ? 2 : 1;
+    const slots = Math.max(1, Math.min(12, Math.floor((len - 1.0) / 1.2)));
+    const rows = 1;
     sides.forEach((side, si) => {
       for (let r = 0; r < rows; r++) for (let k = 0; k < slots; k++) {
-        const p = items[(k + r * slots + si * 3) % items.length];
+        const p = items[(k + si * slots) % items.length];
         const along = -len / 2 + 0.5 + (len - 1.0) * (k + 0.5) / slots;
         const ox = alongZ ? 0 : along * (side.nz === 1 ? 1 : -1), oz = alongZ ? along * (side.nx === 1 ? -1 : 1) : 0;
-        this.addPopout(p, new this.THREE.Vector3(side.x + ox, rows === 2 ? (r ? 0.7 : 1.5) : 1.28, side.z + oz), side, s);
+        this.addPopout(p, new this.THREE.Vector3(side.x + ox, 1.36, side.z + oz), side, s);
       }
     });
+  }
+  // a promotion stand on the floor at the far end of the aisle: the aisle's best offer, big, on a pedestal
+  buildStand(s, alongZ, cx, cz) {
+    const T = this.THREE;
+    const items = (this.byShelf.get(s.id)?.products || []).filter((p) => p.photo || p.image);
+    const p = items.find((x) => x.promo) || items[0];
+    if (!p) return;
+    const e = this.map.entrance;
+    const far = alongZ ? (Math.abs(s.y - e.y) > Math.abs(s.y + s.h - e.y) ? -1 : 1) : (Math.abs(s.x - e.x) > Math.abs(s.x + s.w - e.x) ? -1 : 1);
+    const dist = 1.5;
+    const x = alongZ ? cx : far < 0 ? s.x - dist : s.x + s.w + dist, z = alongZ ? (far < 0 ? s.y - dist : s.y + s.h + dist) : cz;
+    if (!this.free(x, z)) return;
+    const rot = alongZ ? (far < 0 ? Math.PI : 0) : (far < 0 ? -Math.PI / 2 : Math.PI / 2);
+    // pedestal: warm wood with the store's orange band
+    this.pedMat ||= new T.MeshLambertMaterial({ color: C(0x6b4c34) });
+    this.pedBand ||= new T.MeshBasicMaterial({ color: C(0xf27018), toneMapped: false });
+    const ped = new T.Mesh(new T.BoxGeometry(0.9, 0.62, 0.9), this.pedMat); ped.position.set(x, 0.31, z); this.scene.add(ped);
+    const band = new T.Mesh(new T.BoxGeometry(0.92, 0.1, 0.92), this.pedBand); band.position.set(x, 0.5, z); this.scene.add(band);
+    // a stack of the product's packs on top
+    this.stackMats ||= new Map();
+    if (!this.stackMats.has(p.id)) { const t = thumbTex(T, p); this.stackMats.set(p.id, new T.MeshLambertMaterial({ map: t })); }
+    for (const [ox, oz, oy] of [[-0.2, -0.15, 0], [0.2, -0.15, 0], [0, 0.15, 0], [0, -0.05, 0.3]]) {
+      const b = new T.Mesh(new T.BoxGeometry(0.34, 0.3, 0.26), this.stackMats.get(p.id));
+      b.position.set(x + ox, 0.62 + 0.15 + oy, z + oz); b.rotation.y = rot; this.scene.add(b);
+    }
+    const side = { nx: Math.sin(rot), nz: Math.cos(rot), rot };
+    this.addPopout(p, Object.assign(new T.Vector3(x, 1.85, z), { out: 0, scale: 1.35, noStand: true }), side, s);
   }
   // the product's card closest to where it sits on the shelf
   cardFor(sprite) {
@@ -556,15 +584,16 @@ export class Store3D {
     // keep the cards apart along the shelf
     const a = alongZ ? at.z : at.x;
     const e = this.map.entrance, toEntrance = alongZ ? Math.sign(e.y + 0.5 - a) || 1 : Math.sign(e.x + 0.5 - a) || 1;
-    const out = 0.5, y = at.y;
+    const out = at.out ?? 0.85, y = at.y; // out in the walkway, where the cart passes
     const x = alongZ ? at.x + side.nx * out : a, z = alongZ ? a : at.z + side.nz * out;
     this.popTexs ||= new Map();
     if (!this.popTexs.has(p.id)) this.popTexs.set(p.id, popTex(T, p, this.on.price(p), this.on.inCart(p.id)));
     const tex = this.popTexs.get(p.id);
     this.popMats ||= new Map();
     if (!this.popMats.has(p.id)) this.popMats.set(p.id, new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, toneMapped: false }));
-    this.popGeo ||= new T.PlaneGeometry(0.58, 0.81);
+    this.popGeo ||= new T.PlaneGeometry(0.64, 0.9);
     const card = new T.Mesh(this.popGeo, this.popMats.get(p.id));
+    if (at.scale) card.scale.setScalar(at.scale);
     // turn the card ~35° from the shelf toward the entrance end of the aisle
     let best = side.rot;
     for (const d of [0.72, -0.72]) {
@@ -573,17 +602,18 @@ export class Store3D {
     }
     card.rotation.y = best;
     card.position.set(x, y, z);
-    card.userData = { product: p, shelf, side, along: a, y, phase: Math.random() * 6, tex };
+    card.userData = { product: p, shelf, side, along: a, y, phase: Math.random() * 6, tex, rest: best, s0: at.scale || 1 };
     this.scene.add(card);
     this.clickables.push(card);
     this.popouts.push(card);
-    // the arm that holds it out from the shelf
+    if (at.noStand) return;
+    // a display stand on the floor holds it up, out in the aisle
     this.armMat ||= new T.MeshLambertMaterial({ color: C(0x2a2622) });
-    const len = out - 0.02;
-    this.armGeo ||= {};
-    const arm = new T.Mesh(this.armGeo[alongZ] ||= alongZ ? new T.BoxGeometry(len, 0.025, 0.025) : new T.BoxGeometry(0.025, 0.025, len), this.armMat);
-    arm.position.set(alongZ ? at.x + side.nx * len / 2 : a, y - 0.42, alongZ ? a : at.z + side.nz * len / 2);
-    this.scene.add(arm);
+    this.poleGeo ||= new T.CylinderGeometry(0.018, 0.018, 1, 8);
+    this.footGeo ||= new T.CylinderGeometry(0.16, 0.19, 0.04, 20);
+    const h = y - 0.44;
+    const pole = new T.Mesh(this.poleGeo, this.armMat); pole.scale.y = h; pole.position.set(x, h / 2, z); this.scene.add(pole);
+    const foot = new T.Mesh(this.footGeo, this.armMat); foot.position.set(x, 0.02, z); this.scene.add(foot);
   }
   refreshTag(id) {
     this.popTexs?.get(id)?.repaint(this.on.inCart(id));
@@ -747,7 +777,20 @@ export class Store3D {
     this.camera.rotation.set(0, 0, 0);
     this.camera.rotateY(this.yaw); this.camera.rotateX(this.pitch);
     // the product cards float a little, like a display that wants to be touched
-    for (const c of this.popouts || []) c.position.y = c.userData.y + Math.sin(now * 1.6 + c.userData.phase) * 0.018;
+    for (const c of this.popouts || []) {
+      const u = c.userData;
+      c.position.y = u.y + Math.sin(now * 1.6 + u.phase) * 0.018;
+      // close by, the card turns to face the shopper (never turning its back on the aisle)
+      const dx = this.pos.x - c.position.x, dz = this.pos.z - c.position.z, d = dx * dx + dz * dz;
+      c.visible = d > 1.1; // right in front of your nose it steps aside, so you can see the shelf
+      let want = u.rest;
+      if (d < 64 && d > 0.2) {
+        const face = Math.atan2(dx, dz), off = ((face - u.side.rot + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        want = u.side.rot + Math.max(-1.35, Math.min(1.35, off));
+      }
+      const diff = ((want - c.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      c.rotation.y += diff * Math.min(1, dt * 3);
+    }
     // price tags breathe; the one we walked to pulses bigger
     for (const s of this.hot) { const b = s.userData.base * (1 + Math.sin(now * 3 + s.position.x) * 0.06); s.scale.set(b, b, 1); }
     if (this.flash) {
