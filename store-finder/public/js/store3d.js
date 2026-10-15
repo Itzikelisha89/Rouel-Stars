@@ -2,7 +2,7 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
-import { drawCrop } from '/js/map.js?v=23';
+import { drawCrop } from '/js/map.js?v=24';
 
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
@@ -802,7 +802,7 @@ export class Store3D {
       const want = Math.atan2(-dx, -dz);
       let diff = ((want - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       this.yaw += diff * Math.min(1, dt * 5);
-      const stepLen = SPEED * dt;
+      const stepLen = SPEED * (this.speedK || 1) * dt; // the guided tour walks slower
       if (d <= stepLen) {
         this.pos.x = target.x; this.pos.z = target.z;
         this.path.points.shift();

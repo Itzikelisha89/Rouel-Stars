@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=23';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=23';
-import { rankShelves } from '/js/locate.js?v=23';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=23';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=23';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=24';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=24';
+import { rankShelves } from '/js/locate.js?v=24';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=24';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=24';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -970,7 +970,7 @@ $('tour-sheet').addEventListener('click', (e) => { if (e.target === $('tour-shee
 // ---------- the store in 3D ----------
 let s3d = null;
 let s3dPick = null;
-function stop3d() { s3d?.stop(); stopMusic(); }
+function stop3d() { if (s3d?.guide) endGuide(); s3d?.stop(); stopMusic(); }
 // the cart button: how many and how much, like the screen on a smart cart
 function paintCart3d() {
   const todo = loadList().filter((i) => !i.picked);
@@ -1042,6 +1042,117 @@ function kaching() {
   });
 }
 function open3d(opts = {}) { go(() => render3d(opts)); }
+// ---------- the guided tour ----------
+const G_WAIT = 12000; // time at each aisle before moving on by itself
+function gSay(text) { $('g-text').textContent = text; say(text); }
+function gButtons(list) {
+  $('g-btns').replaceChildren(...list.map(([label, fn, primary]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = primary ? 'g-btn primary' : 'g-btn'; b.textContent = label;
+    b.addEventListener('click', () => { buzz(8); fn(); });
+    return b;
+  }));
+}
+function gClearTimer() {
+  clearTimeout(s3d?.guide?.timer);
+  const bar = $('g-bar'); bar.style.transition = 'none'; bar.style.width = '0';
+}
+function gCountdown(ms, then) {
+  gClearTimer();
+  const bar = $('g-bar');
+  void bar.offsetWidth;
+  bar.style.transition = `width ${ms}ms linear`; bar.style.width = '100%';
+  s3d.guide.timer = setTimeout(then, ms);
+}
+function gProduct(p) {
+  s3d.guide.product = p;
+  $('g-prod').classList.toggle('hidden', !p);
+  if (!p) return;
+  drawCrop($('g-thumb'), p.image || p.photo, p.image ? null : p.box, 120);
+  $('g-pname').textContent = p.name;
+  $('g-pprice').textContent = [p.price && formatPrice(p.price), p.promo && `🏷️ ${p.promo}`].filter(Boolean).join(' · ');
+  $('g-add').textContent = t(inList(p.id) ? 'in_short' : 'g_add');
+  $('g-add').classList.toggle('on', inList(p.id));
+}
+function guideHello() {
+  s3d.guide = {};
+  $('s3d-guide').classList.remove('hidden');
+  gProduct(null); gClearTimer();
+  gSay(t('g_hello'));
+  gButtons([[t('g_yes'), startGuide, true], [t('g_alone'), endGuide]]);
+}
+function startGuide() {
+  if (!s3d) return;
+  const shelves = tour.aisles.map((a) => store.map.shelves.find((s) => s.id === a.shelfId)).filter(Boolean);
+  const here = { x: Math.floor(s3d.pos.x), y: Math.floor(s3d.pos.z) };
+  const order = planRoute(store.map, shelves, store.map.entrance).legs.map((l) => l.shelf);
+  if (!order.length) return;
+  s3d.guide = { order, i: 0 };
+  s3d.speedK = 0.55; // a slow, relaxed walk
+  $('s3d-guide').classList.remove('hidden');
+  $('s3d-auto').textContent = t('s3d_stop');
+  void here;
+  guideNext();
+}
+// the aisle's pick: a deal first, else what other shoppers put in their carts, with a photo
+function aislePick(a) {
+  const ps = (a?.products || []).filter((p) => p.photo || p.image);
+  return ps.find((p) => p.promo && !inList(p.id)) || [...ps].sort((x, y) => (y.carts || 0) - (x.carts || 0)).find((p) => !inList(p.id)) || null;
+}
+function guideNext() {
+  const g = s3d?.guide;
+  if (!g?.order) return;
+  gClearTimer();
+  const sh = g.order[g.i++];
+  if (!sh) return guideDone();
+  const a = tour.aisles.find((x) => x.shelfId === sh.id), p = aislePick(a);
+  gProduct(null);
+  $('g-text').textContent = t('g_walk', { a: aisleName(sh, { short: true }) });
+  gButtons([[t('g_next'), guideNext], [t('g_end_btn'), endGuide]]);
+  const me = g.i;
+  const arrived = () => { if (s3d.guide === g && g.i === me) guideAt(sh, p); };
+  if (!(p && s3d.walkToProduct(p.id, arrived))) s3d.walkToShelf(sh, arrived);
+}
+function guideAt(sh, p) {
+  const name = aisleName(sh, { short: lang !== 'he' });
+  gProduct(p);
+  if (p) gSay(t('g_aisle', { a: name, p: shortName(p), price: p.price ? `, ${formatPrice(p.price)}` : '', promo: p.promo ? `. ${p.promo}` : '' }));
+  else gSay(t('g_aisle_plain', { a: name }));
+  gButtons([[t('g_next'), guideNext, true], [t('g_wait'), guideWait], [t('g_end_btn'), endGuide]]);
+  gCountdown(G_WAIT, guideNext);
+}
+function guideWait() {
+  if (!s3d?.guide?.order) return;
+  gClearTimer();
+  gButtons([[t('g_next'), guideNext, true], [t('g_end_btn'), endGuide]]);
+}
+function guideDone() {
+  const n = loadList().filter((i) => !i.picked).length;
+  s3d.speedK = 1;
+  s3d.guide = {};
+  gProduct(null); gClearTimer();
+  $('s3d-auto').textContent = t('s3d_auto');
+  if (n) { gSay(t('g_done', { n })); gButtons([[t('fin_order'), () => { endGuide(); openOrder(); }, true], [t('g_alone'), endGuide]]); }
+  else { gSay(t('g_done_empty')); gButtons([[t('ord_close'), endGuide, true]]); }
+}
+function endGuide() {
+  if (!s3d) return;
+  clearTimeout(s3d.guide?.timer);
+  s3d.guide = null; s3d.speedK = 1;
+  $('s3d-guide').classList.add('hidden');
+  $('s3d-auto').textContent = t('s3d_auto');
+}
+$('g-add').addEventListener('click', () => {
+  const p = s3d?.guide?.product;
+  if (!p) return;
+  const adding = !inList(p.id);
+  toggleList(p, 'tour');
+  if (adding) { s3d.flyToCart(p); setTimeout(kaching, 450); } else s3d.refreshTag(p.id);
+  setTimeout(paintCart3d, adding ? 650 : 0);
+  gProduct(p);
+  if (adding && s3d.guide?.order) { gClearTimer(); $('upsell-sheet').classList.add('hidden'); gSay(t('g_added')); gButtons([[t('g_next'), guideNext, true], [t('g_end_btn'), endGuide]]); gCountdown(7000, guideNext); }
+});
+
 // ---------- the daily treasure hunt: three gold products hidden in the 3D store ----------
 let hunt = null;
 const huntKey = () => `storeFinder:hunt:${store.slug}:${hunt?.day}`;
@@ -1117,7 +1228,7 @@ async function render3d({ productId = null, shelfId = null } = {}) {
       if (!productId && !shelfId) {
         $('s3d-store').textContent = store.name;
         $('s3d-welcome').classList.add('show');
-        s3d.playIntro(() => { $('s3d-welcome').classList.remove('show'); say(t('s3d_welcome')); });
+        s3d.playIntro(() => { $('s3d-welcome').classList.remove('show'); guideHello(); });
       }
     }
     s3d.resize();
@@ -1151,6 +1262,7 @@ function tick3dMini() {
   setTimeout(tick3dMini, 120);
 }
 function show3dPick(p) {
+  if (s3d?.guide?.order) guideWait();
   if (isTreasure(p.id)) foundTreasure(p);
   tourPick = p;
   s3dPick = p;
@@ -1201,7 +1313,8 @@ function bind3dControls() {
     s3d.move.f = -dy / R; s3d.move.s = dx / R;
     if (Math.abs(s3d.move.f) < 0.15) s3d.move.f = 0;
     if (Math.abs(s3d.move.s) < 0.25) s3d.move.s = 0;
-    s3d.path = null; s3d.tour = null;
+    s3d.path = null;
+    if (s3d.guide) guideWait(); // walking yourself pauses the guide
   };
   stick.addEventListener('pointerdown', (e) => { sid = e.pointerId; stick.setPointerCapture(sid); setStick(e); });
   stick.addEventListener('pointermove', (e) => { if (e.pointerId === sid) setStick(e); });
@@ -1218,27 +1331,8 @@ function bind3dControls() {
   window.addEventListener('keydown', (e) => { if (document.body.dataset.view === 's3d') { keys.add(e.key); applyKeys(); } });
   window.addEventListener('keyup', (e) => { keys.delete(e.key); applyKeys(); });
   setInterval(() => { if (s3d?.turnKeys && s3d.running) s3d.yaw += s3d.turnKeys * 0.04; }, 16);
-  // a guided walk through the aisles, in walking order, a pause at each one
-  $('s3d-auto').addEventListener('click', () => {
-    if (!s3d) return;
-    if (s3d.tour) { s3d.tour = null; s3d.path = null; $('s3d-auto').textContent = t('s3d_auto'); return; }
-    const shelves = tour.aisles.map((a) => store.map.shelves.find((s) => s.id === a.shelfId)).filter(Boolean);
-    const order = planRoute(store.map, shelves, store.map.entrance).legs.map((l) => l.shelf);
-    s3d.tour = { order, i: 0 };
-    $('s3d-auto').textContent = t('s3d_stop');
-    const next = () => {
-      if (!s3d.tour) return;
-      const sh = s3d.tour.order[s3d.tour.i++];
-      if (!sh) { s3d.tour = null; $('s3d-auto').textContent = t('s3d_auto'); say(t('s3d_tour_end')); return; }
-      s3d.walkToShelf(sh, () => {
-        const a = tour.aisles.find((x) => x.shelfId === sh.id);
-        const deals = a ? a.products.filter((p) => p.promo).length : 0;
-        say(`${aisleName(sh, { short: lang !== 'he' })}. ${a ? t('tour_n', { n: a.products.length }) : ''}${deals ? ` ${t('tour_deals', { n: deals })}` : ''}`);
-        setTimeout(next, 4200);
-      });
-    };
-    next();
-  });
+  // the guided tour: Omer walks you through the aisles slowly, stops, talks, and waits for you
+  $('s3d-auto').addEventListener('click', () => { if (s3d?.guide) endGuide(); else startGuide(); });
   $('s3d-cart').addEventListener('click', () => go(renderListView));
   $('s3d-music').addEventListener('click', () => {
     sound.on = !sound.on;
@@ -1250,7 +1344,7 @@ function bind3dControls() {
     buzz();
     const tills = store.map.shelves.filter((s) => /^c\d+$/.test(s.id) || /קופ/.test(s.name));
     const near = tills.sort((a, b) => Math.hypot(a.x - s3d.pos.x, a.y - s3d.pos.z) - Math.hypot(b.x - s3d.pos.x, b.y - s3d.pos.z))[0];
-    s3d.tour = null;
+    if (s3d.guide) endGuide();
     if (near) s3d.walkToShelf(near, showFinale);
     else { const e = store.map.entrance; s3d.walkToPoint(e.x + 0.5, e.y + 0.5); setTimeout(showFinale, 1200); }
   });
@@ -1361,6 +1455,7 @@ const offered = new Set();
 // "כוס קפה קר MOOSH בצבעי פסטל 550 מ"ל" -> "כוס קפה קר": short enough to say out loud
 const shortName = (p) => { const w = []; for (const x of p.name.split(/\s+/)) { if (!/^[\u0590-\u05FF'׳-]+$/.test(x) || w.length === 3) break; w.push(x); } return w.join(' ') || p.name; };
 async function offerWith(p, list) {
+  if (s3d?.guide?.order) return; // the guide is talking; it says it was added
   const inSheet = !$('upsell-sheet').classList.contains('hidden');
   if (inSheet || offered.has(p.id)) return say(t('added_say'));
   offered.add(p.id);

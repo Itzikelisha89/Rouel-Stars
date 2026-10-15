@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=23">
-  <link rel="stylesheet" href="/css/shop.css?v=23">
+  <link rel="stylesheet" href="/css/app.css?v=24">
+  <link rel="stylesheet" href="/css/shop.css?v=24">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -50,13 +50,17 @@
     </div>
 
     <section id="home-extra" class="view">
-      <button type="button" id="talk-btn" class="talk-btn hidden" data-i18n="talk_btn">🎤 פשוט תגיד לי</button>
-      <button type="button" id="tour-card" class="tour-card hidden">
+      <button type="button" id="tour-card" class="tour-card hero3d hidden">
         <span class="tc-bg" id="tour-card-bg"></span>
-        <span class="tc-text"><b data-i18n="tour_title">🎥 סיור וירטואלי בחנות</b><span data-i18n="tour_sub">טיילו בין המדפים האמיתיים והוסיפו לעגלה</span></span>
         <span class="tc-3d" id="tc-3d">3D</span>
-        <span class="tc-go">▶</span>
+        <span class="tc-text">
+          <b data-i18n="tour_title">🛋️ קונים מהספה, כאילו אתם בחנות</b>
+          <span data-i18n="tour_sub">מטיילים בין המדפים בתלת-ממד, ממלאים עגלה, ואנחנו מכינים לכם הכל בסניף. רק באים לאסוף.</span>
+          <span class="h3-steps"><i data-i18n="tour_s1">1 · מטיילים</i><i data-i18n="tour_s2">2 · לעגלה</i><i data-i18n="tour_s3">3 · אוספים</i></span>
+          <span class="h3-cta" data-i18n="tour_cta">▶ כניסה לחנות</span>
+        </span>
       </button>
+      <button type="button" id="talk-btn" class="talk-btn hidden" data-i18n="talk_btn">🎤 פשוט תגיד לי</button>
       <button type="button" id="toys-card" class="toys-card hidden">
         <span class="tyc-emoji">🧸🚗🎈</span>
         <span class="tc-text"><b data-i18n="toys_title">עולם הצעצועים</b><span data-i18n="toys_sub">בואו לטייל במעבר הצעצועים בתלת-ממד</span></span>
@@ -190,6 +194,12 @@
       <div class="s3d-hint" id="s3d-hint" data-i18n="s3d_hint">גוררים כדי להסתכל · הג׳ויסטיק כדי ללכת · לוחצים על תג מחיר כדי לקנות</div>
       <div class="s3d-stick" id="s3d-stick"><i></i></div>
       <div class="s3d-welcome" id="s3d-welcome"><span data-i18n="s3d_hello">ברוכים הבאים</span><b id="s3d-store"></b></div>
+      <div class="s3d-guide hidden" id="s3d-guide">
+        <div class="g-head"><span class="g-av">🙂</span><div class="g-text" id="g-text"></div></div>
+        <div class="g-prod hidden" id="g-prod"><canvas id="g-thumb"></canvas><div class="g-pmain"><b id="g-pname"></b><span id="g-pprice"></span></div><button type="button" class="g-add" id="g-add"></button></div>
+        <div class="g-bar"><i id="g-bar"></i></div>
+        <div class="g-btns" id="g-btns"></div>
+      </div>
       <div class="s3d-actions">
         <button type="button" class="s3d-btn" id="s3d-music" aria-label="🎵">🎵</button>
         <button type="button" class="s3d-btn" id="s3d-photos" aria-label="🖼️">🖼️</button>
@@ -380,6 +390,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=23"></script>
+  <script type="module" src="/js/customer.js?v=24"></script>
 </body>
 </html>
