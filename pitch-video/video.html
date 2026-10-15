@@ -109,6 +109,8 @@
   .hq-t td { padding: 14px 8px; border-bottom: 1px solid rgba(255,255,255,.07); }
   .hq-t td.b { color: #4ade80; font-weight: 800; }
   .hq-t td.w { color: #ff6b6b; font-weight: 800; }
+  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .p3 { transform-origin: 50% 0; }
   .progress { position: absolute; bottom: 0; right: 0; height: 6px; background: var(--orange); z-index: 50; }
 </style>
 </head>
@@ -394,7 +396,7 @@
   <section class="scene" id="s-list">
     <div class="abs fade" id="list-text" style="right:110px;top:90px;width:1130px">
       <div class="step-label">חדש · רשימת קניות</div>
-      <div class="h2" style="margin-top:10px;font-size:62px">כמה מוצרים? <span class="accent">מסלול אחד, הכי קצר.</span></div>
+      <div class="h2" style="margin-top:10px;font-size:62px">כמה מוצרים? <span class="accent">מסלול אחד, ליד המבצעים.</span></div>
     </div>
     <div class="abs card" id="list-stage" style="right:110px;top:270px;width:1130px;height:690px;overflow:hidden;padding:0">
       <svg id="list-map" width="1090" height="681" viewBox="0 0 800 500" style="position:absolute;left:20px;top:6px"></svg>
@@ -404,7 +406,7 @@
       <div class="screen"><div class="ui">
         <div class="ui-top"><div class="ui-brand"><svg width="16" height="20" viewBox="0 0 160 200"><path d="M80 190 C80 190 10 115 10 72 A70 70 0 1 1 150 72 C150 115 80 190 80 190 Z" fill="#ff7a1a"/></svg>הסטוק · סניף מרכז</div></div>
         <div style="padding:16px 26px 0;display:flex;justify-content:space-between;align-items:center"><div style="font-size:24px;font-weight:800">🛒 הרשימה שלי</div><span class="chip o" style="font-size:15px">🚶 38 מ׳ · 3 עצירות</span></div>
-        <div style="padding:6px 26px 0;font-size:16px;color:#8f9bc0">המסלול הקצר ביותר, לפי הסדר</div>
+        <div style="padding:6px 26px 0;font-size:16px;color:#8f9bc0">מסלול אחד, ובדרך גם המבצעים 🔥</div>
         <div id="list-items"></div>
         <div id="list-done" style="margin:18px 22px 0;text-align:center;font-size:24px;font-weight:900;color:#86efac;opacity:0">🎉 לקחת הכל!</div>
       </div></div>
@@ -545,7 +547,7 @@
       <div class="h2" style="margin-top:12px">מה זה נותן <span class="accent">לרשת?</span></div>
     </div>
     <div class="abs" style="left:130px;right:130px;top:262px;display:grid;grid-template-columns:repeat(3,1fr);gap:26px">
-      <div class="card fade val" style="padding:26px 32px"><div style="font-size:64px">💰</div><div class="h3" style="margin-top:8px">יותר מכירות</div><div class="p" style="font-size:26px;margin-top:6px">לקוח שמוצא — קונה. ומבצעים ו"חיפשו גם" מגדילים את הסל.</div></div>
+      <div class="card fade val" style="padding:26px 32px"><div style="font-size:64px">💰</div><div class="h3" style="margin-top:8px">סל גדול יותר</div><div class="p" style="font-size:26px;margin-top:6px">מסלול מגלה ליד המבצעים, "הולך עם", ועגלה מהבית.</div></div>
       <div class="card fade val" style="padding:26px 32px"><div style="font-size:64px">🕒</div><div class="h3" style="margin-top:8px">זמן עובדים</div><div class="p" style="font-size:26px;margin-top:6px">פחות "איפה זה?". יותר מכירה ומילוי מדפים.</div></div>
       <div class="card fade val" style="padding:26px 32px"><div style="font-size:64px">📦</div><div class="h3" style="margin-top:8px">מדפים מלאים</div><div class="p" style="font-size:26px;margin-top:6px">הלקוחות מדווחים על מדף ריק, והוא מתמלא תוך דקות.</div></div>
       <div class="card fade val" style="padding:26px 32px"><div style="font-size:64px">🧠</div><div class="h3" style="margin-top:8px">קנייה חכמה</div><div class="p" style="font-size:26px;margin-top:6px">יודעים מה מבקשים ואין לנו, ומתי להזמין.</div></div>
@@ -587,8 +589,98 @@
       <div class="pill fade pilot-kpi">⏱️ זמן עד המוצר</div>
       <div class="pill fade pilot-kpi">✅ אחוז הלקוחות שמצאו</div>
       <div class="pill fade pilot-kpi">🕒 שעות עבודה שנחסכו</div>
-      <div class="pill fade pilot-kpi">📭 מדפים ריקים שדווחו</div>
+      <div class="pill fade pilot-kpi">🛒 מוצרים נוספים לסל</div>
     </div>
+  </section>
+
+  <!-- NEW: SETUP BY WALKING -->
+  <section class="scene" id="s-setup">
+    <div class="abs fade" id="setup2-text" style="right:110px;top:90px;width:1130px">
+      <div class="step-label">חדש · הקמה בהליכה אחת</div>
+      <div class="h2" style="margin-top:10px;font-size:66px">המפה נבנית <span class="accent">מההליכה.</span></div>
+      <div class="p" style="margin-top:14px">בלי שרטוט, בלי סרגל. סניף של אלף מטר מוכן תוך שעה.</div>
+    </div>
+    <div class="abs" style="right:110px;top:420px;width:1130px;display:grid;gap:26px">
+      <div class="card fade stp" style="padding:28px 36px;display:flex;align-items:center;gap:28px"><div style="font-size:72px">🚶</div><div><div class="h3">המנהל עובר בחנות עם הטלפון</div><div class="p" style="font-size:28px">החיישנים סופרים צעדים ופניות, והמעברים מצטיירים לבד</div></div></div>
+      <div class="card fade stp" style="padding:28px 36px;display:flex;align-items:center;gap:28px"><div style="font-size:72px">🎥</div><div><div class="h3">סרטון של כל מעבר</div><div class="p" style="font-size:28px">כל מוצר מזוהה, עם תמונת המדף האמיתית</div></div></div>
+      <div class="card fade stp" style="padding:28px 36px;display:flex;align-items:center;gap:28px"><div style="font-size:72px">📄</div><div><div class="h3">הקטלוג מאקסל, בלחיצה</div><div class="p" style="font-size:28px">עשרים אלף מוצרים, עם ברקוד ומחלקה</div></div></div>
+    </div>
+    <div class="phone" id="setup2-phone" style="left:150px;top:110px"><div class="notch"></div><div class="screen"><img class="shot" src="assets/walk-live.jpg"></div></div>
+  </section>
+
+  <!-- NEW: THE OWNER'S QUESTION -->
+  <section class="scene" id="s-turn">
+    <div class="abs center fade" id="turn-q" style="top:250px">
+      <div class="step-label">השאלה של כל בעל חנות</div>
+      <div class="h2" style="margin-top:26px;font-size:84px">"אם הלקוח מוצא מהר,<br>הוא לא יקנה פחות?"</div>
+    </div>
+    <div class="abs center fade" id="turn-a" style="top:690px">
+      <div class="h2" style="font-size:80px">הסוד: <span class="accent">אנחנו לא מקצרים לו את הדרך.</span></div>
+    </div>
+  </section>
+
+  <!-- NEW: DISCOVERY ROUTE -->
+  <section class="scene" id="s-detour">
+    <div class="abs fade" id="detour-text" style="right:110px;top:80px;width:1130px">
+      <div class="step-label">חדש · מסלול מגלה</div>
+      <div class="h2" style="margin-top:10px;font-size:62px">מאריכים לו את הדרך, <span class="accent">ליד המבצעים.</span></div>
+    </div>
+    <div class="abs card fade" id="detour-stage" style="right:110px;top:240px;width:1130px;height:500px;overflow:hidden;padding:0">
+      <svg id="detour-map" width="760" height="475" viewBox="0 0 800 500" style="position:absolute;left:350px;top:12px"></svg>
+      <div class="fade" id="detour-short" style="position:absolute;left:28px;top:60px;width:300px"><span class="pill" style="font-size:26px;color:#9aa6c7"><s>הדרך הקצרה</s></span></div>
+      <div class="fade" id="detour-long" style="position:absolute;left:28px;top:170px;width:300px"><div class="pill" style="font-size:26px;color:#ffb36b;white-space:normal;line-height:1.35;border-radius:28px;display:block">🔥 הדרך שלנו:<br>עוד 5 מטר,<br>ועוד מבצע בעגלה</div></div>
+    </div>
+    <div class="abs card fade" id="detour-set" style="right:110px;top:800px;width:880px;padding:8px;overflow:hidden">
+      <img src="assets/settings-detour.jpg" style="width:100%;display:block;border-radius:18px">
+    </div>
+    <div class="abs fade" id="detour-you" style="right:1010px;top:860px;width:220px;text-align:center"><div style="font-size:64px">🎚️</div><span class="chip o" style="font-size:24px;margin-top:8px">אתה קובע בכמה</span></div>
+    <div class="phone" id="detour-phone" style="left:150px;top:110px"><div class="notch"></div><div class="screen">
+      <img class="shot dt" src="assets/app-detour-detail.jpg"><img class="shot dt" src="assets/app-detour-stop.jpg"><img class="shot dt" src="assets/app-list-deals.jpg">
+    </div></div>
+  </section>
+
+  <!-- NEW: GOES WELL WITH -->
+  <section class="scene" id="s-upsell">
+    <div class="abs fade" id="upsell-text" style="right:110px;top:90px;width:1130px">
+      <div class="step-label">חדש · הולך עם</div>
+      <div class="h2" style="margin-top:10px;font-size:66px">הכניס מצעים? <span class="accent">מציעים מגבת.</span></div>
+      <div class="p" style="margin-top:14px">בדיוק ברגע שהוא כבר קונה. מבצעים קודם, אחר כך מה שלקוחות אחרים לקחו איתו.</div>
+    </div>
+    <div class="abs" id="upsell-flow" style="right:110px;top:470px;width:1130px;display:flex;align-items:center;justify-content:center;gap:26px">
+      <div class="card fade upf" style="padding:30px 34px;text-align:center;width:300px"><div style="font-size:84px">🛏️</div><div class="h3">מצעים</div><div class="p" style="font-size:24px">מה שחיפש</div></div>
+      <div class="fade upf" style="font-size:70px;color:var(--orange)">←</div>
+      <div class="card fade upf glow-o" style="padding:30px 34px;text-align:center;width:300px"><div style="font-size:84px">🧺</div><div class="h3">מגבת</div><div class="p" style="font-size:24px">✨ מתאים</div></div>
+      <div class="card fade upf glow-o" style="padding:30px 34px;text-align:center;width:300px"><div style="font-size:84px">🛋️</div><div class="h3">כרית</div><div class="p" style="font-size:24px">🛒 לקחו גם</div></div>
+    </div>
+    <div class="abs center fade" id="upsell-pill" style="right:110px;left:auto;width:1130px;top:850px"><span class="pill" style="font-size:30px">🧩 המוח אוהב להשלים סט</span></div>
+    <div class="phone" id="upsell-phone" style="left:150px;top:110px"><div class="notch"></div><div class="screen"><img class="shot" src="assets/app-upsell.jpg"></div></div>
+  </section>
+
+  <!-- NEW: 3D STORE -->
+  <section class="scene" id="s-3d">
+    <div class="abs center fade" id="s3d-title" style="top:56px">
+      <div class="step-label">חדש · החנות בתלת-ממד</div>
+      <div class="h2" style="margin-top:10px">מטיילים בחנות, <span class="accent">מהספה.</span></div>
+    </div>
+    <div class="phone p3" style="left:290px;top:250px"><div class="notch"></div><div class="screen"><img class="shot k3" src="assets/3d-aisle.jpg"></div></div>
+    <div class="phone p3" style="left:750px;top:250px"><div class="notch"></div><div class="screen"><img class="shot k3" src="assets/3d-shelf.jpg"></div></div>
+    <div class="phone p3" style="left:1210px;top:250px"><div class="notch"></div><div class="screen"><img class="shot k3" src="assets/3d-finale.jpg"></div></div>
+    <div class="abs center fade" id="s3d-pill" style="top:975px"><span class="pill" style="font-size:30px">🛒 ממלאים עגלה בבית · מגיעים לסניף עם רשימה מוכנה</span></div>
+  </section>
+
+  <!-- NEW: THE PSYCHOLOGY OF THE BASKET -->
+  <section class="scene" id="s-psych">
+    <div class="abs center fade" id="psych-title" style="top:80px">
+      <div class="step-label">למה זה עובד</div>
+      <div class="h2" style="margin-top:12px">הפסיכולוגיה של <span class="accent">סל גדול.</span></div>
+    </div>
+    <div class="abs" style="left:150px;right:150px;top:290px;display:grid;grid-template-columns:repeat(2,1fr);gap:30px">
+      <div class="card fade psy" style="padding:30px 38px;display:flex;gap:28px;align-items:center"><div style="font-size:80px">😌</div><div><div class="h3">לקוח רגוע, קונה יותר</div><div class="p" style="font-size:28px">מצא מהר, בלי תסכול. מצב רוח טוב פותח את הארנק.</div></div></div>
+      <div class="card fade psy" style="padding:30px 38px;display:flex;gap:28px;align-items:center"><div style="font-size:80px">👀</div><div><div class="h3">מה שרואים, קונים</div><div class="p" style="font-size:28px">המסלול עובר ליד המבצעים. כל מטר בדרך הוא חלון ראווה.</div></div></div>
+      <div class="card fade psy" style="padding:30px 38px;display:flex;gap:28px;align-items:center"><div style="font-size:80px">🧩</div><div><div class="h3">המוח אוהב להשלים סט</div><div class="p" style="font-size:28px">מצעים ומגבת, סיר ותבלינים. ההצעה מגיעה ברגע הקנייה.</div></div></div>
+      <div class="card fade psy" style="padding:30px 38px;display:flex;gap:28px;align-items:center"><div style="font-size:80px">🛒</div><div><div class="h3">מה שבעגלה, כבר שלו</div><div class="p" style="font-size:28px">עגלה שמילא בבית מביאה אותו לסניף כדי לקחת.</div></div></div>
+    </div>
+    <div class="abs center fade" id="psych-pill" style="top:900px"><span class="pill" style="font-size:32px">🤝 הצעה בזמן הנכון מרגישה כמו שירות, לא כמו מכירה</span></div>
   </section>
 
   <!-- 11. CLOSE -->
@@ -617,23 +709,29 @@ const SCENES = [
   ['s-problem', 9, 24, 20 / 15],
   ['s-map', 24, 34, 2],
   ['s-photo', 34, 49, 28 / 15],
-  ['s-customer', 49, 99, 56 / 50],
-  ['s-feedback', 99, 115, 1],
-  ['s-list', 115, 128, 1],
-  ['s-deals', 128, 145, 1],
-  ['s-langs', 145, 154, 1],
-  ['s-data', 154, 166, 20 / 12],
-  ['s-chain', 166, 181, 1],
-  ['s-value', 181, 199, 1],
-  ['s-robot', 199, 215, 1.5],
-  ['s-pilot', 215, 229, 17 / 14],
-  ['s-close', 229, 237, 1],
+  ['s-setup', 49, 61, 1],
+  ['s-customer', 61, 111, 56 / 50],
+  ['s-feedback', 111, 127, 1],
+  ['s-list', 127, 140, 1],
+  ['s-turn', 140, 150, 1],
+  ['s-detour', 150, 170, 1],
+  ['s-upsell', 170, 183, 1],
+  ['s-deals', 183, 200, 1],
+  ['s-3d', 200, 218, 1],
+  ['s-langs', 218, 227, 1],
+  ['s-psych', 227, 250, 1],
+  ['s-data', 250, 262, 20 / 12],
+  ['s-chain', 262, 277, 1],
+  ['s-value', 277, 295, 1],
+  ['s-robot', 295, 311, 1.5],
+  ['s-pilot', 311, 325, 17 / 14],
+  ['s-close', 325, 333, 1],
 ];
-const DURATION = 237;
+const DURATION = 333;
 
 const CAPTIONS = [
-  [203.7, 208.3, 'בלילה הרובוט עובר בין המעברים וסורק כל מדף'],
-  [208.3, 213.6, 'והקטלוג של כל הסניפים מתעדכן לבד'],
+  [299.7, 304.3, 'בלילה הרובוט עובר בין המעברים וסורק כל מדף'],
+  [304.3, 309.6, 'והקטלוג של כל הסניפים מתעדכן לבד'],
 ];
 
 // ---------------- helpers ----------------
@@ -1116,7 +1214,7 @@ function render(t) {
   capEl.style.left = cap && cap[3] === 'r' ? '760px' : '0px';
   if (cap) { capEl.firstChild.textContent = cap[2]; const o = Math.min(prog(t, cap[0], 0.4), 1 - prog(t, cap[1] - 0.4, 0.4)); capEl.style.opacity = o; capEl.style.transform = `translateY(${(1 - o) * 20}px)`; }
   else capEl.style.opacity = 0;
-  $('wm').style.opacity = t > 9 && t < 229 ? 0.8 : 0;
+  $('wm').style.opacity = t > 9 && t < 325 ? 0.8 : 0;
   $('progress').style.width = `${(t / DURATION) * 100}%`;
   const o = (id, x, y) => { const e = $(id); e.style.left = `${x}px`; e.style.top = `${y}px`; };
   o('orb1', 1200 + 260 * Math.sin(t / 9), -250 + 120 * Math.cos(t / 7));
@@ -1440,9 +1538,85 @@ const UPDATE = {
   },
 };
 
+// the discovery route: the short way (grey, crossed out) and ours, past the deal at the end of aisle 3
+const DT = (() => {
+  const root = $('detour-map');
+  drawStore(root, { target: true });
+  const P = (pts) => pts.map(([x, y]) => [x * C, y * C]);
+  const shortPts = ROUTE;
+  const longPts = P([[20.5, 23.5], [20.5, 22], [25, 22], [25, 20.4], [22.6, 20.4], [22.6, 11.5]]);
+  const sh = svg('polyline', { points: shortPts.map((p) => p.join(',')).join(' '), fill: 'none', stroke: '#9aa6c7', 'stroke-width': 5, 'stroke-dasharray': '6 9', 'stroke-linecap': 'round', opacity: 0 }, root);
+  const done = svg('polyline', { points: '', fill: 'none', stroke: '#ff7a1a', 'stroke-width': 7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', filter: root.dataset.glow }, root);
+  const deal = svg('g', { opacity: 0 }, root);
+  svg('circle', { cx: 25 * C, cy: 19.4 * C, r: 22, fill: '#ff3d6e', stroke: '#fff', 'stroke-width': 3 }, deal);
+  svg('text', { x: 25 * C, y: 19.4 * C + 9, 'text-anchor': 'middle', 'font-size': 26 }, deal).textContent = '🔥';
+  const me = svg('circle', { r: 11, fill: '#fff', stroke: '#4f7cff', 'stroke-width': 5, opacity: 0 }, root);
+  return { sh, done, deal, me, longPts };
+})();
+const trailTo = (pts, f) => {
+  const segs = []; let tot = 0;
+  for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); tot += l; }
+  let d = f * tot; const out = [pts[0]];
+  for (let i = 0; i < segs.length && d > segs[i]; i++) { out.push(pts[i + 1]); d -= segs[i]; }
+  out.push(pointAlong(pts, f));
+  return out.map((p) => p.join(',')).join(' ');
+};
+// three screens of one phone, one after the other
+function cycle(els, t, times) {
+  els.forEach((el, i) => { el.style.opacity = i === 0 ? 1 - prog(t, times[1] ?? 1e9, 0.5) : Math.min(prog(t, times[i], 0.5), 1 - prog(t, times[i + 1] ?? 1e9, 0.5)); });
+}
+Object.assign(UPDATE, {
+  's-setup'(t) {
+    show($('setup2-text'), t, 0.3);
+    slideIn($('setup2-phone'), t, 0.4);
+    document.querySelectorAll('.stp').forEach((c, i) => show(c, t, 2 + i * 2.6, 0.7, 40));
+  },
+  's-turn'(t) {
+    show($('turn-q'), t, 0.3, 0.9, 40);
+    show($('turn-a'), t, 5.9, 0.9, 40);
+    $('turn-q').style.opacity = Math.min(Number($('turn-q').style.opacity), 1 - 0.55 * prog(t, 5.7, 0.6));
+  },
+  's-detour'(t) {
+    show($('detour-text'), t, 0.3);
+    slideIn($('detour-phone'), t, 0.3);
+    show($('detour-stage'), t, 0.8, 0.8, 30);
+    DT.sh.setAttribute('opacity', prog(t, 1.4, 0.6) * (1 - 0.6 * prog(t, 3.6, 0.6)));
+    show($('detour-short'), t, 1.6, 0.6, 16);
+    const f = clamp((t - 3.4) / 6.5);
+    DT.done.setAttribute('points', t > 3.4 ? trailTo(DT.longPts, f) : '');
+    const pos = pointAlong(DT.longPts, f);
+    DT.me.setAttribute('cx', pos[0]); DT.me.setAttribute('cy', pos[1]); DT.me.setAttribute('opacity', prog(t, 3.3, 0.3));
+    DT.deal.setAttribute('opacity', prog(t, 3.0, 0.5) * (0.8 + 0.2 * Math.sin(t * 5)));
+    show($('detour-long'), t, 4.0, 0.6, 16);
+    show($('detour-set'), t, 12.8, 0.8, 30);
+    show($('detour-you'), t, 13.4, 0.6, 16);
+    cycle([...document.querySelectorAll('#detour-phone .dt')], t, [0, 6.2, 13.5]);
+  },
+  's-upsell'(t) {
+    show($('upsell-text'), t, 0.3);
+    slideIn($('upsell-phone'), t, 0.3);
+    document.querySelectorAll('.upf').forEach((c, i) => show(c, t, 2.4 + i * 0.8, 0.6, 30));
+    show($('upsell-pill'), t, 7.5, 0.7, 24);
+  },
+  's-3d'(t) {
+    show($('s3d-title'), t, 0.3);
+    document.querySelectorAll('#s-3d .p3').forEach((ph, i) => {
+      const p = prog(t, 0.8 + i * 1.6, 1.0);
+      ph.style.opacity = p;
+      ph.style.transform = `translateY(${(1 - p) * 120}px) scale(.8)`;
+    });
+    document.querySelectorAll('#s-3d .k3').forEach((im, i) => { im.style.transform = `scale(${1.04 + 0.05 * clamp((t - i * 1.6) / 16)})`; });
+    show($('s3d-pill'), t, 6.5, 0.7, 24);
+  },
+  's-psych'(t) {
+    show($('psych-title'), t, 0.3);
+    document.querySelectorAll('.psy').forEach((c, i) => show(c, t, [1.6, 8.6, 10.9, 13.1][i], 0.7, 50));
+    show($('psych-pill'), t, 15.0, 0.7, 24);
+  },
+});
 window.render = render;
 window.DURATION = DURATION;
-const ASSETS = ['shelf-camera', 'pots-display', 'shelf-a4', 'prestige', 'orient-small', 'velare', 'towel-gloria', 'spice-prestige', 'spice-rock', 'backpack', 'moosh-pastel'].map((n) => `assets/${n}.jpg`);
+const ASSETS = ['walk-live', 'app-detour-detail', 'app-detour-stop', 'app-list-deals', 'app-upsell', '3d-aisle', '3d-shelf', '3d-finale', 'settings-detour', 'shelf-camera', 'pots-display', 'shelf-a4', 'prestige', 'orient-small', 'velare', 'towel-gloria', 'spice-prestige', 'spice-rock', 'backpack', 'moosh-pastel'].map((n) => `assets/${n}.jpg`);
 window.ready = Promise.all([document.fonts.ready, ...ASSETS.map((src) => { const i = new Image(); i.src = src; return i.decode(); }),
   ...[...document.images].map((i) => i.decode().catch(() => {}))]).then(() => true);
 // live preview when opened directly in a browser
