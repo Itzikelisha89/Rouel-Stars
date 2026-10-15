@@ -2,7 +2,7 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
-import { drawCrop } from '/js/map.js';
+import { drawCrop } from '/js/map.js?v=21';
 
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
@@ -558,7 +558,7 @@ export class Store3D {
     const band = new T.Mesh(new T.BoxGeometry(0.92, 0.1, 0.92), this.pedBand); band.position.set(x, 0.5, z); this.scene.add(band);
     // a stack of the product's packs on top
     this.stackMats ||= new Map();
-    if (!this.stackMats.has(p.id)) { const t = thumbTex(T, p); this.stackMats.set(p.id, new T.MeshLambertMaterial({ map: t })); }
+    if (!this.stackMats.has(p.id)) this.stackMats.set(p.id, new T.MeshLambertMaterial({ map: thumbTex(T, p) }));
     for (const [ox, oz, oy] of [[-0.2, -0.15, 0], [0.2, -0.15, 0], [0, 0.15, 0], [0, -0.05, 0.3]]) {
       const b = new T.Mesh(new T.BoxGeometry(0.34, 0.3, 0.26), this.stackMats.get(p.id));
       b.position.set(x + ox, 0.62 + 0.15 + oy, z + oz); b.rotation.y = rot; this.scene.add(b);
@@ -614,6 +614,15 @@ export class Store3D {
     const h = y - 0.44;
     const pole = new T.Mesh(this.poleGeo, this.armMat); pole.scale.y = h; pole.position.set(x, h / 2, z); this.scene.add(pole);
     const foot = new T.Mesh(this.footGeo, this.armMat); foot.position.set(x, 0.02, z); this.scene.add(foot);
+    // a little shelf out in the aisle under the card, with the product's pack on it
+    this.ledgeGeo ||= new T.BoxGeometry(0.5, 0.03, 0.34);
+    this.ledgeMat ||= new T.MeshLambertMaterial({ color: C(0xf27018) });
+    this.packGeo ||= new T.BoxGeometry(0.34, 0.24, 0.2);
+    this.stackMats ||= new Map();
+    if (!this.stackMats.has(p.id)) this.stackMats.set(p.id, new T.MeshLambertMaterial({ map: thumbTex(T, p) }));
+    const ly = y - 0.62;
+    const ledge = new T.Mesh(this.ledgeGeo, this.ledgeMat); ledge.position.set(x, ly, z); ledge.rotation.y = best; this.scene.add(ledge);
+    const pack = new T.Mesh(this.packGeo, this.stackMats.get(p.id)); pack.position.set(x, ly + 0.135, z); pack.rotation.y = best; this.scene.add(pack);
   }
   refreshTag(id) {
     this.popTexs?.get(id)?.repaint(this.on.inCart(id));

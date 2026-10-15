@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js';
-import { rankShelves } from '/js/locate.js';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=21';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=21';
+import { rankShelves } from '/js/locate.js?v=21';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=21';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=21';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
