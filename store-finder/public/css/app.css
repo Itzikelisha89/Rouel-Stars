@@ -487,3 +487,5 @@ body.walking { overflow: hidden; }
 .list-item.deal { border-color: rgba(255, 61, 110, .55); background: linear-gradient(135deg, rgba(255, 61, 110, .14), rgba(255, 122, 26, .1)); }
 .list-item.deal .stop-n { background: linear-gradient(135deg, #ff3d6e, #ff7a1a); }
 .list-item .li-add { padding: 8px 12px; font-size: .9rem; border-radius: 12px; border: 0; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ff3d6e, #ff7a1a); }
+.alert.t-order { border-color: rgba(34, 197, 94, .45); }
+.pick-list { margin: 8px 0 0; padding-inline-start: 20px; display: grid; gap: 4px; font-size: .92rem; }

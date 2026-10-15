@@ -1,9 +1,9 @@
 // Workers' phone screen: live alerts (sound, vibration, notification), and keeping products in place:
 // move a product to another aisle, mark it out of stock. Opened from an aisle sticker (?to=<shelfId>),
 // "move here" is one tap.
-import { api, getToken, setToken, escapeHtml, formatPrice } from '/js/api.js';
-import { drawCrop } from '/js/map.js';
-import { createAlertsFeed } from '/js/alerts.js';
+import { api, getToken, setToken, escapeHtml, formatPrice } from '/js/api.js?v=22';
+import { drawCrop } from '/js/map.js?v=22';
+import { createAlertsFeed } from '/js/alerts.js?v=22';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);

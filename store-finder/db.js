@@ -80,6 +80,23 @@ db.exec(`
     day TEXT PRIMARY KEY,
     chars INTEGER NOT NULL DEFAULT 0
   );
+  -- "Reserve for pickup": a cart sent from the couch to the branch, prepared by the staff.
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY,
+    store_id INTEGER NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+    visitor TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL,
+    code TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    total REAL NOT NULL DEFAULT 0,
+    reward TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'new',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    ready_at TEXT,
+    done_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_orders_store ON orders(store_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
   CREATE INDEX IF NOT EXISTS idx_events_store ON events(store_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_events_product ON events(store_id, product_id);
@@ -101,6 +118,9 @@ if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'staff
 }
 if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'detour_pct')) {
   db.exec('ALTER TABLE stores ADD COLUMN detour_pct INTEGER NOT NULL DEFAULT 20'); // "discovery route": how much longer the way may be, to pass a deal
+}
+if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'hunt_reward')) {
+  db.exec("ALTER TABLE stores ADD COLUMN hunt_reward TEXT NOT NULL DEFAULT ''"); // daily treasure hunt prize; empty = no hunt
 }
 if (!db.prepare('PRAGMA table_info(sessions)').all().some((c) => c.name === 'role')) {
   db.exec("ALTER TABLE sessions ADD COLUMN role TEXT NOT NULL DEFAULT 'owner'"); // 'owner' or 'staff'

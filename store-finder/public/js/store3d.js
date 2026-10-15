@@ -2,7 +2,7 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
-import { drawCrop } from '/js/map.js?v=21';
+import { drawCrop } from '/js/map.js?v=22';
 
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
@@ -131,7 +131,7 @@ function tagTex(THREE, price, color) {
 }
 
 // a product card standing out from the shelf: the photo, the name, the price and "add to cart"
-function popTex(THREE, p, price, inCart) {
+function popTex(THREE, p, price, inCart, gold = false) {
   const W = 256, H = 360;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
@@ -141,16 +141,26 @@ function popTex(THREE, p, price, inCart) {
     g.clearRect(0, 0, W, H);
     const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
     rr(4, 4, W - 8, H - 8, 26); g.fillStyle = '#fff'; g.fill();
-    g.lineWidth = 6; g.strokeStyle = p.promo ? '#ff3d6e' : inCart ? '#22c55e' : '#ff7a1a'; g.stroke();
+    g.lineWidth = gold ? 12 : 6; g.strokeStyle = gold ? '#f5b301' : p.promo ? '#ff3d6e' : inCart ? '#22c55e' : '#ff7a1a'; g.stroke();
     if (img) {
       const k = Math.min(224 / img.width, 190 / img.height), w = img.width * k, h = img.height * k;
       g.save(); rr(16, 16, W - 32, 194, 18); g.clip();
       g.fillStyle = '#f3f1ed'; g.fillRect(16, 16, W - 32, 194);
       g.drawImage(img, (W - w) / 2, 16 + (194 - h) / 2, w, h); g.restore();
     }
-    if (p.promo) {
+    if (gold) {
+      const gg = g.createLinearGradient(0, 0, 160, 0); gg.addColorStop(0, '#ffe08a'); gg.addColorStop(1, '#f5b301');
+      g.fillStyle = gg; rr(20, 20, 150, 36, 18); g.fill();
+      g.fillStyle = '#5a3d00'; g.font = '900 20px Heebo, Arial, sans-serif'; g.textAlign = 'center'; g.fillText('✨ אוצר!', 95, 45);
+    } else if (p.promo) {
       g.fillStyle = '#ff3d6e'; rr(24, 22, 118, 34, 17); g.fill();
       g.fillStyle = '#fff'; g.font = '800 20px Heebo, Arial, sans-serif'; g.textAlign = 'center'; g.fillText('🔥 מבצע', 83, 46);
+    }
+    // real numbers only: how many shoppers put it in their cart this week
+    if (p.carts >= 3 && !gold) {
+      g.fillStyle = 'rgba(17,24,39,.78)'; rr(W - 196, 176, 176, 28, 14); g.fill();
+      g.fillStyle = '#fff'; g.font = '700 15px Heebo, Arial, sans-serif'; g.textAlign = 'center'; g.direction = 'rtl';
+      g.fillText(`🔥 ב-${p.carts} עגלות השבוע`, W - 108, 196);
     }
     g.direction = 'rtl'; g.textAlign = 'center'; g.fillStyle = '#1c2233';
     g.font = '700 21px Heebo, Arial, sans-serif';
@@ -168,6 +178,7 @@ function popTex(THREE, p, price, inCart) {
   paint(null);
   drawCrop(crop, p.image || p.photo, p.image ? null : p.box, 300).then(() => paint(crop)).catch(() => {});
   tex.repaint = (on) => { inCart = on; paint(crop.width ? crop : null); };
+  tex.setGold = (on) => { gold = on; paint(crop.width ? crop : null); };
   return tex;
 }
 
@@ -587,7 +598,7 @@ export class Store3D {
     const out = at.out ?? 0.85, y = at.y; // out in the walkway, where the cart passes
     const x = alongZ ? at.x + side.nx * out : a, z = alongZ ? a : at.z + side.nz * out;
     this.popTexs ||= new Map();
-    if (!this.popTexs.has(p.id)) this.popTexs.set(p.id, popTex(T, p, this.on.price(p), this.on.inCart(p.id)));
+    if (!this.popTexs.has(p.id)) this.popTexs.set(p.id, popTex(T, p, this.on.price(p), this.on.inCart(p.id), this.on.isGold?.(p.id)));
     const tex = this.popTexs.get(p.id);
     this.popMats ||= new Map();
     if (!this.popMats.has(p.id)) this.popMats.set(p.id, new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, toneMapped: false }));
@@ -623,6 +634,12 @@ export class Store3D {
     const ly = y - 0.62;
     const ledge = new T.Mesh(this.ledgeGeo, this.ledgeMat); ledge.position.set(x, ly, z); ledge.rotation.y = best; this.scene.add(ledge);
     const pack = new T.Mesh(this.packGeo, this.stackMats.get(p.id)); pack.position.set(x, ly + 0.135, z); pack.rotation.y = best; this.scene.add(pack);
+  }
+  // the treasure hunt: a product's cards turn gold (or back) and sparkle
+  setGold(id, on) {
+    this.popTexs?.get(id)?.setGold(on);
+    this.goldIds ||= new Set();
+    if (on) this.goldIds.add(id); else this.goldIds.delete(id);
   }
   refreshTag(id) {
     this.popTexs?.get(id)?.repaint(this.on.inCart(id));
@@ -788,7 +805,8 @@ export class Store3D {
     // the product cards float a little, like a display that wants to be touched
     for (const c of this.popouts || []) {
       const u = c.userData;
-      c.position.y = u.y + Math.sin(now * 1.6 + u.phase) * 0.018;
+      const isGold = this.goldIds?.has(u.product.id);
+      c.position.y = u.y + Math.sin(now * (isGold ? 4 : 1.6) + u.phase) * (isGold ? 0.05 : 0.018);
       // close by, the card turns to face the shopper (never turning its back on the aisle)
       const dx = this.pos.x - c.position.x, dz = this.pos.z - c.position.z, d = dx * dx + dz * dz;
       c.visible = d > 1.1; // right in front of your nose it steps aside, so you can see the shelf

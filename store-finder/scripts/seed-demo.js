@@ -69,6 +69,27 @@ function seedBranch(SLUG, NAME, o) {
     ["פיג'מת בנות קטיפה פנדה", 'מבצע חורף'], ['FOOTBALL KIDI', 'מבצע חורף']]) {
     db.prepare("UPDATE products SET promo = ? WHERE store_id = ? AND name LIKE '%' || ? || '%'").run(promo, storeId, match);
   }
+  // buying from the couch: the daily treasure hunt's prize, and pickup orders over the pilot month
+  db.prepare('UPDATE stores SET hunt_reward = ? WHERE id = ?').run('10% הנחה על ההזמנה', storeId);
+  {
+    const all = db.prepare('SELECT id, name, price, shelf_id, level FROM products WHERE store_id = ?').all(storeId);
+    const num = (p) => (/^\s*\d+(\.\d+)?\s*$/.test(p || '') ? Number(p) : 0);
+    const ins = db.prepare("INSERT INTO orders (store_id, visitor, name, phone, code, items_json, total, status, created_at, ready_at, done_at) VALUES (?, '', ?, ?, ?, ?, ?, ?, datetime('now', ?), datetime('now', ?), ?)");
+    const names = ['מיכל', 'יוסי', 'רונית', 'אבי', 'שירן', 'דנה', ''];
+    for (let k = 0; k < Math.round(46 * o.traffic); k++) {
+      const n = 2 + Math.floor(crnd() * 4), items = [];
+      for (let j = 0; j < n; j++) { const p = all[Math.floor(crnd() * all.length)]; if (!items.some((i) => i.id === p.id)) items.push({ id: p.id, name: p.name, price: p.price, shelfId: p.shelf_id, level: p.level, qty: 1 }); }
+      const total = Math.round(items.reduce((t, i) => t + num(i.price), 0) * 100) / 100;
+      const daysAgo = 1 + Math.floor(crnd() * 28), phone = `05${Math.floor(crnd() * 9)}${String(Math.floor(crnd() * 1e7)).padStart(7, '0')}`;
+      ins.run(storeId, names[k % names.length], phone, String(1000 + Math.floor(crnd() * 9000)), JSON.stringify(items), total, 'done', `-${daysAgo} days`, `-${daysAgo} days`, null);
+    }
+    db.prepare("UPDATE orders SET done_at = ready_at WHERE store_id = ? AND status = 'done'").run(storeId);
+    if (o.liveAlerts) { // one fresh order waiting for the staff right now
+      const items = all.filter((p) => /פיג'מת נשים סאטן|mini me|כובע חורף Minnie/.test(p.name)).map((p) => ({ id: p.id, name: p.name, price: p.price, shelfId: p.shelf_id, level: p.level, qty: 1 }));
+      ins.run(storeId, 'מיכל', '0541234567', '4821', JSON.stringify(items), Math.round(items.reduce((t, i) => t + num(i.price), 0) * 100) / 100, 'new', '-6 minutes', '-6 minutes', null);
+      db.prepare("UPDATE orders SET ready_at = NULL WHERE store_id = ? AND status = 'new'").run(storeId);
+    }
+  }
   const now = new Date();
   const start = new Date(now.getTime() - 365 * DAY);
   const holidays = holidayDates(start, now);

@@ -1,9 +1,9 @@
-import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames } from '/js/api.js';
-import { createAlertsFeed } from '/js/alerts.js';
-import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js';
-import { generateStoreMap } from '/js/mapwizard.js';
-import { buildMap } from '/js/walkmap.js';
-import { createWalkRecorder } from '/js/walkrec.js';
+import { api, getToken, setToken, escapeHtml, resizeImage, formatPrice, extractFrames } from '/js/api.js?v=22';
+import { createAlertsFeed } from '/js/alerts.js?v=22';
+import { renderMap, cellFromEvent, drawPreview, shelfAt, drawCrop } from '/js/map.js?v=22';
+import { generateStoreMap } from '/js/mapwizard.js?v=22';
+import { buildMap } from '/js/walkmap.js?v=22';
+import { createWalkRecorder } from '/js/walkrec.js?v=22';
 
 if (!getToken()) location.href = '/';
 const $ = (id) => document.getElementById(id);
@@ -1080,6 +1080,11 @@ async function loadReport() {
     kpi(b.cartsWithExtraRate == null ? '—' : `${b.cartsWithExtraRate}%`, 'מהלקוחות הוסיפו עוד משהו', `${num(b.carts || 0)} לקוחות מילאו עגלה`),
     kpi(b.avgItems == null ? '—' : b.avgItems, 'מוצרים בעגלה בממוצע', `${num(b.items || 0)} הוספות סה״כ`),
   ].join('');
+  const c = r.couch || {};
+  $('r-couch').innerHTML = [
+    kpi(num(c.orders || 0), 'הזמנות לאיסוף מהספה', `${num(c.collected || 0)} נאספו`, true),
+    kpi(`₪${num(c.value || 0)}`, 'שווי ההזמנות', 'לפי מחירי הקטלוג', true),
+  ].join('');
   const SRC = { suggest: '💡 "הולך עם"', deal: '🏷️ מבצעים', aisle: '🧭 באותו מעבר', tour: '🛒 סיור בחנות', detour: '🔥 מסלול מגלה', related: '👥 לקחו גם' };
   $('r-basket-src').innerHTML = rankList(Object.entries(b.bySource || {}).filter(([k, v]) => k !== 'search' && v).sort((x, y) => y[1] - x[1]), ([k]) => SRC[k] || k, ([, v]) => v);
   $('r-basket-top').innerHTML = rankList(b.topExtra || [], (p) => p.name, (p) => p.count);
@@ -1090,6 +1095,7 @@ $('r-days').addEventListener('change', loadReport);
 function loadSettings() {
   $('s-name').value = store.name;
   $('s-detour').value = String(store.detourPct ?? 20);
+  $('s-hunt').value = store.huntReward || '';
   const url = `${location.origin}/staff.html?store=${encodeURIComponent(store.slug)}`;
   $('staff-url').textContent = url;
   $('staff-qr').src = `/api/public/${encodeURIComponent(store.slug)}/staff-qr.svg`;
@@ -1105,6 +1111,14 @@ $('staff-form').addEventListener('submit', async (e) => {
     loadSettings();
     $('s-pin-status').textContent = 'הקוד נשמר ✓';
   } catch (err) { $('s-pin-status').textContent = err.message; }
+});
+$('hunt-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/api/store/settings', { method: 'PUT', body: { huntReward: $('s-hunt').value } });
+    store.huntReward = r.huntReward;
+    $('s-hunt-status').textContent = r.huntReward ? `נשמר ✓ הציד פעיל. הפרס: ${r.huntReward}` : 'נשמר ✓ ציד האוצרות כבוי.';
+  } catch (err) { $('s-hunt-status').textContent = err.message; }
 });
 $('detour-form').addEventListener('submit', async (e) => {
   e.preventDefault();

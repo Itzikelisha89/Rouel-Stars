@@ -113,6 +113,9 @@ export function whatsappLink(phone, text) {
   if (digits.startsWith('0')) digits = `972${digits.slice(1)}`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
+export function orderReadyMessage(storeName, order) {
+  return `שלום${order.name ? ` ${order.name}` : ''}! כאן ${storeName} 👋\nההזמנה שלך מוכנה לאיסוף 🛍️\nקוד איסוף: ${order.code}${order.reward ? `\n🎁 הפרס שלך: ${order.reward}` : ''}\nמחכים לך!`;
+}
 export function arrivedMessage(storeName, query) {
   return `שלום! כאן ${storeName} 👋\nרצינו לעדכן שהמוצר שביקשת, "${query}", הגיע לסניף.\nמחכים לך! 🛍️`;
 }

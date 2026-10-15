@@ -294,6 +294,8 @@
       </div>
       <div class="card basket-card"><h2>🛒 מוצרים נוספים לסל</h2><p class="muted">כמה מוצרים לקוחות הוסיפו לעגלה מעבר למה שחיפשו, ובזכות מה: הצעות "הולך עם", מבצעים, מסלול מגלה וסיור בחנות.</p>
         <div class="kpis k4" id="r-basket-kpis"></div>
+        <h3 style="margin-top:14px">🛋️ מכירות מהספה</h3>
+        <div class="kpis" id="r-couch" style="grid-template-columns:repeat(2,1fr)"></div>
         <div class="grid2"><div><h3>מאיפה הגיעו התוספות</h3><div id="r-basket-src" class="rank"></div></div><div><h3>המוצרים שהכי נוספו</h3><div id="r-basket-top" class="rank"></div></div></div>
       </div>
       <div class="card"><h2>📣 מוצרים שלקוחות ביקשו שנביא</h2><div id="r-requests" class="rank"></div></div>
@@ -327,6 +329,16 @@
           <button class="primary" type="submit">שמירה</button>
         </div>
         <p class="muted" id="s-detour-status" style="margin-top:8px"></p>
+      </form>
+      <form class="card" id="hunt-form">
+        <h2>🎁 ציד אוצרות יומי</h2>
+        <p class="muted">כל יום מסתתרים בחנות התלת-ממדית שלושה מוצרים בזהב. לקוח שמוצא את שלושתם מקבל את הפרס שתכתבו כאן, על הזמנה לאיסוף מהסניף. זו סיבה לחזור כל יום ולטייל בכל המעברים. משאירים ריק כדי לכבות.</p>
+        <label for="s-hunt">הפרס</label>
+        <div class="row">
+          <input id="s-hunt" class="grow" maxlength="60" placeholder="למשל: 10% הנחה על ההזמנה">
+          <button class="primary" type="submit">שמירה</button>
+        </div>
+        <p class="muted" id="s-hunt-status" style="margin-top:8px"></p>
       </form>
       <form class="card" id="staff-form">
         <h2>👷 עובדים</h2>
@@ -382,6 +394,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="/js/owner.js"></script>
+  <script type="module" src="/js/owner.js?v=22"></script>
 </body>
 </html>

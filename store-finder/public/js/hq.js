@@ -1,6 +1,6 @@
 // Chain headquarters: every branch side by side, best and worst highlighted, and what shoppers
 // across the chain ask for that we don't carry.
-import { escapeHtml } from '/js/api.js';
+import { escapeHtml } from '/js/api.js?v=22';
 
 const $ = (id) => document.getElementById(id);
 const KEY = 'storeFinderHq'; // separate from a branch manager's sign-in on the same computer

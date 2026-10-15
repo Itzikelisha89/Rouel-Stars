@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=21">
-  <link rel="stylesheet" href="/css/shop.css?v=21">
+  <link rel="stylesheet" href="/css/app.css?v=22">
+  <link rel="stylesheet" href="/css/shop.css?v=22">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -177,6 +177,7 @@
       <div class="s3d-top">
         <button type="button" class="s3d-btn" data-back aria-label="✕">✕</button>
         <div class="s3d-where" id="s3d-where"></div>
+        <button type="button" class="s3d-hunt hidden" id="s3d-hunt"></button>
         <button type="button" class="s3d-btn s3d-cart" id="s3d-cart" aria-label="🛒">🛒<b id="s3d-count">0</b><span class="s3d-total" id="s3d-total"></span></button>
       </div>
       <canvas id="s3d-mini" class="s3d-mini" width="240" height="240"></canvas>
@@ -197,7 +198,8 @@
           <h2 data-i18n="fin_title">העגלה מוכנה!</h2>
           <p class="fin-sum" id="fin-sum"></p>
           <div class="fin-thumbs" id="fin-thumbs"></div>
-          <button type="button" class="primary big-btn" id="fin-nav" data-i18n="fin_nav">🧭 בואו נאסוף את זה בחנות</button>
+          <button type="button" class="primary big-btn" id="fin-order" data-i18n="fin_order">🛍️ שריינו לי לאיסוף בסניף</button>
+          <button type="button" class="big-btn" id="fin-nav" data-i18n="fin_nav">🧭 בואו נאסוף את זה בחנות</button>
           <button type="button" class="big-btn fin-wa" id="fin-share" data-i18n="fin_share">📲 שליחת הרשימה אליי בוואטסאפ</button>
           <button type="button" class="ghost-btn" id="fin-more" data-i18n="fin_more">להמשיך לטייל בחנות</button>
         </div>
@@ -267,6 +269,7 @@
         <div class="deals-row" id="list-suggest-row"></div>
       </div>
       <button type="button" class="primary big-btn hidden" id="list-start" data-i18n="start_route">🧭 יוצאים לדרך</button>
+      <button type="button" class="big-btn order-btn hidden" id="list-order" data-i18n="list_order">🛍️ שריון לאיסוף: נכין לכם בסניף</button>
       <button type="button" class="ghost-btn hidden" id="list-deals" style="width:100%" data-i18n="list_see_deals">🔥 לראות מבצעים</button>
       <div class="map-box hidden" id="list-map-box" style="margin-top:14px"><svg id="list-map"></svg></div>
       <div class="row" style="margin-top:12px;justify-content:space-between">
@@ -301,6 +304,35 @@
       <h2 class="sec-title" id="up-title" style="margin-top:16px">✨ מתאים לזה</h2>
       <div class="deals-row" id="up-row"></div>
       <button type="button" class="primary big-btn" id="up-done" data-i18n="up_done">המשך לקנות</button>
+    </div>
+  </div>
+
+  <div id="hunt-win" class="sheet hidden" role="dialog" aria-modal="true">
+    <div class="sheet-card hunt-card">
+      <div class="hunt-burst">🎁</div>
+      <h2 data-i18n="hunt_win_title">מצאת את כל האוצרות!</h2>
+      <p class="hunt-reward" id="hunt-reward"></p>
+      <p class="muted" data-i18n="hunt_win_sub">הפרס מחכה לך בהזמנה לאיסוף מהסניף, היום.</p>
+      <button type="button" class="primary big-btn" id="hunt-order" data-i18n="fin_order">🛍️ שריינו לי לאיסוף בסניף</button>
+      <button type="button" class="ghost-btn" id="hunt-close" style="width:100%" data-i18n="fin_more">להמשיך לטייל בחנות</button>
+    </div>
+  </div>
+
+  <div id="order-sheet" class="sheet hidden" role="dialog" aria-modal="true" aria-labelledby="ord-title">
+    <div class="sheet-card order-card">
+      <h2 class="sec-title" id="ord-title" data-i18n="ord_title">🛍️ שריון לאיסוף בסניף</h2>
+      <p class="muted" data-i18n="ord_sub">נכין לכם את העגלה בסניף ונשלח וואטסאפ כשהיא מוכנה. משלמים בקופה כשבאים לאסוף.</p>
+      <div class="ord-items" id="ord-items"></div>
+      <div class="ord-total" id="ord-total"></div>
+      <div class="ord-reward hidden" id="ord-reward"></div>
+      <form id="order-form">
+        <input id="ord-name" maxlength="40" autocomplete="given-name" data-i18n-ph="ord_name" placeholder="שם (לא חובה)">
+        <input id="ord-phone" type="tel" inputmode="tel" autocomplete="tel" required data-i18n-ph="ord_phone" placeholder="טלפון לעדכון בוואטסאפ">
+        <p class="ord-err hidden" id="ord-err"></p>
+        <button class="primary big-btn" type="submit" id="ord-send" data-i18n="ord_send">שליחת ההזמנה לסניף</button>
+      </form>
+      <div class="ord-done hidden" id="ord-done"></div>
+      <button type="button" class="ghost-btn" id="ord-close" style="width:100%" data-i18n="ord_close">סגירה</button>
     </div>
   </div>
 
@@ -343,6 +375,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=21"></script>
+  <script type="module" src="/js/customer.js?v=22"></script>
 </body>
 </html>

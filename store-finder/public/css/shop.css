@@ -293,3 +293,21 @@ body.in3d { overflow: hidden; }
 .nav3d-badge { position: absolute; top: 10px; inset-inline-start: 10px; z-index: 2; padding: 5px 12px; border-radius: 999px; font-size: .8rem; font-weight: 800; color: #ffd8b0; background: rgba(20, 16, 12, .72); border: 1px solid rgba(255, 214, 150, .25); }
 .nav3d-loading { position: absolute; inset: 0; z-index: 1; background: linear-gradient(110deg, #17130f 30%, #2a2219 50%, #17130f 70%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
+/* buying from the couch */
+.order-btn { margin-top: 10px; background: linear-gradient(135deg, #22c55e, #16a34a) !important; color: #fff !important; border: 0 !important; }
+.order-card { max-height: 88vh; overflow: auto; }
+.ord-items { margin: 12px 0 6px; display: grid; gap: 6px; max-height: 30vh; overflow: auto; }
+.ord-item { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, .06); font-size: .92rem; }
+.ord-item b { color: #ffb36b; white-space: nowrap; }
+.ord-total { font-weight: 800; margin: 6px 0 10px; }
+.ord-reward { margin: 0 0 10px; padding: 10px 12px; border-radius: 14px; font-weight: 800; color: #5a3d00; background: linear-gradient(135deg, #ffe08a, #f5b301); }
+#order-form { display: grid; gap: 10px; }
+.ord-err { color: #ff8a8a; margin: 0; }
+.ord-done { white-space: pre-line; text-align: center; font-size: 1.15rem; font-weight: 800; line-height: 1.6; padding: 16px; margin: 6px 0 12px; border-radius: 18px; background: rgba(34, 197, 94, .14); border: 1px solid rgba(34, 197, 94, .4); }
+/* the treasure hunt */
+.s3d-hunt { flex: none; padding: 8px 12px; border-radius: 999px; border: 0; font-weight: 900; font-size: .85rem; color: #5a3d00; background: linear-gradient(135deg, #ffe08a, #f5b301); box-shadow: 0 6px 18px rgba(245, 179, 1, .4); animation: huntGlow 2.4s ease-in-out infinite; }
+.s3d-hunt.won { animation: none; }
+@keyframes huntGlow { 50% { box-shadow: 0 6px 26px rgba(245, 179, 1, .85); } }
+.hunt-card { text-align: center; }
+.hunt-burst { font-size: 3.4rem; animation: bump .8s ease-out; }
+.hunt-reward { font-size: 1.5rem; font-weight: 900; color: #f5b301; margin: 8px 0; }

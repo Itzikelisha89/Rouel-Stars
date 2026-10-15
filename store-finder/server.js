@@ -57,7 +57,7 @@ function getStoreBySlug(slug) {
   return db.prepare('SELECT * FROM stores WHERE slug = ?').get(slug);
 }
 function publicStore(store) {
-  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(voiceKey()), voiceInput: Boolean(voiceKey()), detourPct: store.detour_pct ?? 20 };
+  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(voiceKey()), voiceInput: Boolean(voiceKey()), detourPct: store.detour_pct ?? 20, huntReward: store.hunt_reward || '' };
 }
 function productRow(p) {
   return {
@@ -180,13 +180,18 @@ app.put('/api/store/settings', requireOwner, (req, res) => {
     // A new code (or none) signs out every worker who used the old one.
     db.prepare("DELETE FROM sessions WHERE store_id = ? AND role = 'staff'").run(req.store.id);
   }
+  if (req.body.huntReward !== undefined) {
+    const r = String(req.body.huntReward).trim().slice(0, 60);
+    db.prepare('UPDATE stores SET hunt_reward = ? WHERE id = ?').run(r, req.store.id);
+  }
   if (req.body.detourPct !== undefined) {
     const d = Math.round(Number(req.body.detourPct));
     if (!Number.isFinite(d) || d < 0 || d > 50) return res.status(400).json({ error: 'מסלול מגלה: בין 0 ל-50 אחוז' });
     db.prepare('UPDATE stores SET detour_pct = ? WHERE id = ?').run(d, req.store.id);
   }
   db.prepare('UPDATE stores SET name = ? WHERE id = ?').run(name, req.store.id);
-  res.json({ ok: true, name, detourPct: db.prepare('SELECT detour_pct FROM stores WHERE id = ?').get(req.store.id).detour_pct ?? 20 });
+  const st = db.prepare('SELECT detour_pct, hunt_reward FROM stores WHERE id = ?').get(req.store.id);
+  res.json({ ok: true, name, detourPct: st.detour_pct ?? 20, huntReward: st.hunt_reward || '' });
 });
 
 // The whole catalog as a CSV file that opens in Excel (and imports back in the products tab).
@@ -560,7 +565,10 @@ app.get('/api/pilot-report', requireOwner, (req, res) => {
   const events = db.prepare(`SELECT type, visitor, product_id, query, note, created_at, resolved_at FROM events
     WHERE store_id = ? AND created_at >= datetime('now', ?)`).all(req.store.id, since);
   const productNames = new Map(db.prepare('SELECT id, name FROM products WHERE store_id = ?').all(req.store.id).map((p) => [p.id, p.name]));
-  res.json({ store: req.store.name, products: productNames.size, ...pilot.report(searches, events, { days, productNames }) });
+  // sales from the couch: carts reserved for pickup, and how many were collected
+  const orders = db.prepare(`SELECT status, total FROM orders WHERE store_id = ? AND created_at >= datetime('now', ?)`).all(req.store.id, since);
+  const couch = { orders: orders.length, value: Math.round(orders.reduce((t, o) => t + o.total, 0)), collected: orders.filter((o) => o.status === 'done').length };
+  res.json({ store: req.store.name, products: productNames.size, couch, ...pilot.report(searches, events, { days, productNames }) });
 });
 
 // ---------- chain headquarters: every branch on this server, side by side ----------
@@ -676,6 +684,84 @@ function rateLimited(ip, max = 30, windowMs = 60000) {
   if (eventHits.size > 5000) for (const [k, v] of eventHits) if (now - v[v.length - 1] > windowMs) eventHits.delete(k);
   return hits.length > max;
 }
+
+// ---------- buying from the couch ----------
+// Prices are text ("89.90", "2 ב-25"); a plain number counts toward the total, a deal text doesn't.
+const priceNumber = (p) => (/^\s*₪?\s*\d+(\.\d+)?\s*₪?\s*$/.test(p || '') ? Number(String(p).replace(/[^\d.]/g, '')) : 0);
+const israelDay = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
+
+// The daily treasure hunt: three products, the same for everyone in the store today, new tomorrow.
+function huntProducts(store, day = israelDay()) {
+  const rows = db.prepare('SELECT id FROM products WHERE store_id = ? AND active = 1 ORDER BY id').all(store.id).map((r) => r.id);
+  const picked = [];
+  for (let k = 0; picked.length < Math.min(3, rows.length) && k < 50; k++) {
+    const h = crypto.createHash('sha256').update(`${store.id}:${day}:${k}`).digest().readUInt32BE(0);
+    const id = rows[h % rows.length];
+    if (!picked.includes(id)) picked.push(id);
+  }
+  return picked;
+}
+// kept in the database, so a prize code found this morning still works after a restart
+const HUNT_SECRET = process.env.HUNT_SECRET || db.prepare("SELECT value FROM settings WHERE key = 'hunt_secret'").get()?.value || (() => {
+  const v = crypto.randomBytes(16).toString('hex');
+  db.prepare("INSERT INTO settings (key, value) VALUES ('hunt_secret', ?)").run(v);
+  return v;
+})();
+const huntCode = (store, visitor, day = israelDay()) => crypto.createHmac('sha256', HUNT_SECRET).update(`${store.id}:${day}:${visitor}`).digest('hex').slice(0, 8).toUpperCase();
+
+app.get('/api/public/:slug/hunt', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (!store.hunt_reward) return res.json({ on: false });
+  res.json({ on: true, day: israelDay(), reward: store.hunt_reward, ids: huntProducts(store) });
+});
+// Found all three: the prize code, good today, for this phone.
+app.post('/api/public/:slug/hunt', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store?.hunt_reward) return res.status(404).json({ error: 'אין ציד אוצרות היום' });
+  const visitor = cleanVisitor(req.body.visitor);
+  const found = (Array.isArray(req.body.found) ? req.body.found : []).map(Number);
+  const ids = huntProducts(store);
+  if (!visitor || !ids.every((id) => found.includes(id))) return res.status(400).json({ error: 'עוד לא מצאת את כל האוצרות' });
+  res.json({ code: huntCode(store, visitor), reward: store.hunt_reward });
+});
+
+// "Reserve for pickup": the cart from the couch goes to the branch; the staff prepare it and send a WhatsApp.
+app.post('/api/public/:slug/orders', (req, res) => {
+  const store = getStoreBySlug(req.params.slug);
+  if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
+  if (rateLimited(`order:${req.ip}`, 5, 10 * 60000)) return res.status(429).json({ error: 'יותר מדי הזמנות, נסו שוב בעוד כמה דקות' });
+  const phone = String(req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15);
+  if (!/^\+?\d{9,14}$/.test(phone)) return res.status(400).json({ error: 'צריך מספר טלפון, כדי שנעדכן כשההזמנה מוכנה' });
+  const want = (Array.isArray(req.body.items) ? req.body.items : []).slice(0, 60);
+  const get = db.prepare('SELECT id, name, price, shelf_id, level FROM products WHERE id = ? AND store_id = ? AND active = 1');
+  const items = [];
+  for (const it of want) {
+    const p = get.get(Number(it.id), store.id);
+    if (p && !items.some((x) => x.id === p.id)) items.push({ id: p.id, name: p.name, price: p.price, shelfId: p.shelf_id, level: p.level, qty: Math.max(1, Math.min(20, Math.round(Number(it.qty) || 1))) });
+  }
+  if (!items.length) return res.status(400).json({ error: 'העגלה ריקה' });
+  const visitor = cleanVisitor(req.body.visitor);
+  const reward = store.hunt_reward && visitor && String(req.body.huntCode || '').toUpperCase() === huntCode(store, visitor) ? store.hunt_reward : '';
+  const total = Math.round(items.reduce((t, i) => t + priceNumber(i.price) * i.qty, 0) * 100) / 100;
+  const code = String(1000 + crypto.randomInt(9000));
+  const name = String(req.body.name || '').trim().slice(0, 40);
+  const id = Number(db.prepare('INSERT INTO orders (store_id, visitor, name, phone, code, items_json, total, reward) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(store.id, visitor, name, phone, code, JSON.stringify(items), total, reward).lastInsertRowid);
+  res.json({ id, code, total, reward });
+});
+const orderRow = (o) => ({ id: o.id, name: o.name, phone: o.phone, code: o.code, items: JSON.parse(o.items_json), total: o.total, reward: o.reward, status: o.status, createdAt: o.created_at, readyAt: o.ready_at, doneAt: o.done_at });
+app.get('/api/orders', requireStaff, (req, res) => {
+  res.json(db.prepare(`SELECT * FROM orders WHERE store_id = ? AND (status != 'done' OR done_at >= datetime('now', '-1 day'))
+    ORDER BY status = 'done', id DESC LIMIT 100`).all(req.store.id).map(orderRow));
+});
+app.post('/api/orders/:id/:status', requireStaff, (req, res) => {
+  const status = req.params.status;
+  if (!['ready', 'done'].includes(status)) return res.status(400).json({ error: 'מצב לא מוכר' });
+  const col = status === 'ready' ? 'ready_at' : 'done_at';
+  const changes = db.prepare(`UPDATE orders SET status = ?, ${col} = datetime('now') WHERE id = ? AND store_id = ?`).run(status, req.params.id, req.store.id).changes;
+  res.json({ ok: true, changes });
+});
 
 // 'cart': something went into the shopper's cart, with where it came from (note): what they searched
 // for, or an extra the app led them to (a suggestion, a deal, the aisle, the tour, the discovery route)
@@ -840,13 +926,17 @@ app.get('/api/public/:slug/tour', (req, res) => {
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
   const products = db.prepare(`${PRODUCTS_QUERY} AND products.active = 1 ORDER BY products.promo = '', products.name`).all(store.id);
   const photos = db.prepare('SELECT id, shelf_id, file FROM photos WHERE store_id = ? ORDER BY id').all(store.id);
+  // how many carts each product went into this week: real numbers, for "added to 12 carts this week"
+  const carts = new Map(db.prepare(`SELECT product_id, COUNT(DISTINCT visitor) AS n FROM events WHERE store_id = ? AND type = 'cart'
+    AND created_at >= datetime('now', '-7 days') GROUP BY product_id`).all(store.id).map((r) => [r.product_id, r.n]));
+  const row = (p) => ({ ...productRow(p), carts: carts.get(p.id) || 0 });
   const aisles = JSON.parse(store.map_json).shelves.map((s) => {
     const items = products.filter((p) => p.shelf_id === s.id);
     const shots = photos.filter((ph) => ph.shelf_id === s.id)
-      .map((ph) => ({ url: `/uploads/${ph.file}`, products: items.filter((p) => p.photo_id === ph.id && p.box_json).map(productRow) }))
+      .map((ph) => ({ url: `/uploads/${ph.file}`, products: items.filter((p) => p.photo_id === ph.id && p.box_json).map(row) }))
       .filter((ph, i, all) => ph.products.length || all.every((x) => !x.products.length) && i >= all.length - 4) // photos with marks; else the last few
       .slice(-6);
-    return { shelfId: s.id, name: s.name, photos: shots, products: items.map(productRow) };
+    return { shelfId: s.id, name: s.name, photos: shots, products: items.map(row) };
   }).filter((a) => a.products.length || a.photos.length);
   res.json(aisles);
 });
@@ -1042,7 +1132,7 @@ app.use((err, _req, res, _next) => {
 if (require.main === module) {
   // SEED_DEMO=1 on a fresh server: create the demo store (the הסטוק catalog) once, to show the system.
   // A newer demo catalog (DEMO_VERSION) rebuilds the demo stores once; real stores are never touched.
-  const DEMO_VERSION = '2';
+  const DEMO_VERSION = '3';
   const demoVersion = db.prepare("SELECT value FROM settings WHERE key = 'demo_version'").get()?.value;
   if (process.env.SEED_DEMO === '1' && (!getStoreBySlug('demo') || demoVersion !== DEMO_VERSION)) {
     require('./scripts/seed-demo');

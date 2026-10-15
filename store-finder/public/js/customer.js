@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=21';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=21';
-import { rankShelves } from '/js/locate.js?v=21';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=21';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=21';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=22';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=22';
+import { rankShelves } from '/js/locate.js?v=22';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=22';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=22';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -1037,19 +1037,69 @@ function kaching() {
   });
 }
 function open3d(opts = {}) { go(() => render3d(opts)); }
+// ---------- the daily treasure hunt: three gold products hidden in the 3D store ----------
+let hunt = null;
+const huntKey = () => `storeFinder:hunt:${store.slug}:${hunt?.day}`;
+function huntState() { try { return JSON.parse(localStorage.getItem(huntKey()) || '{"found":[]}'); } catch { return { found: [] }; } }
+function saveHunt(st) { try { localStorage.setItem(huntKey(), JSON.stringify(st)); } catch { /* private mode */ } }
+function isTreasure(id) { return Boolean(hunt?.on && hunt.ids.includes(id) && !huntState().found.includes(id)); }
+function huntPrize() { const st = hunt?.on ? huntState() : null; return st?.code ? { code: st.code, reward: st.reward } : null; }
+async function loadHunt() {
+  if (hunt) return hunt;
+  hunt = await api(pub('/hunt')).catch(() => ({ on: false }));
+  return hunt;
+}
+function paintHunt() {
+  const el = $('s3d-hunt');
+  if (!hunt?.on) return el.classList.add('hidden');
+  const st = huntState();
+  el.classList.remove('hidden');
+  el.textContent = st.code ? t('hunt_won_chip') : t('hunt_chip', { n: st.found.length });
+  el.classList.toggle('won', Boolean(st.code));
+}
+async function foundTreasure(p) {
+  const st = huntState();
+  st.found = [...new Set([...st.found, p.id])];
+  saveHunt(st);
+  s3d?.setGold(p.id, false);
+  kaching(); buzz([20, 40, 20, 40, 60]);
+  paintHunt();
+  if (st.found.length < hunt.ids.length) { toast(t('hunt_found', { n: st.found.length })); say(t('hunt_found', { n: st.found.length })); return; }
+  try {
+    const r = await api(pub('/hunt'), { method: 'POST', body: { visitor, found: st.found } });
+    Object.assign(st, { code: r.code, reward: r.reward }); saveHunt(st);
+    paintHunt();
+    $('hunt-reward').textContent = r.reward;
+    $('upsell-sheet').classList.add('hidden');
+    $('hunt-win').classList.remove('hidden');
+    say(t('hunt_win_say', { r: r.reward }));
+  } catch { /* the prize can wait */ }
+}
+$('s3d-hunt').addEventListener('click', () => {
+  const st = huntState();
+  if (st.code) { $('hunt-reward').textContent = st.reward; $('hunt-win').classList.remove('hidden'); return; }
+  // a hint: the aisle of a treasure not found yet
+  const next = hunt.ids.find((id) => !st.found.includes(id));
+  const shelf = tour?.aisles.find((a) => a.products.some((p) => p.id === next));
+  const s = shelf && store.map.shelves.find((x) => x.id === shelf.shelfId);
+  toast(t('hunt_hint', { r: hunt.reward, a: s ? aisleName(s, { short: true }) : '' }));
+});
+
 async function render3d({ productId = null } = {}) {
   setView('s3d');
   document.body.classList.add('in3d');
   $('s3d-loading').classList.remove('hidden');
   $('s3d-hint').classList.remove('hidden');
   try {
-    const [THREE, tr] = await Promise.all([loadThree(), loadTour()]);
+    const [THREE, tr] = await Promise.all([loadThree(), loadTour(), loadHunt()]);
     if (document.body.dataset.view !== 's3d') return;
+    paintHunt();
     if (!s3d) {
       s3d = new Store3D(THREE, $('s3d-canvas'), store.map, tr.aisles, {
         storeName: () => store.name,
         price: (p) => (p.price ? formatPrice(p.price) : ''),
         inCart: (id) => inList(id),
+        isGold: (id) => isTreasure(id),
         where: (shelf) => {
           $('s3d-where').textContent = shelf ? aisleName(shelf) : t('s3d_walk');
           clearTimeout(s3d?.sayTimer);
@@ -1092,6 +1142,7 @@ function tick3dMini() {
   setTimeout(tick3dMini, 120);
 }
 function show3dPick(p) {
+  if (isTreasure(p.id)) foundTreasure(p);
   tourPick = p;
   s3dPick = p;
   buzz(10);
@@ -1195,6 +1246,7 @@ function bind3dControls() {
     else { const e = store.map.entrance; s3d.walkToPoint(e.x + 0.5, e.y + 0.5); setTimeout(showFinale, 1200); }
   });
   $('fin-more').addEventListener('click', () => $('s3d-finale').classList.add('hidden'));
+  $('fin-order').addEventListener('click', () => openOrder());
   $('fin-nav').addEventListener('click', () => { $('s3d-finale').classList.add('hidden'); go(renderListView); setTimeout(() => $('list-start').click(), 300); });
   $('fin-share').addEventListener('click', () => {
     const todo = loadList().filter((i) => !i.picked);
@@ -1217,6 +1269,45 @@ function showFinale() {
   kaching(); buzz([30, 60, 30, 60, 60]);
   say(t('fin_say', { n: todo.length }));
 }
+
+// ---------- buying from the couch: reserve the cart for pickup at the branch ----------
+function openOrder() {
+  const todo = loadList().filter((i) => !i.picked);
+  if (!todo.length) return toast(t('list_empty'));
+  $('ord-items').innerHTML = todo.map((i) => `<div class="ord-item"><span>${escapeHtml(i.name)}</span><b>${i.price ? escapeHtml(formatPrice(i.price)) : ''}</b></div>`).join('');
+  const total = todo.reduce((sum, i) => sum + priceValue(i.price), 0);
+  $('ord-total').textContent = total ? t('ord_total', { p: `₪${total.toFixed(2).replace(/\.00$/, '')}` }) : '';
+  const prize = huntPrize();
+  $('ord-reward').classList.toggle('hidden', !prize);
+  if (prize) $('ord-reward').textContent = t('ord_reward', { r: prize.reward });
+  $('order-form').classList.remove('hidden');
+  $('ord-done').classList.add('hidden');
+  $('ord-err').classList.add('hidden');
+  try { $('ord-phone').value ||= localStorage.getItem('storeFinder:phone') || ''; $('ord-name').value ||= localStorage.getItem('storeFinder:name') || ''; } catch { /* private mode */ }
+  $('order-sheet').classList.remove('hidden');
+}
+$('order-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const todo = loadList().filter((i) => !i.picked);
+  $('ord-send').disabled = true;
+  try {
+    const r = await api(pub('/orders'), { method: 'POST', body: { visitor, name: $('ord-name').value, phone: $('ord-phone').value, items: todo.map((i) => ({ id: i.id, qty: 1 })), huntCode: huntPrize()?.code } });
+    try { localStorage.setItem('storeFinder:phone', $('ord-phone').value); localStorage.setItem('storeFinder:name', $('ord-name').value); } catch { /* private mode */ }
+    $('order-form').classList.add('hidden');
+    $('ord-done').textContent = t('ord_done', { code: r.code });
+    $('ord-done').classList.remove('hidden');
+    kaching(); buzz([30, 60, 30]);
+    say(t('ord_say'));
+  } catch (err) {
+    $('ord-err').textContent = err.message;
+    $('ord-err').classList.remove('hidden');
+  } finally { $('ord-send').disabled = false; }
+});
+$('ord-close').addEventListener('click', () => $('order-sheet').classList.add('hidden'));
+$('order-sheet').addEventListener('click', (e) => { if (e.target === $('order-sheet')) $('order-sheet').classList.add('hidden'); });
+$('list-order').addEventListener('click', () => openOrder());
+$('hunt-close').addEventListener('click', () => $('hunt-win').classList.add('hidden'));
+$('hunt-order').addEventListener('click', () => { $('hunt-win').classList.add('hidden'); openOrder(); });
 
 // ---------- request a product the store doesn't carry ----------
 $('request-form').addEventListener('submit', async (e) => {
@@ -1373,6 +1464,7 @@ function renderListView() {
   $('list-total').classList.toggle('hidden', !total);
   loadListSuggest(todo);
   $('list-start').classList.toggle('hidden', !todo.length);
+  $('list-order').classList.toggle('hidden', !todo.length);
   $('list-deals').classList.toggle('hidden', todo.length > 0);
   $('list-map-box').classList.toggle('hidden', !route.legs.length);
   $('list-clear').classList.toggle('hidden', !list.length);
