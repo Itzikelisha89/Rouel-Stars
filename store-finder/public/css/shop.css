@@ -255,3 +255,27 @@ body.in3d { overflow: hidden; }
 .tc-3d { position: absolute; top: 12px; inset-inline-start: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: #ff5a36; font-weight: 900; font-size: .85rem; letter-spacing: .05em; }
 .show3d { border-style: solid; border-color: rgba(111, 147, 255, .5); color: #c9d6ff; }
 #tour-sheet { z-index: 30; }
+
+/* 3D: atmosphere and the moments that make it feel like shopping */
+.s3d-canvas::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(20, 14, 6, .38) 100%); }
+.s3d-welcome { position: absolute; top: 32%; inset-inline: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #fff; text-shadow: 0 4px 22px rgba(0, 0, 0, .55); opacity: 0; transform: translateY(14px); transition: opacity .8s, transform .8s; pointer-events: none; }
+.s3d-welcome.show { opacity: 1; transform: none; }
+.s3d-welcome span { font-size: 1.2rem; font-weight: 700; letter-spacing: .04em; }
+.s3d-welcome b { font-size: 2.1rem; font-weight: 900; }
+.s3d-cart { flex-direction: row; }
+.s3d-total { font-size: .82rem; font-weight: 800; opacity: .95; padding-inline-start: 4px; border-inline-start: 1px solid rgba(255, 255, 255, .45); }
+.s3d-cart.bump { animation: bump .5s ease-out; }
+.s3d-btn.off { opacity: .45; }
+.s3d-checkout { position: absolute; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); inset-inline-end: 16px; height: 52px; padding: 0 20px; border-radius: 999px; border: none; color: #fff; font-weight: 900; font-size: 1.05rem; background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 10px 24px rgba(22, 163, 74, .45); animation: rise .4s ease-out; }
+.s3d-finale { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgba(8, 12, 26, .55); backdrop-filter: blur(6px); }
+.fin-card { position: relative; width: min(420px, 100%); padding: 24px 20px 18px; border-radius: 28px; text-align: center; background: linear-gradient(180deg, #1b2448, #111833); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 30px 60px rgba(0, 0, 0, .5); animation: popIn .5s ease-out; }
+.fin-burst { font-size: 3.4rem; animation: bob 1.6s ease-in-out infinite; }
+.fin-card h2 { font-size: 1.8rem; margin: 4px 0; }
+.fin-sum { font-size: 1.15rem; font-weight: 800; color: #ffb36b; margin: 0 0 12px; }
+.fin-thumbs { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.fin-thumbs canvas { width: 46px; height: 46px; border-radius: 12px; background: #fff; box-shadow: 0 4px 10px rgba(0, 0, 0, .3); }
+.fin-card .big-btn { margin-top: 8px; }
+.fin-wa { background: #25d366; border: none; color: #fff; }
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti i { position: absolute; top: -20px; width: 9px; height: 15px; border-radius: 2px; animation-name: confetti; animation-timing-function: cubic-bezier(.2, .6, .4, 1); animation-fill-mode: forwards; }
+@keyframes confetti { to { top: 105%; transform: translateX(40px) rotate(720deg); } }

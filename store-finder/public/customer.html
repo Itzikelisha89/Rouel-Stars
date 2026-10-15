@@ -11,8 +11,8 @@
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/app.css?v=12">
-  <link rel="stylesheet" href="/css/shop.css?v=12">
+  <link rel="stylesheet" href="/css/app.css?v=13">
+  <link rel="stylesheet" href="/css/shop.css?v=13">
 </head>
 <body class="shop">
   <header class="c-top">
@@ -174,15 +174,30 @@
       <div class="s3d-top">
         <button type="button" class="s3d-btn" data-back aria-label="✕">✕</button>
         <div class="s3d-where" id="s3d-where"></div>
-        <button type="button" class="s3d-btn s3d-cart" id="s3d-cart" aria-label="🛒">🛒<b id="s3d-count">0</b></button>
+        <button type="button" class="s3d-btn s3d-cart" id="s3d-cart" aria-label="🛒">🛒<b id="s3d-count">0</b><span class="s3d-total" id="s3d-total"></span></button>
       </div>
       <canvas id="s3d-mini" class="s3d-mini" width="240" height="240"></canvas>
       <div class="s3d-loading" id="s3d-loading"><span class="spinner"></span><span data-i18n="s3d_loading">בונה את החנות בתלת-ממד…</span></div>
       <div class="s3d-hint" id="s3d-hint" data-i18n="s3d_hint">גוררים כדי להסתכל · הג׳ויסטיק כדי ללכת · לוחצים על תג מחיר כדי לקנות</div>
       <div class="s3d-stick" id="s3d-stick"><i></i></div>
+      <div class="s3d-welcome" id="s3d-welcome"><span data-i18n="s3d_hello">ברוכים הבאים</span><b id="s3d-store"></b></div>
       <div class="s3d-actions">
+        <button type="button" class="s3d-btn" id="s3d-music" aria-label="🎵">🎵</button>
         <button type="button" class="s3d-btn" id="s3d-photos" aria-label="🖼️">🖼️</button>
         <button type="button" class="s3d-pill" id="s3d-auto" data-i18n="s3d_auto">▶ סיור מודרך</button>
+      </div>
+      <button type="button" class="s3d-checkout hidden" id="s3d-checkout" data-i18n="s3d_checkout">💳 לקופה</button>
+      <div class="s3d-finale hidden" id="s3d-finale">
+        <div class="confetti" id="confetti"></div>
+        <div class="fin-card">
+          <div class="fin-burst">🎉</div>
+          <h2 data-i18n="fin_title">העגלה מוכנה!</h2>
+          <p class="fin-sum" id="fin-sum"></p>
+          <div class="fin-thumbs" id="fin-thumbs"></div>
+          <button type="button" class="primary big-btn" id="fin-nav" data-i18n="fin_nav">🧭 בואו נאסוף את זה בחנות</button>
+          <button type="button" class="big-btn fin-wa" id="fin-share" data-i18n="fin_share">📲 שליחת הרשימה אליי בוואטסאפ</button>
+          <button type="button" class="ghost-btn" id="fin-more" data-i18n="fin_more">להמשיך לטייל בחנות</button>
+        </div>
       </div>
     </section>
 
@@ -325,6 +340,6 @@
       <p id="help-done" class="ok hidden" style="margin:12px 0 0"></p>
     </div>
   </div>
-  <script type="module" src="/js/customer.js?v=12"></script>
+  <script type="module" src="/js/customer.js?v=13"></script>
 </body>
 </html>

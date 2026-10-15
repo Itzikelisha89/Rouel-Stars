@@ -853,8 +853,8 @@ $('tp-add').addEventListener('click', () => {
   const adding = !inList(tourPick.id);
   toggleList(tourPick);
   if (s3d && document.body.dataset.view === 's3d') {
-    if (adding) s3d.flyToCart(tourPick.id); else s3d.refreshTag(tourPick.id);
-    $('s3d-count').textContent = loadList().filter((i) => !i.picked).length;
+    if (adding) { s3d.flyToCart(tourPick); setTimeout(kaching, 450); } else s3d.refreshTag(tourPick.id);
+    setTimeout(paintCart3d, adding ? 650 : 0);
   }
   for (const h of document.querySelectorAll(`[data-hot="${tourPick.id}"]`)) h.classList.toggle('in', inList(tourPick.id));
 });
@@ -864,7 +864,77 @@ $('tour-sheet').addEventListener('click', (e) => { if (e.target === $('tour-shee
 // ---------- the store in 3D ----------
 let s3d = null;
 let s3dPick = null;
-function stop3d() { s3d?.stop(); }
+function stop3d() { s3d?.stop(); stopMusic(); }
+// the cart button: how many and how much, like the screen on a smart cart
+function paintCart3d() {
+  const todo = loadList().filter((i) => !i.picked);
+  const total = todo.reduce((sum, i) => sum + priceValue(i.price), 0);
+  $('s3d-count').textContent = todo.length;
+  $('s3d-total').textContent = total ? `₪${total.toFixed(2).replace(/\.00$/, '')}` : '';
+  $('s3d-checkout').classList.toggle('hidden', !todo.length);
+  const b = $('s3d-cart'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+}
+
+// ---------- sound in the 3D store: soft music, a "ka-ching" for every product ----------
+// Made on the phone with Web Audio (nothing to download), quiet, and lower while Omer talks.
+const sound = { ctx: null, master: null, timer: 0, on: (() => { try { return localStorage.getItem('storeFinder:music') !== '0'; } catch { return true; } })() };
+const MUSIC_LEVEL = 0.05;
+function audioCtx() {
+  if (!sound.ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; sound.ctx = new AC(); }
+  sound.ctx.resume?.();
+  return sound.ctx;
+}
+function startMusic() {
+  $('s3d-music').classList.toggle('off', !sound.on);
+  if (!sound.on || sound.timer) return;
+  const ctx = audioCtx(); if (!ctx) return;
+  const master = sound.master = ctx.createGain();
+  master.gain.setValueAtTime(0, ctx.currentTime);
+  master.gain.linearRampToValueAtTime(player.paused ? MUSIC_LEVEL : MUSIC_LEVEL * 0.3, ctx.currentTime + 2.5);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500;
+  lp.connect(master); master.connect(ctx.destination);
+  // Cmaj7 · Am7 · Fmaj7 · G6: warm, unhurried, a little sunny
+  const chords = [[261.63, 329.63, 392, 493.88], [220, 261.63, 329.63, 392], [174.61, 220, 261.63, 329.63], [196, 246.94, 293.66, 329.63]];
+  const bells = [523.25, 587.33, 659.25, 783.99, 880];
+  let bar = 0;
+  const play = () => {
+    const t0 = ctx.currentTime + 0.05;
+    for (const f of chords[bar % 4]) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = f / 2;
+      g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.18, t0 + 1.2); g.gain.linearRampToValueAtTime(0, t0 + 4.2);
+      o.connect(g); g.connect(lp); o.start(t0); o.stop(t0 + 4.3);
+    }
+    for (let k = 0; k < 3; k++) if (Math.random() < 0.55) {
+      const o = ctx.createOscillator(), g = ctx.createGain(), at = t0 + 0.6 + k * 1.1;
+      o.type = 'sine'; o.frequency.value = bells[Math.floor(Math.random() * bells.length)];
+      g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.07, at + 0.02); g.gain.exponentialRampToValueAtTime(0.001, at + 1.6);
+      o.connect(g); g.connect(lp); o.start(at); o.stop(at + 1.7);
+    }
+    bar++;
+  };
+  play();
+  sound.timer = setInterval(play, 4000);
+}
+function stopMusic() {
+  clearInterval(sound.timer); sound.timer = 0;
+  const m = sound.master; sound.master = null;
+  if (m && sound.ctx) { m.gain.cancelScheduledValues(sound.ctx.currentTime); m.gain.linearRampToValueAtTime(0, sound.ctx.currentTime + 0.6); setTimeout(() => m.disconnect(), 800); }
+}
+// quieter while Omer speaks
+player.addEventListener('play', () => { if (sound.master) sound.master.gain.linearRampToValueAtTime(MUSIC_LEVEL * 0.3, sound.ctx.currentTime + 0.3); });
+for (const ev of ['ended', 'pause']) player.addEventListener(ev, () => { if (sound.master) sound.master.gain.linearRampToValueAtTime(MUSIC_LEVEL, sound.ctx.currentTime + 0.8); });
+function kaching() {
+  if (!sound.on) return;
+  const ctx = audioCtx(); if (!ctx) return;
+  const t0 = ctx.currentTime;
+  [[1318.5, 0], [1760, 0.09], [2637, 0.18]].forEach(([f, d]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t0 + d); g.gain.linearRampToValueAtTime(0.16, t0 + d + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t0 + d + 0.45);
+    o.connect(g); g.connect(ctx.destination); o.start(t0 + d); o.stop(t0 + d + 0.5);
+  });
+}
 function open3d(opts = {}) { go(() => render3d(opts)); }
 async function render3d({ productId = null } = {}) {
   setView('s3d');
@@ -876,6 +946,7 @@ async function render3d({ productId = null } = {}) {
     if (document.body.dataset.view !== 's3d') return;
     if (!s3d) {
       s3d = new Store3D(THREE, $('s3d-canvas'), store.map, tr.aisles, {
+        storeName: () => store.name,
         price: (p) => (p.price ? formatPrice(p.price) : ''),
         inCart: (id) => inList(id),
         where: (shelf) => {
@@ -884,15 +955,23 @@ async function render3d({ productId = null } = {}) {
           if (shelf && s3d) s3d.sayTimer = setTimeout(() => { if (s3d.whereId === shelf.id && !s3d.path) say(aisleName(shelf, { short: lang !== 'he' })); }, 1200);
         },
       });
-      s3d.fillCart(loadList().filter((i) => !i.picked).length);
+      s3d.fillCart(loadList().filter((i) => !i.picked));
       bind3dControls();
+      // the first time: glide down from above the store to the door, with a welcome
+      if (!productId) {
+        $('s3d-store').textContent = store.name;
+        $('s3d-welcome').classList.add('show');
+        s3d.playIntro(() => { $('s3d-welcome').classList.remove('show'); say(t('s3d_welcome')); });
+      }
     }
     s3d.resize();
     s3d.start();
+    startMusic();
     $('s3d-loading').classList.add('hidden');
-    $('s3d-count').textContent = loadList().filter((i) => !i.picked).length;
-    setTimeout(() => $('s3d-hint').classList.add('hidden'), 5000);
+    paintCart3d();
+    setTimeout(() => $('s3d-hint').classList.add('hidden'), 7000);
     tick3dMini();
+    if (s3d.intro) return;
     if (productId) {
       const ok = s3d.walkToProduct(productId, (p) => show3dPick(p));
       if (!ok) {
@@ -901,7 +980,7 @@ async function render3d({ productId = null } = {}) {
         if (shelf) s3d.walkToShelf(shelf);
       }
       say(t('s3d_taking'));
-    } else say(t('s3d_welcome'));
+    }
   } catch (err) {
     $('s3d-loading').innerHTML = `<span>${escapeHtml(err.message)}</span>`;
   }
@@ -930,7 +1009,10 @@ function bind3dControls() {
   const cv = $('s3d-canvas');
   // drag to look, tap to buy or to walk to that spot
   let drag = null;
-  cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointerdown', (e) => {
+    if (s3d?.intro) { s3d.skipIntro(); return; }
+    drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now() }; cv.setPointerCapture(e.pointerId);
+  });
   cv.addEventListener('pointermove', (e) => {
     if (!drag || !s3d) return;
     s3d.yaw -= (e.clientX - drag.x) * 0.006; // drag right, look right
@@ -997,9 +1079,43 @@ function bind3dControls() {
     next();
   });
   $('s3d-cart').addEventListener('click', () => go(renderListView));
+  $('s3d-music').addEventListener('click', () => {
+    sound.on = !sound.on;
+    try { localStorage.setItem('storeFinder:music', sound.on ? '1' : '0'); } catch { /* private mode */ }
+    if (sound.on) startMusic(); else { stopMusic(); $('s3d-music').classList.add('off'); }
+  });
+  // checkout: walk to the tills, then a little celebration and what's next
+  $('s3d-checkout').addEventListener('click', () => {
+    buzz();
+    const tills = store.map.shelves.filter((s) => /^c\d+$/.test(s.id) || /קופ/.test(s.name));
+    const near = tills.sort((a, b) => Math.hypot(a.x - s3d.pos.x, a.y - s3d.pos.z) - Math.hypot(b.x - s3d.pos.x, b.y - s3d.pos.z))[0];
+    s3d.tour = null;
+    if (near) s3d.walkToShelf(near, showFinale);
+    else { const e = store.map.entrance; s3d.walkToPoint(e.x + 0.5, e.y + 0.5); setTimeout(showFinale, 1200); }
+  });
+  $('fin-more').addEventListener('click', () => $('s3d-finale').classList.add('hidden'));
+  $('fin-nav').addEventListener('click', () => { $('s3d-finale').classList.add('hidden'); go(renderListView); setTimeout(() => $('list-start').click(), 300); });
+  $('fin-share').addEventListener('click', () => {
+    const todo = loadList().filter((i) => !i.picked);
+    const lines = todo.map((i) => `• ${i.name}${i.price ? ` · ${formatPrice(i.price)}` : ''} · ${shortShelf(store.map.shelves.find((s) => s.id === i.shelfId))}`);
+    const text = `${t('fin_wa', { store: store.name })}\n${lines.join('\n')}\n\n${location.origin}/s/${encodeURIComponent(slug)}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  });
   $('s3d-photos').addEventListener('click', () => openTour(0));
 }
 $('detail-3d').addEventListener('click', () => { if (current) open3d({ productId: current.id }); });
+function showFinale() {
+  const todo = loadList().filter((i) => !i.picked);
+  const total = todo.reduce((sum, i) => sum + priceValue(i.price), 0);
+  $('fin-sum').textContent = t('fin_sum', { n: todo.length, total: total ? `₪${total.toFixed(2).replace(/\.00$/, '')}` : '' }).replace(/ · $/, '');
+  $('fin-thumbs').replaceChildren(...todo.slice(0, 8).map((i) => { const c = document.createElement('canvas'); drawCrop(c, i.image || i.photo, i.image ? null : i.box, 96); return c; }));
+  // confetti in the store's colours
+  const colors = ['#ff7a1a', '#ff3d6e', '#22c55e', '#4f7cff', '#ffd166', '#ffffff'];
+  $('confetti').innerHTML = Array.from({ length: 70 }, (_, k) => `<i style="left:${Math.random() * 100}%;background:${colors[k % colors.length]};animation-delay:${Math.random() * 0.8}s;animation-duration:${2.2 + Math.random() * 1.6}s;transform:rotate(${Math.random() * 360}deg)"></i>`).join('');
+  $('s3d-finale').classList.remove('hidden');
+  kaching(); buzz([30, 60, 30, 60, 60]);
+  say(t('fin_say', { n: todo.length }));
+}
 
 // ---------- request a product the store doesn't carry ----------
 $('request-form').addEventListener('submit', async (e) => {

@@ -2,6 +2,8 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
+import { drawCrop } from '/js/map.js';
+
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
 export function loadThree() {
@@ -54,14 +56,62 @@ function packedShelfTex(THREE, seed, fridge) {
     if (fridge) { g.fillStyle = 'rgba(255,255,255,.25)'; for (let d = 0; d < W; d += W / 4) g.fillRect(d, 0, 6, H); }
   });
 }
-function signTex(THREE, text, sub) {
+// every department its own colour, the way good stores guide the eye
+const DEPT = ['#ff6a2a', '#2f80ed', '#27ae60', '#e84393', '#9b51e0', '#00a3a3', '#f2994a', '#eb5757', '#2d9cdb', '#6fcf97', '#c27c0e', '#5b5fc7'];
+export function deptColor(name) {
+  const n = Number(String(name).match(/מעבר\s*(\d+)/)?.[1]);
+  return n ? DEPT[(n - 1) % DEPT.length] : '#ff6a2a';
+}
+function shade(hex, k) { // k < 1 darker
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `rgb(${c(n >> 16)}, ${c((n >> 8) & 255)}, ${c(n & 255)})`;
+}
+function signTex(THREE, text, sub, color = '#ff6a2a') {
   return canvasTex(THREE, 1024, 220, (g, W, H) => {
-    const grd = g.createLinearGradient(0, 0, W, 0); grd.addColorStop(0, '#ff9a3c'); grd.addColorStop(1, '#ff5a36');
+    const grd = g.createLinearGradient(0, 0, W, 0); grd.addColorStop(0, color); grd.addColorStop(1, shade(color, 0.8));
     g.fillStyle = grd; g.fillRect(0, 0, W, H);
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.direction = 'rtl';
     g.font = '800 92px Heebo, Arial, sans-serif'; g.fillText(text, W / 2, sub ? 105 : 140);
     if (sub) { g.font = '600 60px Heebo, Arial, sans-serif'; g.fillText(sub, W / 2, 185); }
   });
+}
+function softTex(THREE, inner, outer) {
+  return canvasTex(THREE, 128, 128, (g, W) => {
+    const r = g.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2);
+    r.addColorStop(0, inner); r.addColorStop(1, outer);
+    g.fillStyle = r; g.fillRect(0, 0, W, W);
+  });
+}
+// a deal poster for the end of a gondola: the product, the deal, the price
+function posterTex(THREE, p, price, color) {
+  const tex = canvasTex(THREE, 512, 720, (g, W, H) => {
+    const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, '#ff3d6e'); grd.addColorStop(1, '#ff7a1a');
+    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.direction = 'rtl';
+    g.font = '900 78px Heebo, Arial, sans-serif'; g.fillText('🔥 מבצע', W / 2, 92);
+    g.fillStyle = '#fff'; g.fillRect(36, 128, W - 72, 330);
+    g.font = '800 40px Heebo, Arial, sans-serif'; g.fillStyle = '#fff';
+    const name = p.name.length > 22 ? `${p.name.slice(0, 21)}…` : p.name;
+    g.fillText(name, W / 2, 516);
+    g.font = '900 64px Heebo, Arial, sans-serif'; g.fillText(p.promo.slice(0, 16), W / 2, 596);
+    if (price) { g.font = '700 40px Heebo, Arial, sans-serif'; g.fillText(price, W / 2, 660); }
+    g.strokeStyle = color; g.lineWidth = 14; g.strokeRect(7, 7, W - 14, H - 14);
+  });
+  // the product picture, once it's loaded
+  const crop = document.createElement('canvas');
+  drawCrop(crop, p.image || p.photo, p.image ? null : p.box, 320).then(() => {
+    const g = tex.image.getContext('2d');
+    g.drawImage(crop, 36 + (tex.image.width - 72 - 330) / 2, 128, 330, 330);
+    tex.needsUpdate = true;
+  });
+  return tex;
+}
+function thumbTex(THREE, p) {
+  const c = document.createElement('canvas');
+  const tex = new THREE.CanvasTexture(c);
+  drawCrop(c, p.image || p.photo, p.image ? null : p.box, 128).then(() => { tex.needsUpdate = true; });
+  return tex;
 }
 function tagTex(THREE, price, color) {
   return canvasTex(THREE, 256, 256, (g) => {
@@ -85,7 +135,7 @@ export class Store3D {
   constructor(THREE, el, map, aisles, on) {
     Object.assign(this, { THREE, el, map, on });
     this.byShelf = new Map(aisles.map((a) => [a.shelfId, a]));
-    this.hot = []; this.cartItems = []; this.anims = [];
+    this.hot = []; this.clickables = []; this.cartItems = []; this.anims = [];
     this.yaw = 0; this.pitch = -0.05; this.move = { f: 0, s: 0 }; this.path = null; this.whereId = '-';
     this.blocked = new Uint8Array(map.cols * map.rows);
     for (const s of map.shelves) for (let y = s.y; y < s.y + s.h; y++) for (let x = s.x; x < s.x + s.w; x++) if (x >= 0 && y >= 0 && x < map.cols && y < map.rows) this.blocked[y * map.cols + x] = 1;
@@ -107,7 +157,7 @@ export class Store3D {
     const scene = this.scene = new T.Scene();
     scene.background = new T.Color(0xdfe3ea);
     scene.fog = new T.Fog(0xdfe3ea, 16, Math.max(45, map.cols * 1.1, map.rows * 1.1));
-    scene.add(new T.HemisphereLight(0xfff8ef, 0x8a93a6, 0.85));
+    scene.add(new T.HemisphereLight(0xfff4e2, 0x7d869a, 0.9));
     const sun = new T.DirectionalLight(0xffffff, 0.45); sun.position.set(6, 12, 4); scene.add(sun);
     this.camera = new T.PerspectiveCamera(74, 1, 0.05, 250);
     scene.add(this.camera);
@@ -126,9 +176,14 @@ export class Store3D {
     const ceil = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshBasicMaterial({ color: 0xdfe4ec }));
     ceil.rotation.x = Math.PI / 2; ceil.position.set(map.cols / 2, 3.3, map.rows / 2); scene.add(ceil);
     const panelGeo = new T.PlaneGeometry(1.6, 0.35), panelMat = new T.MeshBasicMaterial({ color: 0xffffff });
+    // under every light a warm pool on the floor: the glow that makes a store feel alive
+    const poolMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(255,226,180,0.2)', 'rgba(255,226,180,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
+    const poolGeo = new T.PlaneGeometry(2.6, 2.6);
     for (let z = 2; z < map.rows; z += 3) for (let x = 1.5; x < map.cols; x += 4) {
       const p = new T.Mesh(panelGeo, panelMat); p.rotation.x = Math.PI / 2; p.position.set(x, 3.28, z); scene.add(p);
+      if (this.free(x, z)) { const pool = new T.Mesh(poolGeo, poolMat); pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.006, z); scene.add(pool); }
     }
+    this.shadowMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(20,24,36,0.55)', 'rgba(20,24,36,0)'), transparent: true, depthWrite: false });
     const wallMat = new T.MeshLambertMaterial({ color: 0xe9e2d6 }), bandMat = new T.MeshLambertMaterial({ color: 0xff6a2a });
     for (const [w, d, x, z] of [[map.cols, 0.2, map.cols / 2, -0.1], [map.cols, 0.2, map.cols / 2, map.rows + 0.1], [0.2, map.rows, -0.1, map.rows / 2], [0.2, map.rows, map.cols + 0.1, map.rows / 2]]) {
       const m = new T.Mesh(new T.BoxGeometry(w, 3.3, d), wallMat); m.position.set(x, 1.65, z); scene.add(m);
@@ -139,6 +194,7 @@ export class Store3D {
     const e = map.entrance;
     const mat = new T.Mesh(new T.PlaneGeometry(2.2, 1.4), new T.MeshLambertMaterial({ color: 0x22a35a }));
     mat.rotation.x = -Math.PI / 2; mat.position.set(e.x + 0.5, 0.01, e.y + 0.5); scene.add(mat);
+    this.buildWelcome(e);
 
     const bodyMat = new T.MeshLambertMaterial({ color: 0xe9edf3 }), baseMat = new T.MeshLambertMaterial({ color: 0x3a4254 });
     const counterMat = new T.MeshLambertMaterial({ color: 0x2b3242 });
@@ -146,14 +202,21 @@ export class Store3D {
 
     // the cart, in front of you at the bottom of the view
     const cart = this.cart = new T.Group();
-    const red = new T.LineBasicMaterial({ color: 0xff5a36 });
-    const basket = new T.BoxGeometry(0.56, 0.26, 0.36);
-    cart.add(new T.LineSegments(new T.EdgesGeometry(basket), red));
-    const grid = new T.Mesh(basket, new T.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.12, side: T.DoubleSide }));
-    cart.add(grid);
-    const handle = new T.Mesh(new T.CylinderGeometry(0.018, 0.018, 0.6, 8), new T.MeshLambertMaterial({ color: 0x1d2433 }));
-    handle.rotation.z = Math.PI / 2; handle.position.set(0, 0.2, 0.24); cart.add(handle);
-    cart.position.set(0, -0.7, -1.05); cart.rotation.x = 0.4; cart.scale.setScalar(0.8);
+    // a chrome wire basket: rails and a grid on every side, a red handle with the chain's plate
+    const W = 0.56, Hc = 0.28, D = 0.38;
+    const pts = [];
+    const line = (a, b) => pts.push(new T.Vector3(...a), new T.Vector3(...b));
+    for (let i = 0; i <= 8; i++) { const x = -W / 2 + (W * i) / 8; line([x, -Hc / 2, -D / 2], [x, Hc / 2, -D / 2]); line([x, -Hc / 2, D / 2], [x, Hc / 2, D / 2]); line([x, -Hc / 2, -D / 2], [x, -Hc / 2, D / 2]); }
+    for (let i = 0; i <= 5; i++) { const z = -D / 2 + (D * i) / 5; line([-W / 2, -Hc / 2, z], [-W / 2, Hc / 2, z]); line([W / 2, -Hc / 2, z], [W / 2, Hc / 2, z]); }
+    for (let i = 0; i <= 3; i++) { const y = -Hc / 2 + (Hc * i) / 3; line([-W / 2, y, -D / 2], [W / 2, y, -D / 2]); line([-W / 2, y, D / 2], [W / 2, y, D / 2]); line([-W / 2, y, -D / 2], [-W / 2, y, D / 2]); line([W / 2, y, -D / 2], [W / 2, y, D / 2]); }
+    cart.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), new T.LineBasicMaterial({ color: 0xc9d1dc })));
+    const rim = new T.Mesh(new T.BoxGeometry(W + 0.02, 0.02, D + 0.02), new T.MeshLambertMaterial({ color: 0xdfe5ee }));
+    rim.position.y = Hc / 2; cart.add(rim);
+    const handle = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, W + 0.06, 10), new T.MeshLambertMaterial({ color: 0xff3d2e }));
+    handle.rotation.z = Math.PI / 2; handle.position.set(0, Hc / 2 + 0.1, D / 2 + 0.1); cart.add(handle);
+    const plate = new T.Mesh(new T.PlaneGeometry(0.22, 0.06), new T.MeshBasicMaterial({ map: signTex(T, this.on.storeName?.() || '🛒'), toneMapped: false }));
+    plate.position.set(0, Hc / 2 + 0.03, D / 2 + 0.012); cart.add(plate);
+    cart.position.set(0, -0.68, -1.0); cart.rotation.x = 0.42; cart.scale.setScalar(0.82);
     this.camera.add(cart);
 
     // start at the door, facing into the store
@@ -190,9 +253,13 @@ export class Store3D {
     }
     const base = new T.Mesh(new T.BoxGeometry(s.w + 0.02, 0.14, s.h + 0.02), baseMat);
     base.position.set(cx, 0.07, cz); this.scene.add(base);
-    // orange end caps, the way supermarket gondolas end
+    // a soft shadow on the floor around the unit: it stands on the floor instead of floating
+    const sh = new T.Mesh(new T.PlaneGeometry(s.w + 1.1, s.h + 1.1), this.shadowMat);
+    sh.rotation.x = -Math.PI / 2; sh.position.set(cx, 0.004, cz); this.scene.add(sh);
+    const color = deptColor(s.name);
+    // end caps in the department's colour, the way supermarket gondolas end
     if (!wall) {
-      const capMat = this.capMat ||= new T.MeshLambertMaterial({ color: 0xff7a1a });
+      const capMat = new T.MeshLambertMaterial({ color: new T.Color(color) });
       const alongZc = s.h >= s.w;
       for (const end of [-1, 1]) {
         const cap = new T.Mesh(alongZc ? new T.BoxGeometry(s.w + 0.04, H + 0.02, 0.06) : new T.BoxGeometry(0.06, H + 0.02, s.h + 0.04), capMat);
@@ -238,12 +305,53 @@ export class Store3D {
     // aisle signs hanging at both ends of the shelf
     const short = s.name.split('·').slice(0, 2).join('·').trim();
     const [num, ...rest] = short.split('·');
-    const signMat = new T.MeshBasicMaterial({ map: signTex(T, num.trim(), rest.join('·').trim()), side: T.DoubleSide });
+    const signMat = new T.MeshBasicMaterial({ map: signTex(T, num.trim(), rest.join('·').trim(), color), side: T.DoubleSide, toneMapped: false });
     for (const end of [-1, 1]) {
       const sign = new T.Mesh(new T.PlaneGeometry(1.5, 0.32), signMat);
       if (alongZ) { sign.position.set(cx, 2.35, cz + end * (s.h / 2 + 0.02)); } else { sign.position.set(cx + end * (s.w / 2 + 0.02), 2.35, cz); sign.rotation.y = Math.PI / 2; }
       this.scene.add(sign);
     }
+    // the department's name along the top of the unit, both sides
+    if (!wall && rest.length) {
+      const board = new T.MeshBasicMaterial({ map: signTex(T, rest.join('·').trim(), '', color), toneMapped: false });
+      for (const side of sides) {
+        const b = new T.Mesh(new T.PlaneGeometry(Math.min(len, 3.2), 0.36), board);
+        b.position.set(side.x + side.nx * 0.01, H + 0.22, side.z + side.nz * 0.01); b.rotation.y = side.rot; this.scene.add(b);
+      }
+      const rail = new T.Mesh(alongZ ? new T.BoxGeometry(s.w, 0.04, Math.min(len, 3.2)) : new T.BoxGeometry(Math.min(len, 3.2), 0.04, s.h), new T.MeshLambertMaterial({ color: 0x3a4254 }));
+      rail.position.set(cx, H + 0.03, cz); this.scene.add(rail);
+    }
+    // deal posters on the ends of the unit: the store's best offers, where everyone walks past
+    const deals = (aisle?.products || []).filter((p) => p.promo);
+    if (!wall && deals.length) {
+      [-1, 1].forEach((end, k) => {
+        const p = deals[k % deals.length];
+        const wP = Math.min(alongZ ? s.w : s.h, 1.1) * 0.86;
+        const poster = new T.Mesh(new T.PlaneGeometry(wP, wP * 1.4), new T.MeshBasicMaterial({ map: posterTex(T, p, this.on.price(p), color), toneMapped: false }));
+        if (alongZ) { poster.position.set(cx, 1.05, cz + end * (s.h / 2 + 0.04)); poster.rotation.y = end > 0 ? 0 : Math.PI; } else { poster.position.set(cx + end * (s.w / 2 + 0.04), 1.05, cz); poster.rotation.y = end > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        poster.userData = { product: p, shelf: s };
+        this.scene.add(poster);
+        this.clickables.push(poster);
+      });
+    }
+  }
+  // the welcome arch at the door, and two plants
+  buildWelcome(e) {
+    const T = this.THREE;
+    const yaw = Math.round(this.faceInto(e) / (Math.PI / 2)) * (Math.PI / 2);
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw), px = Math.cos(yaw), pz = -Math.sin(yaw);
+    const ox = e.x + 0.5 + fx * 1.2, oz = e.y + 0.5 + fz * 1.2;
+    const pillarMat = new T.MeshLambertMaterial({ color: 0xff6a2a });
+    for (const k of [-1, 1]) {
+      const x = ox + px * 1.5 * k, z = oz + pz * 1.5 * k;
+      const pil = new T.Mesh(new T.BoxGeometry(0.22, 2.7, 0.22), pillarMat); pil.position.set(x, 1.35, z); this.scene.add(pil);
+      // a plant in a pot beside each pillar
+      const px2 = x - fx * 0.5, pz2 = z - fz * 0.5;
+      const pot = new T.Mesh(new T.CylinderGeometry(0.22, 0.17, 0.45, 16), new T.MeshLambertMaterial({ color: 0x2b3242 })); pot.position.set(px2, 0.22, pz2); this.scene.add(pot);
+      const leaves = new T.Mesh(new T.SphereGeometry(0.38, 14, 10), new T.MeshLambertMaterial({ color: 0x3f9b54 })); leaves.position.set(px2, 0.78, pz2); leaves.scale.y = 1.25; this.scene.add(leaves);
+    }
+    const sign = new T.Mesh(new T.PlaneGeometry(3.3, 0.6), new T.MeshBasicMaterial({ map: signTex(T, 'ברוכים הבאים', this.on.storeName?.() || ''), side: T.DoubleSide, toneMapped: false }));
+    sign.position.set(ox, 2.85, oz); sign.rotation.y = yaw; this.scene.add(sign);
   }
   addTag(p, plane, w, h, side, shelf) {
     if (!p.box) return;
@@ -280,6 +388,14 @@ export class Store3D {
     loop();
   }
   stop() { this.running = false; cancelAnimationFrame(this.raf); }
+  playIntro(done) {
+    const T = this.THREE, m = this.map;
+    const to = new T.Vector3(this.pos.x, EYE, this.pos.z);
+    // start high over the middle of the store, a little behind the door, and glide down
+    const from = new T.Vector3(m.cols / 2 + Math.sin(this.yaw) * m.rows * 0.15, Math.max(11, Math.max(m.cols, m.rows) * 0.55), m.rows / 2 + Math.cos(this.yaw) * m.rows * 0.15);
+    this.intro = { from, to, t: 0, start: performance.now(), dur: 3.6, pitch0: -1.25, done };
+  }
+  skipIntro() { if (this.intro) this.intro.start = -1e9; }
   dispose() {
     this.stop();
     window.removeEventListener('resize', this.onResize);
@@ -386,6 +502,19 @@ export class Store3D {
       this.yaw += diff * Math.min(1, dt * 4);
       if (Math.abs(diff) < 0.01) this.turnTo = undefined;
     }
+    // the opening: from above the store, down to the door
+    if (this.intro) {
+      const it = this.intro;
+      it.t = (performance.now() - it.start) / (it.dur * 1000); // wall clock: the same length on any phone
+      const k = Math.min(1, it.t), e = k < 0.5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2;
+      this.camera.position.lerpVectors(it.from, it.to, e);
+      this.camera.rotation.set(0, 0, 0);
+      this.camera.rotateY(this.yaw); this.camera.rotateX(it.pitch0 + (this.pitch - it.pitch0) * e);
+      this.cart.visible = k > 0.85;
+      if (k >= 1) { this.intro = null; this.cart.visible = true; it.done?.(); }
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
     // a gentle walking bob
     const moving = this.path || this.move.f || this.move.s;
     this.bob = (this.bob || 0) + (moving ? dt * 9 : 0);
@@ -408,9 +537,14 @@ export class Store3D {
       a.mesh.position.lerpVectors(a.from, to, e);
       a.mesh.position.y += Math.sin(k * Math.PI) * 0.4;
       a.mesh.scale.setScalar(1 - e * 0.6);
-      if (k >= 1) { this.scene.remove(a.mesh); this.addCartItem(a.color); }
+      if (k >= 1) { this.scene.remove(a.mesh); this.addCartItem(a.color, a.product); }
     }
     this.anims = this.anims.filter((a) => a.t < 1);
+    if (this.cartBounce !== undefined) { // the basket nods when something lands in it
+      this.cartBounce += dt * 6;
+      this.cart.position.y = -0.68 - Math.sin(Math.min(Math.PI, this.cartBounce)) * 0.04;
+      if (this.cartBounce >= Math.PI) this.cartBounce = undefined;
+    }
     this.renderer.render(this.scene, this.camera);
     this.reportWhere();
   }
@@ -429,35 +563,42 @@ export class Store3D {
   }
 
   // ---------- the cart ----------
-  addCartItem(color) {
+  // a pack with the product's own picture on it, settling into the basket
+  addCartItem(color, product) {
     const T = this.THREE;
     const n = this.cartItems.length;
     if (n >= 18) return;
-    const m = new T.Mesh(new T.BoxGeometry(0.11, 0.09 + (n % 3) * 0.03, 0.08), new T.MeshLambertMaterial({ color }));
-    m.position.set(-0.2 + (n % 5) * 0.1, -0.08 + Math.floor(n / 5) * 0.07, -0.08 + ((n * 7) % 3) * 0.08);
-    m.rotation.y = (n * 0.7) % 1;
+    const side = new T.MeshLambertMaterial({ color });
+    const face = product ? new T.MeshBasicMaterial({ map: thumbTex(T, product), toneMapped: false }) : side;
+    const m = new T.Mesh(new T.BoxGeometry(0.13, 0.13, 0.05), [side, side, side, side, face, side]);
+    m.position.set(-0.2 + (n % 4) * 0.13, -0.06 + Math.floor(n / 4) * 0.06, 0.1 - ((n * 7) % 3) * 0.09);
+    m.rotation.set(-0.5, ((n * 0.9) % 1) - 0.5, 0);
     this.cart.add(m);
     this.cartItems.push(m);
+    this.cartBounce = 0;
   }
-  flyToCart(productId) {
+  flyToCart(product) {
     const T = this.THREE;
-    const tag = this.hot.find((s) => s.userData.product.id === productId);
+    const productId = product.id;
+    const tag = this.hot.find((s) => s.userData.product.id === productId) || this.clickables.find((c) => c.userData.product.id === productId);
     const color = new T.Color().setHSL((productId * 0.137) % 1, 0.7, 0.55);
-    if (!tag) return this.addCartItem(color);
-    const mesh = new T.Mesh(new T.BoxGeometry(0.16, 0.2, 0.1), new T.MeshLambertMaterial({ color }));
+    if (!tag) return this.addCartItem(color, product);
+    // the product's picture flies off the shelf in an arc into the basket
+    const mesh = new T.Mesh(new T.PlaneGeometry(0.3, 0.3), new T.MeshBasicMaterial({ map: thumbTex(T, product), toneMapped: false, side: T.DoubleSide }));
     mesh.position.copy(tag.position);
+    mesh.lookAt(this.camera.position);
     this.scene.add(mesh);
-    this.anims.push({ mesh, from: tag.position.clone(), t: 0, color });
+    this.anims.push({ mesh, from: tag.position.clone(), t: 0, color, product });
     this.refreshTag(productId);
   }
-  fillCart(n) { for (let i = 0; i < n; i++) this.addCartItem(new this.THREE.Color().setHSL((i * 0.23) % 1, 0.65, 0.55)); }
+  fillCart(items) { items.forEach((p, i) => this.addCartItem(new this.THREE.Color().setHSL((i * 0.23) % 1, 0.65, 0.55), p)); }
 
   // ---------- touch: drag to look, tap a tag to buy, tap the floor to walk there ----------
   pick(clientX, clientY) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     const v = new this.THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.ray.setFromCamera(v, this.camera);
-    const tag = this.ray.intersectObjects(this.hot)[0];
+    const tag = this.ray.intersectObjects([...this.hot, ...this.clickables])[0];
     if (tag && tag.distance < 9) return { product: tag.object.userData.product };
     const hit = this.ray.intersectObject(this.floor)[0];
     return hit ? { floor: hit.point } : null;
