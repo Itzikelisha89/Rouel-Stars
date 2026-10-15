@@ -230,7 +230,6 @@ export class Store3D {
     const e = map.entrance;
     const mat = new T.Mesh(new T.PlaneGeometry(2.2, 1.4), new T.MeshLambertMaterial({ color: C(0x1f6b45) }));
     mat.rotation.x = -Math.PI / 2; mat.position.set(e.x + 0.5, 0.01, e.y + 0.5); scene.add(mat);
-    this.buildWelcome(e);
 
     // gondolas in dark walnut and charcoal: the products are what's lit, the furniture steps back
     const bodyMat = new T.MeshLambertMaterial({ color: C(0x3a2e24) }), baseMat = new T.MeshLambertMaterial({ color: C(0x141210) });
@@ -261,9 +260,10 @@ export class Store3D {
     this.pos = new T.Vector3(e.x + 0.5, EYE, e.y + 0.5);
     this.yaw = this.faceInto(e);
     // a step back from anything right in front, so the first view takes in the store
-    const base = this.yaw;
+    // straight along the aisles (a diagonal first look sees the ends of units, not the shelves)
+    const base = Math.round(this.yaw / (Math.PI / 2)) * (Math.PI / 2);
     let best = -1;
-    for (let k = -2; k <= 2; k++) {
+    for (let k = -2; k <= 2; k += 2) {
       const a = base + (k * Math.PI) / 4;
       let d = 0;
       while (d < 25 && this.free(this.pos.x - Math.sin(a) * d, this.pos.z - Math.cos(a) * d)) d += 0.25;
@@ -298,6 +298,7 @@ export class Store3D {
         if (l < 4 && rr < 4) { x += px * (rr - l) / 2; z += pz * (rr - l) / 2; break; }
       }
       if (this.free(x, z)) { this.pos.x = x; this.pos.z = z; }
+      this.buildWelcome(); // the welcome arch frames where you start
     }
     this.ray = new T.Raycaster();
     this.clock = new T.Clock();
@@ -446,11 +447,11 @@ export class Store3D {
     }
   }
   // the welcome arch at the door, and two plants
-  buildWelcome(e) {
+  buildWelcome() {
     const T = this.THREE;
-    const yaw = Math.round(this.faceInto(e) / (Math.PI / 2)) * (Math.PI / 2);
+    const yaw = this.yaw;
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw), px = Math.cos(yaw), pz = -Math.sin(yaw);
-    const ox = e.x + 0.5 + fx * 1.2, oz = e.y + 0.5 + fz * 1.2;
+    const ox = this.pos.x + fx * 1.2, oz = this.pos.z + fz * 1.2;
     const pillarMat = new T.MeshLambertMaterial({ color: C(0x2b221a) });
     for (const k of [-1, 1]) {
       const x = ox + px * 1.5 * k, z = oz + pz * 1.5 * k;
