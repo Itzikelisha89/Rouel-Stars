@@ -590,7 +590,14 @@ export class Store3D {
   frame() {
     const T = this.THREE, dt = Math.min(0.05, this.clock.getDelta());
     const now = performance.now() / 1000;
-    if (this.path) {
+    if (this.driveTo) { // "take me there": the navigation screen moves the camera along the route
+      const d = this.driveTo;
+      this.pos.x += (d.x - this.pos.x) * Math.min(1, dt * 8); this.pos.z += (d.z - this.pos.z) * Math.min(1, dt * 8);
+      const diff = ((d.yaw - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      this.yaw += diff * Math.min(1, dt * 3);
+      this.pitch += ((d.pitch ?? -0.08) - this.pitch) * Math.min(1, dt * 3);
+      this.animateRoute(now);
+    } else if (this.path) {
       const target = this.path.points[0];
       const dx = target.x - this.pos.x, dz = target.z - this.pos.z, d = Math.hypot(dx, dz);
       const want = Math.atan2(-dx, -dz);
@@ -627,7 +634,7 @@ export class Store3D {
       return;
     }
     // a gentle walking bob
-    const moving = this.path || this.move.f || this.move.s;
+    const moving = this.path || this.move.f || this.move.s || this.driveTo?.moving;
     this.bob = (this.bob || 0) + (moving ? dt * 9 : 0);
     this.camera.position.set(this.pos.x, EYE + (moving ? Math.sin(this.bob) * 0.025 : 0), this.pos.z);
     this.camera.rotation.set(0, 0, 0);
@@ -674,6 +681,102 @@ export class Store3D {
       if (d < bd) { bd = d; best = s; }
     }
     if (best?.id !== this.whereId) { this.whereId = best?.id; this.on.where(best); }
+  }
+
+  // ---------- "take me there" in 3D: arrows on the floor, a column of light over the goal ----------
+  navMode() {
+    this.cart.visible = false;
+    if (this.intro) this.intro = null;
+  }
+  setRoute(cells, { productId = null, shelf = null, deal = null, dealShelf = null } = {}) {
+    const T = this.THREE;
+    if (this.routeGroup) this.scene.remove(this.routeGroup);
+    const g = this.routeGroup = new T.Group();
+    this.scene.add(g);
+    this.chevTex ||= canvasTex(T, 128, 128, (c, W) => {
+      c.fillStyle = '#fff';
+      c.beginPath(); c.moveTo(W / 2, 14); c.lineTo(W - 16, W / 2 + 10); c.lineTo(W - 36, W / 2 + 30); c.lineTo(W / 2, 54); c.lineTo(36, W / 2 + 30); c.lineTo(16, W / 2 + 10); c.closePath(); c.fill();
+    });
+    const chevGeo = new T.PlaneGeometry(0.55, 0.55);
+    this.chevrons = [];
+    for (let i = 0; i < cells.length - 1; i++) {
+      const a = cells[i], b = cells[i + 1];
+      const yaw = Math.atan2(-(b.x - a.x), -(b.y - a.y));
+      for (const f of [0.25, 0.75]) {
+        const m = new T.Mesh(chevGeo, new T.MeshBasicMaterial({ map: this.chevTex, color: 0xff7a1a, transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false }));
+        m.rotation.order = 'YXZ'; m.rotation.y = yaw; m.rotation.x = -Math.PI / 2;
+        m.position.set(a.x + 0.5 + (b.x - a.x) * f, 0.03, a.y + 0.5 + (b.y - a.y) * f);
+        m.userData.at = i + f;
+        g.add(m); this.chevrons.push(m);
+      }
+    }
+    const tagOf = (id) => id && this.hot.find((h) => h.userData.product.id === id);
+    const beacon = (pos, color) => {
+      const tex = this.beamTex ||= canvasTex(T, 4, 256, (c, W, H) => {
+        const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,.95)');
+        c.fillStyle = gr; c.fillRect(0, 0, W, H);
+      });
+      const beam = new T.Mesh(new T.CylinderGeometry(0.32, 0.32, 3.2, 24, 1, true), new T.MeshBasicMaterial({ map: tex, color, transparent: true, depthWrite: false, side: T.DoubleSide, blending: T.AdditiveBlending, toneMapped: false }));
+      beam.position.set(pos.x, 1.6, pos.z); g.add(beam);
+      const ring = new T.Mesh(new T.RingGeometry(0.34, 0.5, 32), new T.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: T.DoubleSide, blending: T.AdditiveBlending, toneMapped: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(pos.x, 0.035, pos.z); g.add(ring);
+      return { beam, ring };
+    };
+    // the light stands on the floor in front of the product, at the end of the route
+    const end = cells[cells.length - 1];
+    this.goalTag = tagOf(productId);
+    this.goalBeacon = beacon({ x: end.x + 0.5, z: end.y + 0.5 }, 0xff8a2a);
+    this.goalShelf = shelf;
+    this.dealBeacon = null; this.dealTag = tagOf(deal?.id); this.dealShelf = dealShelf; this.dealId = deal?.id;
+    if (dealShelf) {
+      const t = this.dealTag;
+      const cx = t ? t.position.x + t.userData.side.nx * 0.9 : dealShelf.x + dealShelf.w / 2, cz = t ? t.position.z + t.userData.side.nz * 0.9 : dealShelf.y + dealShelf.h + 0.5;
+      this.dealBeacon = beacon({ x: cx, z: cz }, 0xff3d6e);
+    }
+    this.routeAt = 0;
+  }
+  animateRoute(now) {
+    for (const m of this.chevrons || []) {
+      const ahead = m.userData.at - this.routeAt;
+      const wave = 0.55 + 0.45 * Math.sin(now * 5 - m.userData.at * 0.9); // a pulse running forward along the route
+      m.material.opacity = ahead < -0.2 ? 0 : wave * Math.min(1, 0.35 + ahead / 6);
+    }
+    for (const b of [this.goalBeacon, this.dealBeacon]) if (b) {
+      b.ring.scale.setScalar(1 + 0.25 * Math.sin(now * 3)); b.beam.material.opacity = 0.75 + 0.25 * Math.sin(now * 2);
+    }
+  }
+  // where the shopper is along the route (in cells walked) and where to look
+  drive(x, z, yaw, { at = 0, moving = true, pitch = -0.08 } = {}) {
+    this.routeAt = at;
+    this.driveTo = { x, z, yaw, moving, pitch };
+  }
+  // stand back from a target so it's framed in the view, not pressed against the lens
+  frameTarget(obj, fallback) {
+    const T = this.THREE;
+    let tx, tz, ty = 1.1, nx = 0, nz = 0;
+    if (obj) {
+      tx = obj.position.x; tz = obj.position.z; ty = obj.position.y;
+      if (obj.userData.side) { nx = obj.userData.side.nx; nz = obj.userData.side.nz; } else { const d = obj.getWorldDirection(new T.Vector3()); nx = d.x; nz = d.z; }
+    } else if (fallback) { tx = fallback.x + fallback.w / 2; tz = fallback.y + fallback.h / 2; } else return;
+    let x = this.driveTo.x, z = this.driveTo.z;
+    if (nx || nz) for (const k of [2.4, 2.0, 1.6, 1.2]) {
+      const cx = tx + nx * k, cz = tz + nz * k;
+      if (this.free(cx, cz)) { x = cx; z = cz; break; }
+    }
+    const yaw = Math.atan2(-(tx - x), -(tz - z));
+    const pitch = Math.max(-0.45, Math.min(0.2, Math.atan2(ty - EYE, Math.hypot(tx - x, tz - z))));
+    this.driveTo = { ...this.driveTo, x, z, yaw, pitch, moving: false };
+  }
+  // the end of the route: turn to the product and make its price tag pulse
+  lookAtGoal() {
+    this.frameTarget(this.goalTag, this.goalShelf);
+    if (this.goalTag) this.flash = { sprite: this.goalTag, t: -1e9 };
+  }
+  lookAtDeal() {
+    if (!this.dealShelf || !this.driveTo) return;
+    const poster = this.dealId && this.clickables.find((c) => c.userData.product?.id === this.dealId && c.userData.shelf?.id === this.dealShelf.id);
+    this.frameTarget(poster || this.dealTag, this.dealShelf);
+    if (this.dealTag) this.flash = { sprite: this.dealTag, t: 0 };
   }
 
   // ---------- the cart ----------

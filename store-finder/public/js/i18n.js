@@ -78,6 +78,7 @@ const T = {
   add_list: { he: '➕ הוספה לרשימת הקניות', ar: '➕ أضف إلى قائمة المشتريات', ru: '➕ В список покупок', en: '➕ Add to shopping list' },
   list_meters: { he: '🚶 {m} מ׳ · {s} עצירות', ar: '🚶 {m} م · {s} محطات', ru: '🚶 {m} м · остановок: {s}', en: '🚶 {m} m · {s} stops' },
   list_hint: { he: 'מסלול אחד בחנות, לפי הסדר, ובדרך גם המבצעים 🔥. סמנו כל מוצר שלקחתם.', ar: 'مسار واحد في المتجر بالترتيب، ومعه العروض في الطريق 🔥. علّموا كل منتج أخذتموه.', ru: 'Один маршрут по магазину, по порядку, и акции по пути 🔥. Отмечайте взятые товары.', en: 'One route through the store, in order, with the deals on the way 🔥. Tick each item you pick up.' },
+  nav3d_badge: { he: '🧭 הדרך בתלת-ממד', ar: '🧭 الطريق ثلاثي الأبعاد', ru: '🧭 Маршрут в 3D', en: '🧭 The way, in 3D' },
   list_deal: { he: 'בדרך: {name}', ar: 'في الطريق: {name}', ru: 'По пути: {name}', en: 'On the way: {name}' },
   list_done: { he: 'לקחת הכל! 🎉', ar: 'أخذت كل شيء! 🎉', ru: 'Всё взяли! 🎉', en: 'You got everything! 🎉' },
   list_empty: { he: 'העגלה ריקה. מוסיפים מוצרים עם ➕, מהחיפוש, מהמבצעים או מהסיור בחנות.', ar: 'القائمة فارغة. أضف منتجات من صفحة المنتج.', ru: 'Список пуст. Добавляйте товары со страницы товара.', en: 'Your list is empty. Add items from a product page.' },

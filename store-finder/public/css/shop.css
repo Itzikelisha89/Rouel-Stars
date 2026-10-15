@@ -286,3 +286,10 @@ body.in3d { overflow: hidden; }
 .nav-hero.deal .na-rot svg { display: none; }
 .nav-hero.deal .na-rot::after { content: '🔥'; display: grid; place-items: center; height: 100%; font-size: 3.2rem; }
 .nav-deal-add { margin-top: 10px; padding: 8px 16px; border-radius: 999px; border: none; background: #fff; color: #c2185b; font-weight: 900; }
+/* "take me there" in 3D */
+.nav3d { position: relative; height: 44vh; min-height: 260px; max-height: 420px; margin: 12px 0 4px; border-radius: 24px; overflow: hidden; background: #0e0c0a; box-shadow: 0 18px 40px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(255, 214, 150, .14); }
+.nav3d canvas { display: block; }
+.nav3d::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(14, 10, 6, .45) 100%); }
+.nav3d-badge { position: absolute; top: 10px; inset-inline-start: 10px; z-index: 2; padding: 5px 12px; border-radius: 999px; font-size: .8rem; font-weight: 800; color: #ffd8b0; background: rgba(20, 16, 12, .72); border: 1px solid rgba(255, 214, 150, .25); }
+.nav3d-loading { position: absolute; inset: 0; z-index: 1; background: linear-gradient(110deg, #17130f 30%, #2a2219 50%, #17130f 70%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }

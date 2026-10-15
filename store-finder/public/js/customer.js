@@ -139,6 +139,7 @@ const TAB_OF = { home: 'home', results: 'home', deals: 'deals', list: 'list', to
 function setView(name) {
   stopWalker();
   if (name !== 's3d') { stop3d(); document.body.classList.remove('in3d'); }
+  if (name !== 'nav') nav3d?.stop();
   $('upsell-sheet').classList.add('hidden');
   $('tour-sheet').classList.add('hidden');
   for (const id of VIEWS) $(id).classList.toggle('hidden', !SHOWS[name].includes(id));
@@ -567,6 +568,24 @@ function renderNav() {
   walker.setAttribute('r', 11); walker.setAttribute('class', 'map-walker');
   svgEl.appendChild(walker);
 
+  setupNav3d(path, shelf, via);
+  // the 3D camera: along the route, looking a little ahead (a smooth look around the corners)
+  const cellAt = (d) => {
+    const i = Math.max(0, Math.min(Math.floor(d), total - 1)), r = Math.max(0, Math.min(1, d - i));
+    const a = path[i], b = path[Math.min(i + 1, total)];
+    return { x: a.x + (b.x - a.x) * r + 0.5, z: a.y + (b.y - a.y) * r + 0.5 };
+  };
+  let lookedAtGoal = false, lookingAtDeal = false;
+  const drive3d = (dist, step) => {
+    if (!nav3d || !nav3dReady) return;
+    if (finished) { if (!lookedAtGoal) { const p = cellAt(total); nav3d.drive(p.x, p.z, nav3d.yaw, { at: total, moving: false }); nav3d.lookAtGoal(); lookedAtGoal = true; } return; }
+    lookedAtGoal = false;
+    if (all[step]?.turn === 'deal') { if (!lookingAtDeal) { nav3d.lookAtDeal(); lookingAtDeal = true; } return; }
+    lookingAtDeal = false;
+    const p = cellAt(dist), q = cellAt(Math.min(total, dist + 1.6));
+    const yaw = Math.hypot(q.x - p.x, q.z - p.z) > 0.05 ? Math.atan2(-(q.x - p.x), -(q.z - p.z)) : nav3d.driveTo?.yaw ?? nav3d.yaw;
+    nav3d.drive(p.x, p.z, yaw, { at: dist, moving: !paused });
+  };
   // A calm walking pace; every step stays on screen long enough for Omer to say it.
   const MS_PER_M = 850, MIN_STEP_MS = 2600;
   const sched = []; let tAcc = 0, cAcc = 0;
@@ -599,7 +618,7 @@ function renderNav() {
     $('arrived-btn').classList.toggle('pulse', isEnd);
     buzz(isEnd ? [30, 60, 30] : 15);
     say(i === 0 ? `${t('say_go')} ${st.speech}` : st.speech);
-    if (isEnd && current.photo) setTimeout(() => $('nav-shelf').scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
+    if (isEnd && current.photo && !nav3dReady) setTimeout(() => $('nav-shelf').scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
   }
   function place(dist) {
     const i = Math.min(Math.floor(dist), total - 1), r = dist - i;
@@ -618,6 +637,7 @@ function renderNav() {
     else { const sc = sched[step]; dist = sc.c0 + (sc.c1 - sc.c0) * Math.min(1, (elapsed - sc.t0) / sc.dur); }
     place(dist);
     if (step !== shown) showStep(step);
+    drive3d(dist, step);
     if (!finished) $('nav-sub').textContent = all[step].sub || t('m_more', { n: Math.max(1, Math.ceil(sched[step].c1 - dist)) });
     $('nav-bar').style.width = `${(dist / Math.max(1, total)) * 100}%`;
     const left = Math.max(0, total - dist);
@@ -643,6 +663,33 @@ function renderNav() {
   navStarted = Date.now();
   spokenAnswer = all.map((st) => st.text).join('. ');
   start();
+}
+// ---------- "take me there" in 3D ----------
+let nav3d = null, nav3dReady = false;
+async function setupNav3d(path, shelf, via) {
+  if (!has3d) return;
+  $('nav3d').classList.remove('hidden');
+  $('nav3d-loading').classList.toggle('hidden', nav3dReady);
+  try {
+    const [THREE, tr] = await Promise.all([loadThree(), loadTour()]);
+    if (document.body.dataset.view !== 'nav') return;
+    if (!nav3d) {
+      nav3d = new Store3D(THREE, $('nav3d'), store.map, tr.aisles, {
+        storeName: () => store.name, price: (p) => (p.price ? formatPrice(p.price) : ''), inCart: (id) => inList(id), where: () => {},
+      });
+      nav3d.navMode();
+    }
+    nav3d.setRoute(path, { productId: current?.id, shelf, deal: via?.deal, dealShelf: via?.dealShelf });
+    const p0 = path[0], p1 = path[Math.min(2, path.length - 1)];
+    nav3d.pos.set(p0.x + 0.5, nav3d.pos.y, p0.y + 0.5);
+    nav3d.yaw = Math.atan2(-(p1.x - p0.x), -(p1.y - p0.y));
+    nav3dReady = true;
+    $('nav3d-loading').classList.add('hidden');
+    nav3d.resize();
+    nav3d.start();
+  } catch {
+    $('nav3d').classList.add('hidden');
+  }
 }
 let navDeal = null;
 $('nav-deal-add').addEventListener('click', () => {
