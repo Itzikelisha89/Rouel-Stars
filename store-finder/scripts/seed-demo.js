@@ -38,8 +38,8 @@ function seedBranch(SLUG, NAME, o) {
   const salt = crypto.randomBytes(16).toString('hex');
   const map = {
     cols: 40, rows: 25, entrance: { x: 20, y: 24 },
-    shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר']
-      .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4][i], y: 4, w: 2, h: 15 })),
+    shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר', "הלבשה ופיג'מות"]
+      .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4, 0][i], y: 4, w: 2, h: 15 })),
   };
   const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
     .run(SLUG, NAME, `${salt}:${crypto.scryptSync(PASSWORD, salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);
@@ -63,6 +63,12 @@ function seedBranch(SLUG, NAME, o) {
       p.keywords, place.level, p.price, JSON.stringify(place.box));
   }
 
+  // Deals the manager marked, for the shopper's home screen.
+  for (const [match, promo] of [['ORIENT 20', '20% הנחה השבוע'], ['תיק גב Marshmelo', '2 ב-150 ₪'], ['MOOSH בצבעי פסטל', '3 ב-60 ₪'],
+    ['סט מצעים URBAN לילדים', 'מחיר מבצע'], ['פח סנסור DUBLIN', 'השני ב-50%'], ['קורקינט MAXI 3 גלגלים ידית מתקפלת', 'מבצע חגים'],
+    ["פיג'מת בנות קטיפה פנדה", 'מבצע חורף'], ['FOOTBALL KIDI', 'מבצע חורף']]) {
+    db.prepare("UPDATE products SET promo = ? WHERE store_id = ? AND name LIKE '%' || ? || '%'").run(promo, storeId, match);
+  }
   const now = new Date();
   const start = new Date(now.getTime() - 365 * DAY);
   const holidays = holidayDates(start, now);
@@ -183,11 +189,7 @@ function seedBranch(SLUG, NAME, o) {
       }
     }
   }
-  // Deals the manager marked, for the shopper's home screen.
-  for (const [match, promo] of [['ORIENT 20', '20% הנחה השבוע'], ['תיק גב Marshmelo', '2 ב-150 ₪'], ['MOOSH בצבעי פסטל', '3 ב-60 ₪'],
-    ['סט מצעים URBAN לילדים', 'מחיר מבצע'], ['פח סנסור DUBLIN', 'השני ב-50%'], ['קורקינט MAXI 3 גלגלים ידית מתקפלת', 'מבצע חגים']]) {
-    db.prepare("UPDATE products SET promo = ? WHERE store_id = ? AND name LIKE '%' || ? || '%'").run(promo, storeId, match);
-  }
+
 
   console.log(`demo store "${SLUG}": ${products.length} products, ${n} searches`);
   console.log(`pilot simulation (30 days): ${pilot.visitors} shoppers, ${pilot.found} found, ${pilot.problems} shelf reports, ${pilot.help} help calls, ${pilot.requests} requests`);

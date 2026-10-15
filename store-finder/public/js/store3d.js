@@ -51,9 +51,8 @@ function packedShelfTex(THREE, seed, fridge) {
         g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x + 4, (i + 1) * rh - 12 - h * 0.7, (w - 12) * 0.8, h * 0.18);
         x += w;
       }
-      g.fillStyle = '#1a1511'; g.fillRect(0, (i + 1) * rh - 12, W, 12);
-      g.fillStyle = 'rgba(255,214,150,.5)'; g.fillRect(0, (i + 1) * rh - 12, W, 2); // LED strip on the shelf edge
-      g.fillStyle = '#ffd400'; for (let p = 20; p < W; p += 90) g.fillRect(p, (i + 1) * rh - 11, 34, 9); // price strips
+      g.fillStyle = '#f27018'; g.fillRect(0, (i + 1) * rh - 12, W, 12); // the store's orange price rail
+      g.fillStyle = '#fff'; for (let p = 30; p < W; p += 110) { g.beginPath(); g.arc(p, (i + 1) * rh - 6, 4, 0, 7); g.arc(p + 7, (i + 1) * rh - 6, 4, 0, 7); g.fill(); }
     }
     if (fridge) { g.fillStyle = 'rgba(255,255,255,.25)'; for (let d = 0; d < W; d += W / 4) g.fillRect(d, 0, 6, H); }
   });
@@ -374,7 +373,9 @@ export class Store3D {
       ? [{ nx: -1, nz: 0, x: s.x - 0.005, z: cz, rot: -Math.PI / 2 }, { nx: 1, nz: 0, x: s.x + s.w + 0.005, z: cz, rot: Math.PI / 2 }]
       : [{ nx: 0, nz: 1, x: cx, z: s.y + s.h + 0.005, rot: 0 }, { nx: 0, nz: -1, x: cx, z: s.y - 0.005, rot: Math.PI }];
     const loader = new T.TextureLoader();
-    sides.forEach((side, si) => {
+    // a side against the wall (no floor in front of it) gets no products: nobody can reach them there
+    const open = sides.filter((sd) => this.free(sd.x + sd.nx * 0.6, sd.z + sd.nz * 0.6));
+    open.forEach((side, si) => {
       const wash = new T.Mesh(new T.PlaneGeometry(len, faceH), this.washMat());
       wash.position.set(side.x + side.nx * 0.02, y0, side.z + side.nz * 0.02); wash.rotation.y = side.rot; wash.renderOrder = 2; this.scene.add(wash);
       if (!photos.length) {
@@ -665,7 +666,10 @@ export class Store3D {
     for (const s of this.map.shelves) {
       if (!/^a/.test(s.id)) continue;
       const dx = Math.max(s.x - this.pos.x, 0, this.pos.x - (s.x + s.w)), dz = Math.max(s.y - this.pos.z, 0, this.pos.z - (s.y + s.h));
-      const d = Math.hypot(dx, dz);
+      // between two units, the one you're looking at is where you are
+      const nx = Math.max(s.x, Math.min(this.pos.x, s.x + s.w)) - this.pos.x, nz = Math.max(s.y, Math.min(this.pos.z, s.y + s.h)) - this.pos.z;
+      const facing = (-Math.sin(this.yaw) * nx - Math.cos(this.yaw) * nz) / (Math.hypot(nx, nz) || 1);
+      const raw = Math.hypot(dx, dz), d = facing > 0.7 && raw < 2.5 ? raw - 3 : raw;
       if (d < bd) { bd = d; best = s; }
     }
     if (best?.id !== this.whereId) { this.whereId = best?.id; this.on.where(best); }

@@ -1041,7 +1041,13 @@ app.use((err, _req, res, _next) => {
 
 if (require.main === module) {
   // SEED_DEMO=1 on a fresh server: create the demo store (the הסטוק catalog) once, to show the system.
-  if (process.env.SEED_DEMO === '1' && !getStoreBySlug('demo')) require('./scripts/seed-demo');
+  // A newer demo catalog (DEMO_VERSION) rebuilds the demo stores once; real stores are never touched.
+  const DEMO_VERSION = '2';
+  const demoVersion = db.prepare("SELECT value FROM settings WHERE key = 'demo_version'").get()?.value;
+  if (process.env.SEED_DEMO === '1' && (!getStoreBySlug('demo') || demoVersion !== DEMO_VERSION)) {
+    require('./scripts/seed-demo');
+    db.prepare("INSERT INTO settings (key, value) VALUES ('demo_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(DEMO_VERSION);
+  }
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => {
     console.log(`Store Finder running on http://localhost:${port}`);

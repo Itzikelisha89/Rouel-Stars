@@ -16,7 +16,8 @@ PIN_BOTTOM = {'orient', 'orient-28'}
 catalog = json.load(open(os.path.join(D, 'catalog.json'), encoding='utf-8'))
 by_aisle = {}
 for p in catalog:
-    by_aisle.setdefault(p['aisle'], []).append(p)
+    if 'photo' not in p:  # products on a real photo of the store keep their place in it
+        by_aisle.setdefault(p['aisle'], []).append(p)
 
 out = {}
 os.makedirs(os.path.join(D, 'shelves'), exist_ok=True)
@@ -32,7 +33,7 @@ for aisle, items in sorted(by_aisle.items()):
             rows.append(group[i:i + sz]); i += sz
         W = CELL_W * max(len(r) for r in rows)
         H = 60 + len(rows) * ROW_H
-        img = Image.new('RGB', (W, H), (233, 226, 214))
+        img = Image.new('RGB', (W, H), (238, 236, 232))
         d = ImageDraw.Draw(img)
         name = f'{aisle}-{n + 1}.jpg'
         for r, row in enumerate(rows):
@@ -53,8 +54,16 @@ for aisle, items in sorted(by_aisle.items()):
                 out[p['id']] = dict(shelfPhoto=name, level=LEVELS[len(rows)][r],
                                     box=dict(x0=round(x / W * 1000), y0=round(y / H * 1000),
                                              x1=round((x + im.width) / W * 1000), y1=round((y + im.height) / H * 1000)))
-            d.rectangle((0, y_board, W, y_board + 22), fill=(122, 100, 80))
-            d.rectangle((0, y_board + 22, W, y_board + 30), fill=(95, 76, 60))
+            # the store's own shelf: a white board with the orange price rail and its white dots
+            d.rectangle((0, y_board, W, y_board + 8), fill=(236, 238, 240))
+            d.rectangle((0, y_board + 8, W, y_board + 30), fill=(242, 112, 24))
+            for xd in range(60, W, 240):
+                d.ellipse((xd, y_board + 11, xd + 16, y_board + 27), fill=(255, 255, 255))
+                d.ellipse((xd + 13, y_board + 11, xd + 29, y_board + 27), fill=(255, 255, 255))
         img.save(os.path.join(D, 'shelves', name), quality=86)
+for p in catalog:
+    if 'photo' in p:
+        Image.open(os.path.join(D, p['photo'])).convert('RGB').save(os.path.join(D, 'shelves', p['photo']), quality=86)
+        out[p['id']] = dict(shelfPhoto=p['photo'], level=p['level'], box=p['box'])
 json.dump(out, open(os.path.join(D, 'shelves.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(len(out), 'products on', len(os.listdir(os.path.join(D, 'shelves'))), 'shelf photos')
