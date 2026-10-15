@@ -1182,7 +1182,7 @@ $('request-form').addEventListener('submit', async (e) => {
   } catch (err) { $('request-done').textContent = err.message; $('request-done').classList.remove('hidden'); }
 });
 
-// ---------- shopping list with the shortest route through the store ----------
+// ---------- shopping list: one route through the store, past deals on the way ----------
 function loadList() {
   try { return JSON.parse(localStorage.getItem(LIST_KEY) || '[]'); } catch { return []; }
 }
@@ -1252,6 +1252,29 @@ $('list-toggle').addEventListener('click', () => { if (current) { toggleList(cur
 
 // "89.90" counts toward the estimate; deals written as text ("2 ב-25") don't
 const priceValue = (p) => (/^\s*₪?\s*\d+(\.\d+)?\s*₪?\s*$/.test(p || '') ? Number(p.replace(/[^\d.]/g, '')) : 0);
+// The list's route takes in up to two deals on the way, within the walk the store allows (detourPct)
+function listWithDeals(shelves, start) {
+  const base = planRoute(store.map, shelves, start);
+  const pct = store.detourPct ?? 20;
+  if (!pct || !shelves.length || !allDeals.length) return { route: base, deals: [] };
+  const limit = Math.max(base.meters * (1 + pct / 100), base.meters + 4);
+  const taken = new Set(shelves.map((s) => s.id));
+  const deals = [];
+  let route = base;
+  for (let k = 0; k < 2; k++) {
+    let best = null;
+    for (const d of allDeals) {
+      const ds = shelfOf(d);
+      if (!ds || taken.has(ds.id) || inList(d.id)) continue;
+      const r = planRoute(store.map, [...shelves, ...deals.map(shelfOf), ds], start);
+      if (r.unreachable.length || r.meters > limit || (best && r.meters >= best.r.meters)) continue;
+      best = { d, ds, r };
+    }
+    if (!best) break;
+    deals.push(best.d); taken.add(best.ds.id); route = best.r;
+  }
+  return { route, deals };
+}
 let routeSpeech = '';
 let listRoute = null;
 let listSuggestFor = '';
@@ -1271,21 +1294,33 @@ function renderListView() {
   const todo = list.filter((i) => !i.picked);
   const shelves = todo.map((i) => store.map.shelves.find((s) => s.id === i.shelfId)).filter(Boolean);
   const here = hereShelf && aisleSpot(store.map, hereShelf);
-  const route = planRoute(store.map, shelves, here || store.map.entrance);
+  const { route, deals: dealStops } = listWithDeals(shelves, here || store.map.entrance);
   listRoute = route;
-  const order = new Map(route.legs.map((l, n) => [l.shelf.id, n + 1]));
+  const order = new Map(route.legs.map((l, n) => [l.shelf.id, n + 1])); // place along the route, deals included
+  const dealShelves = new Set(dealStops.map((d) => d.shelfId));
+  let stopNo = 0;
+  const number = new Map(route.legs.filter((l) => !dealShelves.has(l.shelf.id)).map((l) => [l.shelf.id, ++stopNo])); // what the shopper sees
   const sorted = [...list].sort((a, b) => (a.picked - b.picked) || ((order.get(a.shelfId) ?? 99) - (order.get(b.shelfId) ?? 99)));
-  $('list-meters').textContent = route.legs.length ? t('list_meters', { m: route.meters, s: route.legs.length }) : '';
+  $('list-meters').textContent = route.legs.length ? t('list_meters', { m: route.meters, s: stopNo }) : '';
   $('list-hint').textContent = t(todo.length ? 'list_hint' : list.length ? 'list_done' : 'list_empty');
-  $('list-items').innerHTML = sorted.map((i) => {
+  const rows = sorted.map((i) => {
     const shelf = store.map.shelves.find((s) => s.id === i.shelfId);
-    const n = order.get(i.shelfId);
+    const n = number.get(i.shelfId);
     return `<li class="list-item${i.picked ? ' picked' : ''}" data-id="${i.id}">
       <span class="stop-n">${i.picked ? '✓' : (n ?? '?')}</span>
       <span class="li-main"><span class="name">${escapeHtml(i.name)}</span><span class="meta">${escapeHtml(shortShelf(shelf))}${i.level ? ` · ${escapeHtml(levelName(i.level))}` : ''}${i.price ? ` · ${escapeHtml(formatPrice(i.price))}` : ''}</span></span>
       <button type="button" class="li-check" aria-label="${t(i.picked ? 'put_back' : 'taken')}">${i.picked ? '↩︎' : t('taken')}</button>
     </li>`;
-  }).join('');
+  }).map((html, k) => ({ key: sorted[k].picked ? 1e6 : order.get(sorted[k].shelfId) ?? 999, html }));
+  // deals the route passes: a stop of their own, one tap to add
+  for (const d of dealStops) {
+    rows.push({ key: order.get(d.shelfId) ?? 999, html: `<li class="list-item deal" data-deal="${d.id}">
+      <span class="stop-n">🔥</span>
+      <span class="li-main"><span class="name">${escapeHtml(t('list_deal', { name: shortName(d) }))}</span><span class="meta">${escapeHtml(d.promo)} · ${escapeHtml(shortShelf(shelfOf(d)))}</span></span>
+      <button type="button" class="li-add">${t('add_short')}</button>
+    </li>` });
+  }
+  $('list-items').innerHTML = rows.sort((a, b) => a.key - b.key).map((r) => r.html).join('');
   const total = todo.reduce((sum, i) => sum + priceValue(i.price), 0);
   $('list-total').textContent = t('list_total', { p: total.toFixed(2).replace(/\.00$/, '') });
   $('list-total').classList.toggle('hidden', !total);
@@ -1295,15 +1330,23 @@ function renderListView() {
   $('list-map-box').classList.toggle('hidden', !route.legs.length);
   $('list-clear').classList.toggle('hidden', !list.length);
   if (route.legs.length) {
-    const stops = route.legs.map((l, n) => ({ ...l.path[l.path.length - 1], n: n + 1 }));
-    renderMap($('list-map'), store.map, { targetShelfIds: shelves.map((s) => s.id), path: route.path, here, stops, ...mapLabels() });
+    const stops = route.legs.map((l) => (dealShelves.has(l.shelf.id) ? { ...l.path[l.path.length - 1], n: '🔥', deal: true } : { ...l.path[l.path.length - 1], n: number.get(l.shelf.id) }));
+    renderMap($('list-map'), store.map, { targetShelfIds: [...shelves.map((s) => s.id), ...dealShelves], path: route.path, here, stops, ...mapLabels() });
   }
-  routeSpeech = route.legs.map((l, n) => `${n + 1}. ${shortShelf(l.shelf)}: ${todo.filter((i) => i.shelfId === l.shelf.id).map((i) => i.name).join(', ')}`).join('. ');
+  routeSpeech = route.legs.map((l) => (dealShelves.has(l.shelf.id)
+    ? `${shortShelf(l.shelf)}: ${t('list_deal', { name: dealStops.filter((d) => d.shelfId === l.shelf.id).map(shortName).join(', ') })}`
+    : `${number.get(l.shelf.id)}. ${shortShelf(l.shelf)}: ${todo.filter((i) => i.shelfId === l.shelf.id).map((i) => i.name).join(', ')}`)).join('. ');
   $('list-speak').classList.toggle('hidden', !voiceOk() || !route.legs.length);
 }
 $('list-items').addEventListener('click', async (e) => {
   const li = e.target.closest('.list-item');
   if (!li) return;
+  if (li.dataset.deal) {
+    const d = allDeals.find((x) => x.id === Number(li.dataset.deal));
+    if (!d) return;
+    if (e.target.closest('.li-add')) { toggleList(d, 'detour'); renderListView(); } else openProduct(d, { source: 'detour' });
+    return;
+  }
   const id = Number(li.dataset.id);
   const list = loadList();
   const item = list.find((i) => i.id === id);

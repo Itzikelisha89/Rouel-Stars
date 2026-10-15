@@ -483,3 +483,7 @@ body.walking { overflow: hidden; }
 .wr-actions { position: relative; display: grid; grid-template-columns: 64px 1fr 2fr; gap: 10px; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
 .wr-actions button { height: 60px; font-size: 1.1rem; border-radius: 18px; }
 .wr-actions button { white-space: nowrap; }
+.map-stop.deal circle { fill: #ff3d6e; }
+.list-item.deal { border-color: rgba(255, 61, 110, .55); background: linear-gradient(135deg, rgba(255, 61, 110, .14), rgba(255, 122, 26, .1)); }
+.list-item.deal .stop-n { background: linear-gradient(135deg, #ff3d6e, #ff7a1a); }
+.list-item .li-add { padding: 8px 12px; font-size: .9rem; border-radius: 12px; border: 0; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ff3d6e, #ff7a1a); }

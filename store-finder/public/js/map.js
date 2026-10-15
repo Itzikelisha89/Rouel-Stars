@@ -32,7 +32,7 @@ export function renderMap(svg, map, { targetShelfId = null, targetShelfIds = nul
 
   // Numbered stops of a shopping-list route.
   for (const stop of stops || []) {
-    const g2 = el('g', { class: 'map-stop' }, svg);
+    const g2 = el('g', { class: stop.deal ? 'map-stop deal' : 'map-stop' }, svg);
     el('circle', { cx: stop.x * CELL + CELL / 2, cy: stop.y * CELL + CELL / 2, r: CELL * 0.8 }, g2);
     el('text', { x: stop.x * CELL + CELL / 2, y: stop.y * CELL + CELL / 2 + 5, 'text-anchor': 'middle' }, g2).textContent = stop.n;
   }

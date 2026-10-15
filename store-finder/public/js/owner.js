@@ -1111,7 +1111,7 @@ $('detour-form').addEventListener('submit', async (e) => {
   try {
     const r = await api('/api/store/settings', { method: 'PUT', body: { detourPct: Number($('s-detour').value) } });
     store.detourPct = r.detourPct;
-    $('s-detour-status').textContent = Number(r.detourPct) ? `נשמר ✓ מסלולים יעברו ליד מבצעים כשזה מוסיף עד ${r.detourPct}% הליכה.` : 'נשמר ✓ מסלול מגלה כבוי.';
+    $('s-detour-status').textContent = Number(r.detourPct) ? `נשמר ✓ נאריך ללקוחות את הדרך עד ${r.detourPct}% כדי שיעברו ליד עוד מבצעים.` : 'נשמר ✓ מסלול מגלה כבוי.';
   } catch (err) { $('s-detour-status').textContent = err.message; }
 });
 $('name-form').addEventListener('submit', async (e) => {
