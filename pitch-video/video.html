@@ -634,8 +634,9 @@
       <img src="assets/settings-detour.jpg" style="width:100%;display:block;border-radius:18px">
     </div>
     <div class="abs fade" id="detour-you" style="right:1010px;top:860px;width:220px;text-align:center"><div style="font-size:64px">🎚️</div><span class="chip o" style="font-size:24px;margin-top:8px">אתה קובע בכמה</span></div>
+    <div class="abs fade" id="detour-3d" style="left:150px;width:456px;top:992px;text-align:center"><span class="pill" style="font-size:26px">🧭 ההגעה למוצר, בתלת-ממד</span></div>
     <div class="phone" id="detour-phone" style="left:150px;top:110px"><div class="notch"></div><div class="screen">
-      <img class="shot dt" src="assets/app-detour-detail.jpg"><img class="shot dt" src="assets/app-detour-stop.jpg"><img class="shot dt" src="assets/app-list-deals.jpg">
+      <img class="shot dt" src="assets/nav3d-start.jpg"><img class="shot dt" src="assets/nav3d-deal.jpg"><img class="shot dt" src="assets/nav3d-arrive.jpg">
     </div></div>
   </section>
 
@@ -1591,6 +1592,7 @@ Object.assign(UPDATE, {
     show($('detour-set'), t, 12.8, 0.8, 30);
     show($('detour-you'), t, 13.4, 0.6, 16);
     cycle([...document.querySelectorAll('#detour-phone .dt')], t, [0, 6.2, 13.5]);
+    show($('detour-3d'), t, 1.6, 0.6, 16);
   },
   's-upsell'(t) {
     show($('upsell-text'), t, 0.3);
@@ -1616,7 +1618,7 @@ Object.assign(UPDATE, {
 });
 window.render = render;
 window.DURATION = DURATION;
-const ASSETS = ['pj-satin', 'pj-minime', 'hat-minnie', 'walk-live', 'app-detour-detail', 'app-detour-stop', 'app-list-deals', 'app-upsell', '3d-aisle', '3d-shelf', '3d-finale', 'settings-detour', 'shelf-camera', 'pots-display', 'shelf-a4', 'prestige', 'orient-small', 'velare', 'towel-gloria', 'spice-prestige', 'spice-rock', 'backpack', 'moosh-pastel'].map((n) => `assets/${n}.jpg`);
+const ASSETS = ['nav3d-start', 'nav3d-deal', 'nav3d-arrive', 'pj-satin', 'pj-minime', 'hat-minnie', 'walk-live', 'app-detour-detail', 'app-detour-stop', 'app-list-deals', 'app-upsell', '3d-aisle', '3d-shelf', '3d-finale', 'settings-detour', 'shelf-camera', 'pots-display', 'shelf-a4', 'prestige', 'orient-small', 'velare', 'towel-gloria', 'spice-prestige', 'spice-rock', 'backpack', 'moosh-pastel'].map((n) => `assets/${n}.jpg`);
 window.ready = Promise.all([document.fonts.ready, ...ASSETS.map((src) => { const i = new Image(); i.src = src; return i.decode(); }),
   ...[...document.images].map((i) => i.decode().catch(() => {}))]).then(() => true);
 // live preview when opened directly in a browser
