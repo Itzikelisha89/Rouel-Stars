@@ -155,40 +155,70 @@ export class Store3D {
     r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
     this.el.appendChild(r.domElement);
     const scene = this.scene = new T.Scene();
-    scene.background = new T.Color(0xdfe3ea);
-    scene.fog = new T.Fog(0xdfe3ea, 16, Math.max(45, map.cols * 1.1, map.rows * 1.1));
-    scene.add(new T.HemisphereLight(0xfff4e2, 0x7d869a, 0.9));
-    const sun = new T.DirectionalLight(0xffffff, 0.45); sun.position.set(6, 12, 4); scene.add(sun);
-    this.camera = new T.PerspectiveCamera(74, 1, 0.05, 250);
+    // a premium store: dark ceiling, warm wood, the light falls on the products
+    scene.background = new T.Color(0x1b1814);
+    scene.fog = new T.Fog(0x1b1814, 14, Math.max(38, map.cols * 0.95, map.rows * 0.95));
+    scene.add(new T.HemisphereLight(0xffe7c4, 0x4a3d30, 1.05));
+    const sun = new T.DirectionalLight(0xfff1dc, 0.5); sun.position.set(6, 12, 4); scene.add(sun);
+    this.camera = new T.PerspectiveCamera(64, 1, 0.05, 250);
     scene.add(this.camera);
 
     // floor: shiny light tiles; ceiling with light panels; walls around
-    const floorTex = canvasTex(T, 256, 256, (g, W) => {
-      g.fillStyle = '#c9c1b4'; g.fillRect(0, 0, W, W);
-      g.fillStyle = '#d3ccc0'; g.fillRect(0, 0, W / 2, W / 2); g.fillRect(W / 2, W / 2, W / 2, W / 2);
-      g.strokeStyle = '#a99f90'; g.lineWidth = 3; g.strokeRect(1, 1, W / 2 - 2, W / 2 - 2); g.strokeRect(W / 2 + 1, W / 2 + 1, W / 2 - 2, W / 2 - 2);
-      g.strokeRect(W / 2 + 1, 1, W / 2 - 2, W / 2 - 2); g.strokeRect(1, W / 2 + 1, W / 2 - 2, W / 2 - 2);
+    const floorTex = canvasTex(T, 512, 512, (g, W) => {
+      const r = rng('oak');
+      const planks = 8, ph = W / planks;
+      for (let i = 0; i < planks; i++) {
+        const off = r() * W;
+        for (const x0 of [-off, W - off]) {
+          const tone = 150 + Math.floor(r() * 40);
+          g.fillStyle = `rgb(${tone + 40}, ${tone - 5}, ${tone - 55})`;
+          g.fillRect(x0, i * ph, W, ph);
+          // grain
+          g.globalAlpha = 0.12;
+          for (let k = 0; k < 14; k++) { g.fillStyle = r() < 0.5 ? '#5a3a1c' : '#f3d2a2'; g.fillRect(x0, i * ph + r() * ph, W, 1 + r() * 2); }
+          g.globalAlpha = 1;
+        }
+        g.fillStyle = 'rgba(40,24,10,.55)'; g.fillRect(0, i * ph, W, 2); // the seam between planks
+        g.fillRect((i * 97) % W, i * ph, 2, ph);
+      }
     });
-    floorTex.wrapS = floorTex.wrapT = T.RepeatWrapping; floorTex.repeat.set(map.cols / 1.2, map.rows / 1.2);
-    const floor = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshLambertMaterial({ map: floorTex }));
+    floorTex.wrapS = floorTex.wrapT = T.RepeatWrapping; floorTex.repeat.set(map.cols / 3, map.rows / 3);
+    const floor = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshLambertMaterial({ map: floorTex, color: 0x8f7f6c }));
     floor.rotation.x = -Math.PI / 2; floor.position.set(map.cols / 2, 0, map.rows / 2);
     scene.add(floor); this.floor = floor;
-    const ceil = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshBasicMaterial({ color: 0xdfe4ec }));
-    ceil.rotation.x = Math.PI / 2; ceil.position.set(map.cols / 2, 3.3, map.rows / 2); scene.add(ceil);
+    const ceil = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshBasicMaterial({ color: 0x24211d }));
+    ceil.rotation.x = Math.PI / 2; ceil.position.set(map.cols / 2, 3.6, map.rows / 2); scene.add(ceil);
+    const beamMat = new T.MeshLambertMaterial({ color: 0x2f2a24 });
+    for (let x = 2; x < map.cols; x += 4) { const b = new T.Mesh(new T.BoxGeometry(0.18, 0.25, map.rows), beamMat); b.position.set(x, 3.45, map.rows / 2); scene.add(b); }
+    // pendant lamps: a warm glowing shade on a cord
+    const shadeGeo = new T.CylinderGeometry(0.16, 0.34, 0.26, 20, 1, true), shadeMat = new T.MeshLambertMaterial({ color: 0x1d1b18, side: T.DoubleSide });
+    const bulbGeo = new T.CircleGeometry(0.31, 20), bulbMat = new T.MeshBasicMaterial({ color: 0xffe2b0, toneMapped: false });
+    const cordGeo = new T.CylinderGeometry(0.008, 0.008, 0.7, 4), cordMat = new T.MeshBasicMaterial({ color: 0x111111 });
     const panelGeo = new T.PlaneGeometry(1.6, 0.35), panelMat = new T.MeshBasicMaterial({ color: 0xffffff });
     // under every light a warm pool on the floor: the glow that makes a store feel alive
-    const poolMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(255,226,180,0.2)', 'rgba(255,226,180,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
+    const poolMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(255,214,150,0.32)', 'rgba(255,214,150,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
     const poolGeo = new T.PlaneGeometry(2.6, 2.6);
     for (let z = 2; z < map.rows; z += 3) for (let x = 1.5; x < map.cols; x += 4) {
-      const p = new T.Mesh(panelGeo, panelMat); p.rotation.x = Math.PI / 2; p.position.set(x, 3.28, z); scene.add(p);
-      if (this.free(x, z)) { const pool = new T.Mesh(poolGeo, poolMat); pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.006, z); scene.add(pool); }
+      if (!this.free(x, z)) continue; // lamps hang over the walkways, not inside the shelves
+      const shade = new T.Mesh(shadeGeo, shadeMat); shade.position.set(x, 2.95, z); scene.add(shade);
+      const bulb = new T.Mesh(bulbGeo, bulbMat); bulb.rotation.x = Math.PI / 2; bulb.position.set(x, 2.83, z); scene.add(bulb);
+      const cord = new T.Mesh(cordGeo, cordMat); cord.position.set(x, 3.42, z); scene.add(cord);
+      const pool = new T.Mesh(poolGeo, poolMat); pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.006, z); scene.add(pool);
     }
     this.shadowMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(20,24,36,0.55)', 'rgba(20,24,36,0)'), transparent: true, depthWrite: false });
-    const wallMat = new T.MeshLambertMaterial({ color: 0xe9e2d6 }), bandMat = new T.MeshLambertMaterial({ color: 0xff6a2a });
+    const wallMat = new T.MeshLambertMaterial({ color: 0x3b342c }), bandMat = new T.MeshBasicMaterial({ color: 0xff6a2a, toneMapped: false });
+    const slatTex = canvasTex(T, 256, 256, (g, W) => {
+      g.fillStyle = '#9a6b3f'; g.fillRect(0, 0, W, W);
+      for (let x = 0; x < W; x += 32) { g.fillStyle = x % 64 ? '#a87648' : '#8f6038'; g.fillRect(x, 0, 28, W); g.fillStyle = '#3a2614'; g.fillRect(x + 28, 0, 4, W); }
+    });
+    slatTex.wrapS = T.RepeatWrapping;
     for (const [w, d, x, z] of [[map.cols, 0.2, map.cols / 2, -0.1], [map.cols, 0.2, map.cols / 2, map.rows + 0.1], [0.2, map.rows, -0.1, map.rows / 2], [0.2, map.rows, map.cols + 0.1, map.rows / 2]]) {
-      const m = new T.Mesh(new T.BoxGeometry(w, 3.3, d), wallMat); m.position.set(x, 1.65, z); scene.add(m);
-      // the chain's orange band around the store, like the real signage
-      const band = new T.Mesh(new T.BoxGeometry(w + (d < 1 ? 0 : 0.02), 0.45, d + (d < 1 ? 0.02 : 0)), bandMat); band.position.set(x, 2.75, z); scene.add(band);
+      const m = new T.Mesh(new T.BoxGeometry(w, 3.6, d), wallMat); m.position.set(x, 1.8, z); scene.add(m);
+      // warm wood slats up to 2.2 m, and the chain's glowing orange band above them
+      const long = Math.max(w, d), t = slatTex.clone(); t.needsUpdate = true; t.repeat.set(long / 2, 1);
+      const slats = new T.Mesh(new T.BoxGeometry(w + (d < 1 ? 0 : 0.04), 2.2, d + (d < 1 ? 0.04 : 0)), new T.MeshLambertMaterial({ map: t }));
+      slats.position.set(x, 1.1, z); scene.add(slats);
+      const band = new T.Mesh(new T.BoxGeometry(w + (d < 1 ? 0 : 0.05), 0.12, d + (d < 1 ? 0.05 : 0)), bandMat); band.position.set(x, 2.32, z); scene.add(band);
     }
     // entrance mat and sign
     const e = map.entrance;
@@ -202,21 +232,22 @@ export class Store3D {
 
     // the cart, in front of you at the bottom of the view
     const cart = this.cart = new T.Group();
-    // a chrome wire basket: rails and a grid on every side, a red handle with the chain's plate
+    // a chrome wire basket made of real bars: a grid on every side, a solid rim
     const W = 0.56, Hc = 0.28, D = 0.38;
-    const pts = [];
-    const line = (a, b) => pts.push(new T.Vector3(...a), new T.Vector3(...b));
-    for (let i = 0; i <= 8; i++) { const x = -W / 2 + (W * i) / 8; line([x, -Hc / 2, -D / 2], [x, Hc / 2, -D / 2]); line([x, -Hc / 2, D / 2], [x, Hc / 2, D / 2]); line([x, -Hc / 2, -D / 2], [x, -Hc / 2, D / 2]); }
-    for (let i = 0; i <= 5; i++) { const z = -D / 2 + (D * i) / 5; line([-W / 2, -Hc / 2, z], [-W / 2, Hc / 2, z]); line([W / 2, -Hc / 2, z], [W / 2, Hc / 2, z]); }
-    for (let i = 0; i <= 3; i++) { const y = -Hc / 2 + (Hc * i) / 3; line([-W / 2, y, -D / 2], [W / 2, y, -D / 2]); line([-W / 2, y, D / 2], [W / 2, y, D / 2]); line([-W / 2, y, -D / 2], [-W / 2, y, D / 2]); line([W / 2, y, -D / 2], [W / 2, y, D / 2]); }
-    cart.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), new T.LineBasicMaterial({ color: 0xc9d1dc })));
-    const rim = new T.Mesh(new T.BoxGeometry(W + 0.02, 0.02, D + 0.02), new T.MeshLambertMaterial({ color: 0xdfe5ee }));
-    rim.position.y = Hc / 2; cart.add(rim);
+    const wire = new T.MeshLambertMaterial({ color: 0xaeb8c6 });
+    const bar = (len, axis, x, y, z, th = 0.01) => {
+      const g = axis === 'x' ? new T.BoxGeometry(len, th, th) : axis === 'y' ? new T.BoxGeometry(th, len, th) : new T.BoxGeometry(th, th, len);
+      const m = new T.Mesh(g, wire); m.position.set(x, y, z); cart.add(m);
+    };
+    for (let i = 0; i <= 7; i++) { const x = -W / 2 + (W * i) / 7; bar(Hc, 'y', x, 0, -D / 2); bar(Hc, 'y', x, 0, D / 2); bar(D, 'z', x, -Hc / 2, 0); }
+    for (let i = 0; i <= 4; i++) { const z = -D / 2 + (D * i) / 4; bar(Hc, 'y', -W / 2, 0, z); bar(Hc, 'y', W / 2, 0, z); }
+    for (let i = 0; i <= 2; i++) { const y = -Hc / 2 + (Hc * i) / 2; bar(W, 'x', 0, y, -D / 2); bar(W, 'x', 0, y, D / 2); bar(D, 'z', -W / 2, y, 0); bar(D, 'z', W / 2, y, 0); }
+    for (const [len, ax, x, z] of [[W, 'x', 0, -D / 2], [W, 'x', 0, D / 2], [D, 'z', -W / 2, 0], [D, 'z', W / 2, 0]]) bar(len, ax, x, Hc / 2, z, 0.022);
     const handle = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, W + 0.06, 10), new T.MeshLambertMaterial({ color: 0xff3d2e }));
     handle.rotation.z = Math.PI / 2; handle.position.set(0, Hc / 2 + 0.1, D / 2 + 0.1); cart.add(handle);
     const plate = new T.Mesh(new T.PlaneGeometry(0.22, 0.06), new T.MeshBasicMaterial({ map: signTex(T, this.on.storeName?.() || '🛒'), toneMapped: false }));
     plate.position.set(0, Hc / 2 + 0.03, D / 2 + 0.012); cart.add(plate);
-    cart.position.set(0, -0.68, -1.0); cart.rotation.x = 0.42; cart.scale.setScalar(0.82);
+    cart.position.set(0, -0.62, -1.0); cart.rotation.x = 0.5; cart.scale.setScalar(0.82);
     this.camera.add(cart);
 
     // start at the door, facing into the store
@@ -239,6 +270,18 @@ export class Store3D {
     return Math.round(exact / (Math.PI / 4)) * (Math.PI / 4); // a tidy angle, roughly at the shelves
   }
 
+  // the lamps light the top of the shelf more than the bottom, which is what makes it look real
+  washMat() {
+    const T = this.THREE;
+    return this._wash ||= new T.MeshBasicMaterial({
+      map: canvasTex(T, 4, 256, (g, W, H) => {
+        const gr = g.createLinearGradient(0, 0, 0, H);
+        gr.addColorStop(0, 'rgba(255,214,150,0.22)'); gr.addColorStop(0.45, 'rgba(255,214,150,0)'); gr.addColorStop(0.8, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(10,6,2,0.38)');
+        g.fillStyle = gr; g.fillRect(0, 0, W, H);
+      }),
+      transparent: true, depthWrite: false, toneMapped: false,
+    });
+  }
   buildShelf(s, { bodyMat, baseMat, counterMat }) {
     const T = this.THREE;
     const checkout = /^c\d+$/.test(s.id), wall = /^w-/.test(s.id);
@@ -278,6 +321,8 @@ export class Store3D {
       : [{ nx: 0, nz: 1, x: cx, z: s.y + s.h + 0.005, rot: 0 }, { nx: 0, nz: -1, x: cx, z: s.y - 0.005, rot: Math.PI }];
     const loader = new T.TextureLoader();
     sides.forEach((side, si) => {
+      const wash = new T.Mesh(new T.PlaneGeometry(len, faceH), this.washMat());
+      wash.position.set(side.x + side.nx * 0.02, y0, side.z + side.nz * 0.02); wash.rotation.y = side.rot; wash.renderOrder = 2; this.scene.add(wash);
       if (!photos.length) {
         const tex = packedShelfTex(T, s.id + si, /מקרר/.test(s.name));
         tex.wrapS = T.RepeatWrapping; tex.repeat.set(Math.max(1, Math.round(len / 2.2)), 1);
@@ -542,7 +587,7 @@ export class Store3D {
     this.anims = this.anims.filter((a) => a.t < 1);
     if (this.cartBounce !== undefined) { // the basket nods when something lands in it
       this.cartBounce += dt * 6;
-      this.cart.position.y = -0.68 - Math.sin(Math.min(Math.PI, this.cartBounce)) * 0.04;
+      this.cart.position.y = -0.62 - Math.sin(Math.min(Math.PI, this.cartBounce)) * 0.04;
       if (this.cartBounce >= Math.PI) this.cartBounce = undefined;
     }
     this.renderer.render(this.scene, this.camera);
