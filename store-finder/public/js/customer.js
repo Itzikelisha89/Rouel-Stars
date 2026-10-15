@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=26';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=26';
-import { rankShelves } from '/js/locate.js?v=26';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=26';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=26';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=27';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=27';
+import { rankShelves } from '/js/locate.js?v=27';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=27';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=27';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -1088,7 +1088,60 @@ function startGuide() {
   void here;
   const order = planRoute(store.map, shelves, store.map.entrance).legs.map((l) => l.shelf);
   if (!order.length) return;
-  runGuide(order.map((sh) => ({ sh })), 0.55);
+  // two stops per department: an opening line about it and a first product, then another one
+  const stops = order.flatMap((sh) => {
+    const ps = aislePicks(tour.aisles.find((x) => x.shelfId === sh.id), 2);
+    return ps.length ? ps.map((p, k) => ({ sh, p, intro: k === 0 })) : [{ sh, intro: true }];
+  });
+  runGuide(stops, 0.55);
+}
+function aislePicks(a, n) {
+  const ps = (a?.products || []).filter((p) => (p.photo || p.image) && !inList(p.id));
+  const out = [];
+  for (const p of [...ps.filter((x) => x.promo), ...[...ps].sort((x, y) => (y.carts || 0) - (x.carts || 0))]) if (!out.includes(p) && out.length < n) out.push(p);
+  return out;
+}
+// ---------- what Omer says: a line about each department, and a word about each product ----------
+const DEPT_LINES = [
+  [/ניקיון|טיפוח/, 'מעבר הניקיון! פה הבית מתחיל להבריק.'],
+  [/מצעים/, 'ברוכים הבאים לממלכת השינה הטובה. מצעים רכים, שבא לקפוץ לתוכם.'],
+  [/אמבט|כביס/, 'פינת האמבטיה והכביסה: מגבות נעימות, וכל מה שהכביסה צריכה.'],
+  [/בישול/, 'כאן מתחילה כל ארוחה טובה. סירים, מחבתות, וכל מה שהמטבח אוהב.'],
+  [/עיצוב/, 'עיצוב הבית: הפרטים הקטנים שהופכים בית לבית חם.'],
+  [/מטבח|אחסון/, 'מטבח מסודר, ראש שקט. צנצנות, קופסאות, והכל במקום.'],
+  [/בית ספר/, 'חוזרים לבית הספר בסטייל! תיקים, קופסאות אוכל, ומה שכל ילד צריך.'],
+  [/הלבשה|פיג/, 'החורף מגיע! פיג׳מות רכות שבא להתכרבל בהן, וגם לכל המשפחה.'],
+  [/צעצוע|יצירה/, 'ועכשיו, החלק הכי כיפי בחנות! צעצועים, סקוויזים ויצירה.'],
+];
+const CAT_LINES = [
+  [/מגבת|חלוק/, 'רכה ונעימה, בדיוק מה שרוצים אחרי מקלחת.'],
+  [/כביסה|קפסולות|כתמים/, 'הופך את הכביסה להרבה יותר קלה.'],
+  [/צנצנ|אחסון|ארגונית/, 'וכל המזווה נראה כמו בתמונות.'],
+  [/תיק גב|ילקוט|קופסת אוכל/, 'הילדים יחזרו מבית הספר מבסוטים.'],
+  [/קורקינט|בימבה/, 'שעות של כיף בחוץ.'],
+  [/ואזה|נר|מנורת|שעון/, 'פינה קטנה שמקבלת פתאום אופי.'],
+  [/פח/, 'נקי, שקט, ונראה מעולה במטבח.'],
+  [/צעצוע|יצירה|סקוויז/, 'ילדים פשוט מתים על זה.'],
+  [/פיג|הלבשה/, 'רך, נעים, ומחמם בדיוק לחורף.'],
+  [/מצעים/, 'שינה טובה מתחילה במצעים טובים.'],
+  [/בישול/, 'שווה כל ארוחה.'],
+  [/ניקיון/, 'עובד מעולה, וחוסך זמן.'],
+  [/עיצוב/, 'נותן לבית מראה חדש בשנייה.'],
+];
+function deptLine(sh) {
+  if (lang !== 'he') return t('g_dept_any', { a: aisleName(sh, { short: true }) });
+  return `${aisleName(sh, { short: true })}. ${DEPT_LINES.find(([re]) => re.test(sh.name))?.[1] || 'בוא נראה מה יש פה.'}`;
+}
+function productLine(p) {
+  if (lang !== 'he') return t('g_prod_any', { p: shortName(p), price: p.price ? `, ${formatPrice(p.price)}` : '', promo: p.promo ? `. ${p.promo}` : '' });
+  const name = shortName(p), price = p.price ? formatPrice(p.price) : '';
+  const what = `${p.description || ''} ${p.keywords || ''} ${p.name}`;
+  if (/mini me/i.test(what)) return `תראה את ${name}! יש לה גם דגם תואם, לאמא ולבת.${price ? ` רק ${price}.` : ''}`;
+  if (p.promo) return `שים לב: ${name} במבצע, ${p.promo}! הזדמנות שלא כדאי לפספס.`;
+  const extra = CAT_LINES.find(([re]) => re.test(what))?.[1] || 'מוצר מעולה במחיר טוב.';
+  // a real number now and then, not on every product
+  const social = p.carts >= 3 && p.id % 2 ? ` וכבר נמצא בעגלות של ${p.carts} לקוחות השבוע.` : '';
+  return `${name}${price ? `, ${price}` : ''}. ${extra}${social}`;
 }
 // a guide over any list of stops: { sh: shelf, p?: product (else the aisle's pick) }
 function runGuide(order, speed = 0.55, intro = '') {
@@ -1165,16 +1218,22 @@ function guideNext() {
   $('g-text').textContent = t('g_walk', { a: aisleName(sh, { short: true }) });
   gButtons([[t('g_next'), guideNext], [t('g_end_btn'), endGuide]]);
   const me = g.i;
-  const arrived = () => { if (s3d.guide === g && g.i === me) guideAt(sh, p); };
+  const arrived = () => { if (s3d.guide === g && g.i === me) guideAt(sh, p, stop); };
   if (!(p && s3d.walkToProduct(p.id, arrived))) s3d.walkToShelf(sh, arrived);
 }
-function guideAt(sh, p) {
-  const name = aisleName(sh, { short: lang !== 'he' });
+function guideAt(sh, p, stop = {}) {
   gProduct(p);
-  if (p) gSay(t('g_aisle', { a: name, p: shortName(p), price: p.price ? `, ${formatPrice(p.price)}` : '', promo: p.promo ? `. ${p.promo}` : '' }));
-  else gSay(t('g_aisle_plain', { a: name }));
-  gButtons([[t('g_next'), guideNext, true], [t('g_wait'), guideWait], [t('g_end_btn'), endGuide]]);
-  gCountdown(G_WAIT, guideNext);
+  const intro = stop.intro ? `${deptLine(sh)} ` : '';
+  if (p) gSay(`${intro}${productLine(p)} ${t('g_ask')}`);
+  else gSay(`${intro}${t('g_aisle_plain', { a: aisleName(sh, { short: true }) })}`);
+  // the next stop: more in this department, or the next one
+  const g = s3d.guide, nextStop = g.order[g.i];
+  const more = nextStop && nextStop.sh.id === sh.id;
+  const skip = () => { while (g.order[g.i] && g.order[g.i].sh.id === sh.id) g.i++; guideNext(); };
+  gButtons(more
+    ? [[t('g_more'), guideNext, true], [t('g_skip'), skip], [t('g_wait'), guideWait]]
+    : [[t('g_next'), guideNext, true], [t('g_wait'), guideWait], [t('g_end_btn'), endGuide]]);
+  gCountdown(G_WAIT + (intro ? 3000 : 0), guideNext);
 }
 function guideWait() {
   if (!s3d?.guide?.order) return;
