@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=24';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=24';
-import { rankShelves } from '/js/locate.js?v=24';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=24';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=24';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=25';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=25';
+import { rankShelves } from '/js/locate.js?v=25';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=25';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=25';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -1085,14 +1085,68 @@ function startGuide() {
   if (!s3d) return;
   const shelves = tour.aisles.map((a) => store.map.shelves.find((s) => s.id === a.shelfId)).filter(Boolean);
   const here = { x: Math.floor(s3d.pos.x), y: Math.floor(s3d.pos.z) };
+  void here;
   const order = planRoute(store.map, shelves, store.map.entrance).legs.map((l) => l.shelf);
   if (!order.length) return;
+  runGuide(order.map((sh) => ({ sh })), 0.55);
+}
+// a guide over any list of stops: { sh: shelf, p?: product (else the aisle's pick) }
+function runGuide(order, speed = 0.55, intro = '') {
   s3d.guide = { order, i: 0 };
-  s3d.speedK = 0.55; // a slow, relaxed walk
+  s3d.speedK = speed;
   $('s3d-guide').classList.remove('hidden');
   $('s3d-auto').textContent = t('s3d_stop');
-  void here;
+  paintTopics();
+  if (intro) { gProduct(null); gSay(intro); gButtons([[t('g_next'), guideNext, true], [t('g_end_btn'), endGuide]]); gCountdown(4500, guideNext); return; }
   guideNext();
+}
+// ---------- topics bar: jump to a department, or a themed walk (deals, popular, gifts) ----------
+const DEPT_ICON = [[/ניקיון|טיפוח/, '🧽'], [/מצעים/, '🛏️'], [/אמבט|כביס/, '🛁'], [/בישול/, '🍳'], [/עיצוב/, '🪴'], [/מטבח|אחסון/, '🫙'], [/בית ספר/, '🎒'], [/הלבשה|פיג/, '👕'], [/צעצוע|יצירה/, '🧸']];
+let topicOn = '';
+function topicsList() {
+  const all = tour.aisles.flatMap((a) => a.products.map((p) => ({ p, a })));
+  const withPic = all.filter(({ p }) => p.photo || p.image);
+  const themes = [
+    { id: 'deals', label: t('tp_deals'), intro: t('tp_deals_say'), items: withPic.filter(({ p }) => p.promo) },
+    { id: 'hot', label: t('tp_hot'), intro: t('tp_hot_say'), items: withPic.filter(({ p }) => p.carts > 0).sort((x, y) => y.p.carts - x.p.carts) },
+    { id: 'kids', label: t('tp_kids'), intro: t('tp_kids_say'), items: withPic.filter(({ p }) => /מתנה לילד|צעצוע/.test(p.keywords || '')) },
+  ].filter((th) => th.items.length >= 2);
+  const depts = tour.aisles.map((a) => {
+    const sh = store.map.shelves.find((s) => s.id === a.shelfId);
+    if (!sh) return null;
+    const short = aisleName(sh, { short: true });
+    const name = sh.name.split('·').slice(1).join('·').trim() || short;
+    const icon = DEPT_ICON.find(([re]) => re.test(sh.name))?.[1] || '🛍️';
+    return { id: sh.id, label: `${icon} ${name}`, intro: t('tp_dept_say', { a: short }), items: a.products.filter((p) => p.photo || p.image).map((p) => ({ p, a })) };
+  }).filter((d) => d?.items.length);
+  return [...themes, ...depts];
+}
+function paintTopics() {
+  if (!tour) return;
+  $('s3d-topics').replaceChildren(...topicsList().map((tp) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = `s3d-topic${tp.id === topicOn ? ' on' : ''}${['deals', 'hot', 'kids'].includes(tp.id) ? ' theme' : ''}`;
+    b.textContent = tp.label;
+    b.dataset.topic = tp.id;
+    b.addEventListener('click', () => startTopic(tp));
+    return b;
+  }));
+}
+function startTopic(tp) {
+  if (!s3d) return;
+  buzz(10);
+  if (s3d.guide) clearTimeout(s3d.guide.timer);
+  topicOn = tp.id;
+  // up to 5 stops, deals first, in walking order from where you stand
+  const seen = new Set();
+  const picks = [...tp.items].sort((x, y) => Boolean(y.p.promo) - Boolean(x.p.promo)).filter(({ p }) => !seen.has(p.id) && seen.add(p.id)).slice(0, 5);
+  const here = { x: Math.floor(s3d.pos.x), y: Math.floor(s3d.pos.z) };
+  const shelves = picks.map(({ a }) => store.map.shelves.find((s) => s.id === a.shelfId)).filter(Boolean);
+  const order = planRoute(store.map, shelves, here).legs.map((l) => l.shelf.id);
+  const stops = picks.map(({ p, a }) => ({ sh: store.map.shelves.find((s) => s.id === a.shelfId), p })).filter((s) => s.sh)
+    .sort((x, y) => order.indexOf(x.sh.id) - order.indexOf(y.sh.id));
+  runGuide(stops, 0.85, tp.intro);
+  $('s3d-topics').querySelector(`[data-topic="${tp.id}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 }
 // the aisle's pick: a deal first, else what other shoppers put in their carts, with a photo
 function aislePick(a) {
@@ -1103,9 +1157,10 @@ function guideNext() {
   const g = s3d?.guide;
   if (!g?.order) return;
   gClearTimer();
-  const sh = g.order[g.i++];
-  if (!sh) return guideDone();
-  const a = tour.aisles.find((x) => x.shelfId === sh.id), p = aislePick(a);
+  const stop = g.order[g.i++];
+  if (!stop) return guideDone();
+  const sh = stop.sh;
+  const a = tour.aisles.find((x) => x.shelfId === sh.id), p = stop.p || aislePick(a);
   gProduct(null);
   $('g-text').textContent = t('g_walk', { a: aisleName(sh, { short: true }) });
   gButtons([[t('g_next'), guideNext], [t('g_end_btn'), endGuide]]);
@@ -1139,6 +1194,7 @@ function endGuide() {
   if (!s3d) return;
   clearTimeout(s3d.guide?.timer);
   s3d.guide = null; s3d.speedK = 1;
+  topicOn = ''; paintTopics();
   $('s3d-guide').classList.add('hidden');
   $('s3d-auto').textContent = t('s3d_auto');
 }
@@ -1210,6 +1266,7 @@ async function render3d({ productId = null, shelfId = null } = {}) {
     const [THREE, tr] = await Promise.all([loadThree(), loadTour(), loadHunt()]);
     if (document.body.dataset.view !== 's3d') return;
     paintHunt();
+    paintTopics();
     if (!s3d) {
       s3d = new Store3D(THREE, $('s3d-canvas'), store.map, tr.aisles, {
         storeName: () => store.name,
@@ -1453,7 +1510,7 @@ function toggleList(p, source = 'search') {
 // Deals first, then what other shoppers took with it, then what naturally goes with it.
 const offered = new Set();
 // "כוס קפה קר MOOSH בצבעי פסטל 550 מ"ל" -> "כוס קפה קר": short enough to say out loud
-const shortName = (p) => { const w = []; for (const x of p.name.split(/\s+/)) { if (!/^[\u0590-\u05FF'׳-]+$/.test(x) || w.length === 3) break; w.push(x); } return w.join(' ') || p.name; };
+const shortName = (p) => { const w = []; for (const x of p.name.split(/\s+/)) { if (!/^([\u0590-\u05FF'׳"-]+|\d+)$/.test(x) || w.length === 4) break; w.push(x); } while (/^\d+$/.test(w[w.length - 1] || '')) w.pop(); return w.join(' ') || p.name; };
 async function offerWith(p, list) {
   if (s3d?.guide?.order) return; // the guide is talking; it says it was added
   const inSheet = !$('upsell-sheet').classList.contains('hidden');

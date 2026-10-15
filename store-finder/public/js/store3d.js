@@ -2,7 +2,7 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
-import { drawCrop } from '/js/map.js?v=24';
+import { drawCrop } from '/js/map.js?v=25';
 
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
@@ -756,6 +756,22 @@ export class Store3D {
   // to a product: the aisle side it's on, then turn to the shelf and light its tag
   walkToProduct(productId, done) {
     const tag = this.hot.find((s) => s.userData.product.id === productId);
+    // the product's own card out in the aisle, when it has one: stand in front of it and look at it
+    const card = tag ? this.cardFor(tag) : (this.popouts || []).find((c) => c.userData.product.id === productId);
+    if (card) {
+      const r = card.rotation.y, nx = Math.sin(r), nz = Math.cos(r);
+      const cells = [1.6, 1.3, 1.0, 2.0].map((d) => [Math.floor(card.position.x + nx * d), Math.floor(card.position.z + nz * d)]).filter(([x, z]) => this.free(x + 0.5, z + 0.5));
+      const p = cells.length && this.route(cells.slice(0, 1));
+      if (p) {
+        this.walkTo(p, () => {
+          this.turnTo = Math.atan2(-(card.position.x - this.pos.x), -(card.position.z - this.pos.z));
+          this.pitch = Math.max(-0.4, Math.min(0.2, Math.atan2(card.position.y - EYE, Math.hypot(card.position.x - this.pos.x, card.position.z - this.pos.z))));
+          if (tag) this.flash = { sprite: tag, t: 0, card };
+          done?.(card.userData.product);
+        });
+        return true;
+      }
+    }
     if (!tag) return false;
     const { side } = tag.userData;
     const at = (d) => [Math.floor(tag.position.x + side.nx * d), Math.floor(tag.position.z + side.nz * d)];

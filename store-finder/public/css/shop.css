@@ -352,3 +352,10 @@ body.in3d { overflow: hidden; }
 .hero3d .tc-3d { top: 12px; inset-inline-end: 12px; inset-inline-start: auto; z-index: 2; }
 .hero3d .tc-bg::after { background: linear-gradient(0deg, rgba(8, 10, 20, .96) 35%, rgba(8, 10, 20, .55) 75%, rgba(8, 10, 20, .3)); }
 .hero3d .tc-text b { padding-inline-end: 44px; }
+/* topics bar in the 3D store */
+.s3d-topics { position: absolute; top: calc(66px + env(safe-area-inset-top, 0px)); inset-inline: 0; z-index: 4; display: flex; gap: 8px; padding: 2px 12px 8px; overflow-x: auto; scrollbar-width: none; }
+.s3d-topics::-webkit-scrollbar { display: none; }
+.s3d-topic { flex: none; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .22); background: rgba(16, 14, 24, .72); backdrop-filter: blur(8px); color: #fff; font-weight: 800; font-size: .88rem; white-space: nowrap; box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
+.s3d-topic.theme { background: linear-gradient(135deg, rgba(255, 138, 42, .9), rgba(255, 61, 110, .9)); border: 0; }
+.s3d-topic.on { outline: 3px solid #ffd166; transform: scale(1.05); }
+.s3d-mini { top: calc(116px + env(safe-area-inset-top, 0px)) !important; }
