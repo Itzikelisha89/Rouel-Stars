@@ -130,6 +130,47 @@ function tagTex(THREE, price, color) {
   });
 }
 
+// a product card standing out from the shelf: the photo, the name, the price and "add to cart"
+function popTex(THREE, p, price, inCart) {
+  const W = 256, H = 360;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const crop = document.createElement('canvas');
+  const paint = (img) => {
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, W, H);
+    const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+    rr(4, 4, W - 8, H - 8, 26); g.fillStyle = '#fff'; g.fill();
+    g.lineWidth = 6; g.strokeStyle = p.promo ? '#ff3d6e' : inCart ? '#22c55e' : '#ff7a1a'; g.stroke();
+    if (img) {
+      const k = Math.min(224 / img.width, 190 / img.height), w = img.width * k, h = img.height * k;
+      g.save(); rr(16, 16, W - 32, 194, 18); g.clip();
+      g.fillStyle = '#f3f1ed'; g.fillRect(16, 16, W - 32, 194);
+      g.drawImage(img, (W - w) / 2, 16 + (194 - h) / 2, w, h); g.restore();
+    }
+    if (p.promo) {
+      g.fillStyle = '#ff3d6e'; rr(24, 22, 118, 34, 17); g.fill();
+      g.fillStyle = '#fff'; g.font = '800 20px Heebo, Arial, sans-serif'; g.textAlign = 'center'; g.fillText('🔥 מבצע', 83, 46);
+    }
+    g.direction = 'rtl'; g.textAlign = 'center'; g.fillStyle = '#1c2233';
+    g.font = '700 21px Heebo, Arial, sans-serif';
+    const words = p.name.split(/\s+/); let l1 = '', l2 = '';
+    for (const w of words) { if (!l2 && g.measureText(`${l1} ${w}`).width < W - 36) l1 = l1 ? `${l1} ${w}` : w; else l2 = l2 ? `${l2} ${w}` : w; }
+    if (g.measureText(l2).width > W - 36) { while (l2 && g.measureText(`${l2}…`).width > W - 36) l2 = l2.slice(0, -1); l2 += '…'; }
+    g.fillText(l1, W / 2, 238); if (l2) g.fillText(l2, W / 2, 262);
+    if (price) { g.fillStyle = '#ff5a1f'; g.font = '900 32px Heebo, Arial, sans-serif'; g.fillText(price, W / 2, 300); }
+    const grd = g.createLinearGradient(0, 0, W, 0);
+    if (inCart) { grd.addColorStop(0, '#22c55e'); grd.addColorStop(1, '#16a34a'); } else { grd.addColorStop(0, '#ff8a2a'); grd.addColorStop(1, '#ff5a36'); }
+    rr(30, 312, W - 60, 36, 18); g.fillStyle = grd; g.fill();
+    g.fillStyle = '#fff'; g.font = '800 20px Heebo, Arial, sans-serif'; g.fillText(inCart ? '✓ בעגלה' : '➕ לעגלה', W / 2, 337);
+    tex.needsUpdate = true;
+  };
+  paint(null);
+  drawCrop(crop, p.image || p.photo, p.image ? null : p.box, 300).then(() => paint(crop)).catch(() => {});
+  tex.repaint = (on) => { inCart = on; paint(crop.width ? crop : null); };
+  return tex;
+}
+
 export class Store3D {
   /**
    * @param el      container element
@@ -403,6 +444,7 @@ export class Store3D {
         for (const p of ph.products) this.addTag(p, plane, w, faceH, side, s);
       }
     });
+    this.buildPopouts(s, open, len, alongZ);
     // aisle signs hanging at both ends of the shelf
     const short = s.name.split('·').slice(0, 2).join('·').trim();
     const [num, ...rest] = short.split('·');
@@ -474,12 +516,77 @@ export class Store3D {
     const color = this.on.inCart(p.id) ? '#22c55e' : p.promo ? '#ff3d6e' : '#ff7a1a';
     const sprite = new T.Sprite(new T.SpriteMaterial({ map: tagTex(T, this.on.price(p), color), depthTest: true, toneMapped: false }));
     sprite.position.copy(world);
+    sprite.visible = false; // the product cards in front of the shelf show it; the tag keeps its spot
     sprite.scale.set(0.3, 0.3, 1);
     sprite.userData = { product: p, shelf, side, base: 0.3 };
     this.scene.add(sprite);
     this.hot.push(sprite);
   }
+  // the aisle's products out in front of its shelves: a full row along every side you can walk,
+  // deals first, repeating like facings on a stocked shelf (two rows when there's a lot)
+  buildPopouts(s, sides, len, alongZ) {
+    const items = (this.byShelf.get(s.id)?.products || []).filter((p) => p.photo || p.image);
+    if (!items.length || !sides.length) return;
+    const slots = Math.max(1, Math.min(13, Math.floor((len - 1.0) / 1.05)));
+    const rows = items.length > slots ? 2 : 1;
+    sides.forEach((side, si) => {
+      for (let r = 0; r < rows; r++) for (let k = 0; k < slots; k++) {
+        const p = items[(k + r * slots + si * 3) % items.length];
+        const along = -len / 2 + 0.5 + (len - 1.0) * (k + 0.5) / slots;
+        const ox = alongZ ? 0 : along * (side.nz === 1 ? 1 : -1), oz = alongZ ? along * (side.nx === 1 ? -1 : 1) : 0;
+        this.addPopout(p, new this.THREE.Vector3(side.x + ox, rows === 2 ? (r ? 0.7 : 1.5) : 1.28, side.z + oz), side, s);
+      }
+    });
+  }
+  // the product's card closest to where it sits on the shelf
+  cardFor(sprite) {
+    let best = null, bd = 1e9;
+    for (const c of this.popouts || []) {
+      if (c.userData.product.id !== sprite.userData.product.id) continue;
+      const d = c.position.distanceTo(sprite.position);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  }
+  // the product, out in front of the shelf on an arm, turned toward the shopper coming down the aisle
+  addPopout(p, at, side, shelf) {
+    const T = this.THREE;
+    this.popouts ||= [];
+    const alongZ = side.nx !== 0;
+    // keep the cards apart along the shelf
+    const a = alongZ ? at.z : at.x;
+    const e = this.map.entrance, toEntrance = alongZ ? Math.sign(e.y + 0.5 - a) || 1 : Math.sign(e.x + 0.5 - a) || 1;
+    const out = 0.5, y = at.y;
+    const x = alongZ ? at.x + side.nx * out : a, z = alongZ ? a : at.z + side.nz * out;
+    this.popTexs ||= new Map();
+    if (!this.popTexs.has(p.id)) this.popTexs.set(p.id, popTex(T, p, this.on.price(p), this.on.inCart(p.id)));
+    const tex = this.popTexs.get(p.id);
+    this.popMats ||= new Map();
+    if (!this.popMats.has(p.id)) this.popMats.set(p.id, new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide, toneMapped: false }));
+    this.popGeo ||= new T.PlaneGeometry(0.58, 0.81);
+    const card = new T.Mesh(this.popGeo, this.popMats.get(p.id));
+    // turn the card ~35° from the shelf toward the entrance end of the aisle
+    let best = side.rot;
+    for (const d of [0.72, -0.72]) {
+      const r = side.rot + d, nx = Math.sin(r), nz = Math.cos(r);
+      if ((alongZ ? nz : nx) * toEntrance > 0) best = r;
+    }
+    card.rotation.y = best;
+    card.position.set(x, y, z);
+    card.userData = { product: p, shelf, side, along: a, y, phase: Math.random() * 6, tex };
+    this.scene.add(card);
+    this.clickables.push(card);
+    this.popouts.push(card);
+    // the arm that holds it out from the shelf
+    this.armMat ||= new T.MeshLambertMaterial({ color: C(0x2a2622) });
+    const len = out - 0.02;
+    this.armGeo ||= {};
+    const arm = new T.Mesh(this.armGeo[alongZ] ||= alongZ ? new T.BoxGeometry(len, 0.025, 0.025) : new T.BoxGeometry(0.025, 0.025, len), this.armMat);
+    arm.position.set(alongZ ? at.x + side.nx * len / 2 : a, y - 0.42, alongZ ? a : at.z + side.nz * len / 2);
+    this.scene.add(arm);
+  }
   refreshTag(id) {
+    this.popTexs?.get(id)?.repaint(this.on.inCart(id));
     for (const s of this.hot) if (s.userData.product.id === id) {
       const p = s.userData.product;
       s.material.map = tagTex(this.THREE, this.on.price(p), this.on.inCart(p.id) ? '#22c55e' : p.promo ? '#ff3d6e' : '#ff7a1a');
@@ -560,7 +667,7 @@ export class Store3D {
     if (!tag) return false;
     const { side } = tag.userData;
     const at = (d) => [Math.floor(tag.position.x + side.nx * d), Math.floor(tag.position.z + side.nz * d)];
-    const cand = [at(2.2), at(1.6), at(1.0)].filter(([x, z]) => this.free(x + 0.5, z + 0.5)).slice(0, 1);
+    const cand = [at(2.6), at(2.2), at(1.6), at(1.0)].filter(([x, z]) => this.free(x + 0.5, z + 0.5)).slice(0, 1);
     const p = this.route(cand);
     if (!p) return false;
     this.walkTo(p, () => {
@@ -588,7 +695,7 @@ export class Store3D {
   }
 
   frame() {
-    const T = this.THREE, dt = Math.min(0.05, this.clock.getDelta());
+    const T = this.THREE, dt = Math.min(0.1, this.clock.getDelta()); // a slow phone still walks at the right pace
     const now = performance.now() / 1000;
     if (this.driveTo) { // "take me there": the navigation screen moves the camera along the route
       const d = this.driveTo;
@@ -639,13 +746,17 @@ export class Store3D {
     this.camera.position.set(this.pos.x, EYE + (moving ? Math.sin(this.bob) * 0.025 : 0), this.pos.z);
     this.camera.rotation.set(0, 0, 0);
     this.camera.rotateY(this.yaw); this.camera.rotateX(this.pitch);
+    // the product cards float a little, like a display that wants to be touched
+    for (const c of this.popouts || []) c.position.y = c.userData.y + Math.sin(now * 1.6 + c.userData.phase) * 0.018;
     // price tags breathe; the one we walked to pulses bigger
     for (const s of this.hot) { const b = s.userData.base * (1 + Math.sin(now * 3 + s.position.x) * 0.06); s.scale.set(b, b, 1); }
     if (this.flash) {
       this.flash.t += dt;
       const k = 1 + Math.abs(Math.sin(this.flash.t * 6)) * 0.8;
       this.flash.sprite.scale.set(0.3 * k, 0.3 * k, 1);
-      if (this.flash.t > 3) this.flash = null;
+      const card = this.flash.card ||= this.cardFor(this.flash.sprite);
+      if (card) card.scale.setScalar(1 + Math.abs(Math.sin(this.flash.t * 4)) * 0.18);
+      if (this.flash.t > 3) { this.flash.card?.scale.setScalar(1); this.flash = null; }
     }
     // products flying into the cart
     for (const a of this.anims) {
