@@ -37,9 +37,9 @@ function seedBranch(SLUG, NAME, o) {
 
   const salt = crypto.randomBytes(16).toString('hex');
   const map = {
-    cols: 40, rows: 25, entrance: { x: 20, y: 24 },
-    shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר', "הלבשה ופיג'מות"]
-      .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4, 0][i], y: 4, w: 2, h: 15 })),
+    cols: 44, rows: 25, entrance: { x: 20, y: 24 },
+    shelves: ['ניקיון וטיפוח', 'מצעים', 'אמבטיה וכביסה', 'כלי בישול', 'עיצוב הבית', 'מטבח ואחסון', 'ילדים ובית ספר', "הלבשה ופיג'מות", 'צעצועים ומשחקים']
+      .map((cat, i) => ({ id: `a${i + 1}`, name: `מעבר ${i + 1} · ${cat}`, x: [34, 29, 24, 19, 14, 9, 4, 0, 40][i], y: 4, w: 2, h: 15 })),
   };
   const storeId = Number(db.prepare('INSERT INTO stores (slug, name, password_hash, map_json) VALUES (?, ?, ?, ?)')
     .run(SLUG, NAME, `${salt}:${crypto.scryptSync(PASSWORD, salt, 32).toString('hex')}`, JSON.stringify(map)).lastInsertRowid);

@@ -2,7 +2,7 @@
 // supermarket, tap a price tag, and the product flies into the cart. Three.js (loaded on demand).
 // One map cell = 1 meter. World: x = map x, z = map y, y = up.
 
-import { drawCrop } from '/js/map.js?v=22';
+import { drawCrop } from '/js/map.js?v=23';
 
 const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 let threeLoading = null;
@@ -457,6 +457,7 @@ export class Store3D {
     });
     this.buildPopouts(s, open, len, alongZ);
     if (!wall) this.buildStand(s, alongZ, cx, cz);
+    if (/צעצוע|משחק/.test(s.name)) this.buildKidsZone(s, open, len, alongZ, cx, cz);
     // aisle signs hanging at both ends of the shelf
     const short = s.name.split('·').slice(0, 2).join('·').trim();
     const [num, ...rest] = short.split('·');
@@ -576,6 +577,41 @@ export class Store3D {
     }
     const side = { nx: Math.sin(rot), nz: Math.cos(rot), rot };
     this.addPopout(p, Object.assign(new T.Vector3(x, 1.85, z), { out: 0, scale: 1.35, noStand: true }), side, s);
+  }
+  // the toy aisle is a party: a rainbow rug down the walkway and bunches of balloons floating over it
+  buildKidsZone(s, sides, len, alongZ, cx, cz) {
+    const T = this.THREE;
+    const rug = canvasTex(T, 64, 512, (g, W, H) => {
+      const cols = ['#ff595e', '#ff924c', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93'];
+      cols.forEach((c, i) => { g.fillStyle = c; g.fillRect((W / cols.length) * i, 0, W / cols.length + 1, H); });
+      g.fillStyle = 'rgba(255,255,255,.35)'; for (let y = 20; y < H; y += 60) { g.beginPath(); g.arc(W / 2, y, 6, 0, 7); g.fill(); }
+    });
+    rug.wrapT = T.RepeatWrapping; rug.repeat.set(1, Math.max(1, len / 3));
+    this.balloons ||= [];
+    const COLORS = [0xff595e, 0xffca3a, 0x8ac926, 0x1982c4, 0xff7ac6, 0xff924c];
+    this.balloonGeo ||= new T.SphereGeometry(0.2, 16, 12);
+    this.stringMat ||= new T.MeshBasicMaterial({ color: 0xdddddd });
+    this.stringGeo ||= new T.CylinderGeometry(0.004, 0.004, 0.9, 4);
+    for (const side of sides) {
+      const ox = side.nx * 1.45, oz = side.nz * 1.45;
+      const m = new T.Mesh(new T.PlaneGeometry(alongZ ? 1.1 : len - 0.4, alongZ ? len - 0.4 : 1.1), new T.MeshLambertMaterial({ map: rug }));
+      m.rotation.x = -Math.PI / 2; m.position.set(side.x + ox, 0.012, side.z + oz);
+      if (!alongZ) m.rotation.z = Math.PI / 2;
+      this.scene.add(m);
+      // a bunch of balloons every few metres along the walkway
+      for (let a = -len / 2 + 1.5; a < len / 2 - 0.5; a += 3.2) {
+        const bx = alongZ ? side.x + ox : cx + a, bz = alongZ ? cz + a : side.z + oz;
+        for (let k = 0; k < 3; k++) {
+          const mat = new T.MeshLambertMaterial({ color: C(COLORS[(k + Math.round(a)) % COLORS.length]), emissive: C(COLORS[(k + Math.round(a)) % COLORS.length]), emissiveIntensity: 0.35 });
+          const b = new T.Mesh(this.balloonGeo, mat); b.scale.y = 1.2;
+          const x = bx + (k - 1) * 0.22, z = bz + (k % 2) * 0.15, y = 2.75 + (k % 2) * 0.22;
+          b.position.set(x, y, z);
+          const str = new T.Mesh(this.stringGeo, this.stringMat); str.position.set(x, y - 0.68, z);
+          this.scene.add(b); this.scene.add(str);
+          this.balloons.push({ b, str, y, phase: Math.random() * 6 });
+        }
+      }
+    }
   }
   // the product's card closest to where it sits on the shelf
   cardFor(sprite) {
@@ -802,6 +838,7 @@ export class Store3D {
     this.camera.position.set(this.pos.x, EYE + (moving ? Math.sin(this.bob) * 0.025 : 0), this.pos.z);
     this.camera.rotation.set(0, 0, 0);
     this.camera.rotateY(this.yaw); this.camera.rotateX(this.pitch);
+    for (const bl of this.balloons || []) { const dy = Math.sin(now * 1.3 + bl.phase) * 0.08; bl.b.position.y = bl.y + dy; bl.str.position.y = bl.y - 0.68 + dy; }
     // the product cards float a little, like a display that wants to be touched
     for (const c of this.popouts || []) {
       const u = c.userData;

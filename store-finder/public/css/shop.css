@@ -311,3 +311,14 @@ body.in3d { overflow: hidden; }
 .hunt-card { text-align: center; }
 .hunt-burst { font-size: 3.4rem; animation: bump .8s ease-out; }
 .hunt-reward { font-size: 1.5rem; font-weight: 900; color: #f5b301; margin: 8px 0; }
+/* the toy aisle card: for the kids */
+.toys-card { width: 100%; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 16px; border: 0; border-radius: 22px; color: #fff; text-align: start; cursor: pointer;
+  background: linear-gradient(120deg, #ff595e, #ff924c 25%, #ffca3a 45%, #8ac926 65%, #1982c4 85%, #6a4c93); box-shadow: 0 12px 28px rgba(255, 89, 94, .3); animation: toysGlow 3s ease-in-out infinite; }
+.toys-card .tc-text { flex: 1; display: flex; flex-direction: column; text-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+.toys-card .tc-text b { font-size: 1.2rem; font-weight: 900; }
+.toys-card .tyc-emoji { font-size: 1.7rem; animation: toysBounce 1.6s ease-in-out infinite; }
+@keyframes toysBounce { 50% { transform: translateY(-4px) rotate(-6deg); } }
+@keyframes toysGlow { 50% { box-shadow: 0 12px 34px rgba(255, 202, 58, .55); } }
+.toys-card .tc-text { position: static; padding: 0; min-width: 0; }
+.toys-card .tc-text span { font-size: .92rem; opacity: .95; }
+.toys-card .tc-go { position: static; flex: none; width: 46px; height: 46px; margin: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .25); color: #fff; box-shadow: none; }

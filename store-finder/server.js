@@ -1132,7 +1132,7 @@ app.use((err, _req, res, _next) => {
 if (require.main === module) {
   // SEED_DEMO=1 on a fresh server: create the demo store (the הסטוק catalog) once, to show the system.
   // A newer demo catalog (DEMO_VERSION) rebuilds the demo stores once; real stores are never touched.
-  const DEMO_VERSION = '3';
+  const DEMO_VERSION = '4';
   const demoVersion = db.prepare("SELECT value FROM settings WHERE key = 'demo_version'").get()?.value;
   if (process.env.SEED_DEMO === '1' && (!getStoreBySlug('demo') || demoVersion !== DEMO_VERSION)) {
     require('./scripts/seed-demo');

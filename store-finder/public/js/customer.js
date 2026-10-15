@@ -1,8 +1,8 @@
-import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=22';
-import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=22';
-import { rankShelves } from '/js/locate.js?v=22';
-import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=22';
-import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=22';
+import { api, escapeHtml, formatPrice, resizeImage, getToken } from '/js/api.js?v=23';
+import { renderMap, findPath, describeLocation, drawCrop, aisleSpot, planRoute, directions } from '/js/map.js?v=23';
+import { rankShelves } from '/js/locate.js?v=23';
+import { Store3D, loadThree, webglOk } from '/js/store3d.js?v=23';
+import { t, lang, setLang, LANGS, aisleName, levelName, translatePage } from '/js/i18n.js?v=23';
 
 const $ = (id) => document.getElementById(id);
 const slug = decodeURIComponent(location.pathname.split('/')[2] || '');
@@ -865,12 +865,17 @@ async function prepTourCard() {
   const tr = await loadTour();
   const first = tr.aisles.find((a) => a.photos.length);
   $('tour-card').classList.toggle('hidden', !tr.aisles.length);
+  const toys = toyAisle();
+  $('toys-card').classList.toggle('hidden', !toys || !has3d);
   if (first) $('tour-card-bg').style.backgroundImage = `url("${first.photos[0].url}")`;
 }
 function openTour(i = tour?.i || 0) { go(() => renderTour(i)); }
 const has3d = webglOk();
 $('tc-3d').classList.toggle('hidden', !has3d);
 $('tour-card').addEventListener('click', () => { buzz(); if (has3d) open3d(); else openTour(0); });
+// the toy aisle, straight from the home screen: for the kids
+const toyAisle = () => store.map.shelves.find((s) => /צעצוע|משחק/.test(s.name) && tour?.aisles.some((a) => a.shelfId === s.id));
+$('toys-card').addEventListener('click', () => { buzz(); const a = toyAisle(); if (a) open3d({ shelfId: a.id }); });
 function renderTour(i) {
   if (!tour?.aisles.length) return renderHome();
   setView('tour');
@@ -1085,7 +1090,7 @@ $('s3d-hunt').addEventListener('click', () => {
   toast(t('hunt_hint', { r: hunt.reward, a: s ? aisleName(s, { short: true }) : '' }));
 });
 
-async function render3d({ productId = null } = {}) {
+async function render3d({ productId = null, shelfId = null } = {}) {
   setView('s3d');
   document.body.classList.add('in3d');
   $('s3d-loading').classList.remove('hidden');
@@ -1109,7 +1114,7 @@ async function render3d({ productId = null } = {}) {
       s3d.fillCart(loadList().filter((i) => !i.picked));
       bind3dControls();
       // the first time: glide down from above the store to the door, with a welcome
-      if (!productId) {
+      if (!productId && !shelfId) {
         $('s3d-store').textContent = store.name;
         $('s3d-welcome').classList.add('show');
         s3d.playIntro(() => { $('s3d-welcome').classList.remove('show'); say(t('s3d_welcome')); });
@@ -1123,6 +1128,10 @@ async function render3d({ productId = null } = {}) {
     setTimeout(() => $('s3d-hint').classList.add('hidden'), 7000);
     tick3dMini();
     if (s3d.intro) return;
+    if (shelfId) {
+      const sh = store.map.shelves.find((s) => s.id === shelfId);
+      if (sh) { s3d.walkToShelf(sh); say(t('toys_say')); }
+    }
     if (productId) {
       const ok = s3d.walkToProduct(productId, (p) => show3dPick(p));
       if (!ok) {
@@ -1733,7 +1742,7 @@ function listen() {
     const q = params.get('q');
     const lastId = hereShelf && !q ? recentProductId() : null;
     // ?tour=1 opens the store in 3D (the photo tour on phones without 3D, or with ?tour=photos)
-    if (params.get('tour')) { await loadTour(); if (has3d && params.get('tour') !== 'photos') open3d(); else openTour(0); } else if (q) search(q);
+    if (params.get('tour')) { await loadTour(); if (has3d && params.get('tour') === 'toys' && toyAisle()) open3d({ shelfId: toyAisle().id }); else if (has3d && params.get('tour') !== 'photos') open3d(); else openTour(0); } else if (q) search(q);
     else if (lastId) {
       // Scanned an aisle sticker mid-trip: continue to the product chosen a moment ago.
       const p = await api(pub(`/products/${lastId}`)).catch(() => null);
