@@ -57,7 +57,7 @@ function getStoreBySlug(slug) {
   return db.prepare('SELECT * FROM stores WHERE slug = ?').get(slug);
 }
 function publicStore(store) {
-  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(voiceKey()), voiceInput: Boolean(voiceKey()) };
+  return { slug: store.slug, name: store.name, map: JSON.parse(store.map_json), photoSearch: ai.aiEnabled(), premiumVoice: Boolean(voiceKey()), voiceInput: Boolean(voiceKey()), detourPct: store.detour_pct ?? 20 };
 }
 function productRow(p) {
   return {
@@ -180,8 +180,13 @@ app.put('/api/store/settings', requireOwner, (req, res) => {
     // A new code (or none) signs out every worker who used the old one.
     db.prepare("DELETE FROM sessions WHERE store_id = ? AND role = 'staff'").run(req.store.id);
   }
+  if (req.body.detourPct !== undefined) {
+    const d = Math.round(Number(req.body.detourPct));
+    if (!Number.isFinite(d) || d < 0 || d > 50) return res.status(400).json({ error: 'מסלול מגלה: בין 0 ל-50 אחוז' });
+    db.prepare('UPDATE stores SET detour_pct = ? WHERE id = ?').run(d, req.store.id);
+  }
   db.prepare('UPDATE stores SET name = ? WHERE id = ?').run(name, req.store.id);
-  res.json({ ok: true, name });
+  res.json({ ok: true, name, detourPct: db.prepare('SELECT detour_pct FROM stores WHERE id = ?').get(req.store.id).detour_pct ?? 20 });
 });
 
 // The whole catalog as a CSV file that opens in Excel (and imports back in the products tab).
@@ -672,7 +677,10 @@ function rateLimited(ip, max = 30, windowMs = 60000) {
   return hits.length > max;
 }
 
-const EVENT_TYPES = ['view', 'found', ...ALERT_TYPES];
+// 'cart': something went into the shopper's cart, with where it came from (note): what they searched
+// for, or an extra the app led them to (a suggestion, a deal, the aisle, the tour, the discovery route)
+const CART_SOURCES = ['search', 'suggest', 'deal', 'aisle', 'tour', 'detour', 'related'];
+const EVENT_TYPES = ['view', 'found', 'cart', ...ALERT_TYPES];
 app.post('/api/public/:slug/events', (req, res) => {
   const store = getStoreBySlug(req.params.slug);
   if (!store) return res.status(404).json({ error: 'החנות לא נמצאה' });
@@ -682,14 +690,15 @@ app.post('/api/public/:slug/events', (req, res) => {
   if (!EVENT_TYPES.includes(type)) return res.status(400).json({ error: 'סוג פנייה לא מוכר' });
   const product = req.body.productId != null
     ? db.prepare('SELECT id, shelf_id FROM products WHERE id = ? AND store_id = ?').get(req.body.productId, store.id) : null;
-  if (['view', 'found', 'not_there', 'empty'].includes(type) && !product) return res.status(400).json({ error: 'המוצר לא נמצא' });
+  if (['view', 'found', 'cart', 'not_there', 'empty'].includes(type) && !product) return res.status(400).json({ error: 'המוצר לא נמצא' });
   const shelfId = product?.shelf_id || (shelfExists(store, req.body.shelfId) ? req.body.shelfId : null);
   const query = String(req.body.query || '').trim().slice(0, 100);
   if (type === 'request' && !query) return res.status(400).json({ error: 'מה חיפשתם?' });
   const phone = String(req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15);
   if (phone && !/^\+?\d{9,14}$/.test(phone)) return res.status(400).json({ error: 'מספר טלפון לא תקין' });
+  const note = type === 'cart' ? (CART_SOURCES.includes(req.body.source) ? req.body.source : 'search') : phone;
   db.prepare('INSERT INTO events (store_id, visitor, type, product_id, shelf_id, query, note) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(store.id, cleanVisitor(req.body.visitor), type, product?.id ?? null, shelfId, query, phone);
+    .run(store.id, cleanVisitor(req.body.visitor), type, product?.id ?? null, shelfId, query, note);
   res.json({ ok: true });
 });
 

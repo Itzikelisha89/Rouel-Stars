@@ -78,6 +78,16 @@ test('shopper events, live alerts and the pilot report over the API', async () =
     assert.equal((await ev({ type: 'request' })).status, 400);
     assert.equal((await ev({ type: 'found', productId: 99999 })).status, 400);
     assert.equal((await ev({ type: 'hack' })).status, 400);
+    // into the cart: what they searched for, and one extra from the discovery route
+    assert.equal((await ev({ type: 'cart', productId: pot.id, source: 'search' })).status, 200);
+    assert.equal((await ev({ type: 'cart', productId: pot.id, source: 'detour' })).status, 200);
+    assert.equal((await ev({ type: 'cart', productId: pot.id, source: '<script>' })).status, 200); // unknown source counts as search
+    assert.equal((await ev({ type: 'cart' })).status, 400);
+    // discovery route setting
+    assert.equal((await call('PUT', '/api/store/settings', { token, body: { detourPct: 70 } })).status, 400);
+    r = await call('PUT', '/api/store/settings', { token, body: { detourPct: 30 } });
+    assert.equal(r.data.detourPct, 30);
+    assert.equal((await call('GET', '/api/public/pilot-store')).data.detourPct, 30);
 
     assert.equal((await call('GET', '/api/alerts')).status, 401);
     r = await call('GET', '/api/alerts', { token });
@@ -100,7 +110,25 @@ test('shopper events, live alerts and the pilot report over the API', async () =
     assert.equal(r.data.help, 1);
     assert.equal(r.data.requests, 1);
     assert.equal(r.data.days, 7);
+    assert.equal(r.data.basket.items, 3);
+    assert.equal(r.data.basket.extraItems, 1);
+    assert.deepEqual(r.data.basket.bySource, { search: 2, detour: 1 });
+    assert.equal(r.data.basket.topExtra[0].name, 'סיר קטן');
   } finally {
     server.close();
   }
+});
+
+test('pilot report: the bigger basket', () => {
+  const ev = (visitor, product_id, note) => ({ type: 'cart', visitor, product_id, query: '', note, created_at: at(30) });
+  const events = [ev('a', 1, 'search'), ev('a', 2, 'suggest'), ev('a', 3, 'detour'), ev('b', 1, 'search'), ev('c', 2, 'deal')];
+  const r = report([], events, { now, productNames: new Map([[2, 'מגבת'], [3, 'נר']]) });
+  assert.equal(r.basket.carts, 3);
+  assert.equal(r.basket.items, 5);
+  assert.equal(r.basket.avgItems, 1.7);
+  assert.equal(r.basket.extraItems, 3);
+  assert.equal(r.basket.extraShare, 60);
+  assert.equal(r.basket.cartsWithExtraRate, 67);
+  assert.equal(r.basket.topExtra[0].name, 'מגבת');
+  assert.equal(r.basket.topExtra[0].count, 2);
 });

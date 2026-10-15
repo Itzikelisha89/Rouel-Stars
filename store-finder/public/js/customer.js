@@ -231,9 +231,10 @@ async function loadHome() {
   $('nr-try').classList.toggle('hidden', !trending.length);
   $('cats').replaceChildren(...home.categories.map(catTile));
   $('cats-box').classList.toggle('hidden', !home.categories.length);
-  $('deals-row').replaceChildren(...deals.slice(0, 10).map((p) => miniCard(p)));
+  allDeals = deals;
+  $('deals-row').replaceChildren(...deals.slice(0, 10).map((p) => miniCard(p, { source: 'deal' })));
   $('deals').classList.toggle('hidden', !deals.length);
-  $('deal-grid').replaceChildren(...deals.map((p) => miniCard(p)));
+  $('deal-grid').replaceChildren(...deals.map((p) => miniCard(p, { source: 'deal' })));
   $('deals-empty').classList.toggle('hidden', deals.length > 0);
 }
 document.addEventListener('click', (e) => {
@@ -367,18 +368,18 @@ $('search-form').addEventListener('submit', (e) => {
 });
 
 // ---------- product cards: a deal / related product with a quick ➕ ----------
-function addButton(p) {
+function addButton(p, source = 'search') {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'add-btn';
   b.setAttribute('aria-label', t('add_aria'));
   const paint = () => { const on = inList(p.id); b.textContent = on ? '✓' : '+'; b.classList.toggle('on', on); };
   paint();
-  b.addEventListener('click', (e) => { e.stopPropagation(); toggleList(p); paint(); });
+  b.addEventListener('click', (e) => { e.stopPropagation(); toggleList(p, source); paint(); });
   b.addEventListener('list-changed', paint);
   return b;
 }
-function miniCard(p, { why = '' } = {}) {
+function miniCard(p, { why = '', source = why ? 'suggest' : 'search' } = {}) {
   const card = document.createElement('div');
   card.className = 'mini-card';
   card.tabIndex = 0;
@@ -390,14 +391,37 @@ function miniCard(p, { why = '' } = {}) {
     <span class="mc-meta">📍 ${escapeHtml(shortShelf(shelfOf(p)))}</span>
     ${p.price ? `<span class="mc-price">${escapeHtml(formatPrice(p.price))}</span>` : ''}`;
   card.prepend(canvas);
-  card.append(addButton(p));
-  card.addEventListener('click', () => openProduct(p));
+  card.append(addButton(p, source));
+  card.addEventListener('click', () => openProduct(p, { source }));
   return card;
 }
 
 // ---------- product page ----------
 let navRoute = null;
-function openProduct(p, { replace = false } = {}) {
+// ---------- discovery route: the way to the product passes a deal, a little longer at most ----------
+// Like the path through IKEA, but per shopper and within what the store allows (detourPct).
+let allDeals = [];
+function discoveryRoute(shelf, start, direct, product) {
+  const pct = store.detourPct ?? 20;
+  if (!pct || !direct || direct.length < 2 || !allDeals.length) return null;
+  const limit = (direct.length - 1) * (1 + pct / 100);
+  let best = null;
+  for (const d of allDeals) {
+    if (d.id === product.id || inList(d.id)) continue;
+    const ds = shelfOf(d);
+    if (!ds || ds.id === shelf.id) continue;
+    const a = findPath(store.map, ds, start);
+    const b = a && findPath(store.map, shelf, a[a.length - 1]);
+    if (!b) continue;
+    const total = a.length - 1 + b.length - 1;
+    if (total > limit || (best && total >= best.total)) continue;
+    best = { total, path: [...a, ...b.slice(1)], at: a.length - 1, deal: d, dealShelf: ds };
+  }
+  return best;
+}
+let currentSource = 'search'; // how the shopper got to the product on screen, for the basket report
+function openProduct(p, { replace = false, source = 'search' } = {}) {
+  currentSource = source;
   buzz(8);
   if (replace) { screens[at] = () => renderDetail(p); history.replaceState({ i: at }, ''); renderDetail(p); }
   else go(() => renderDetail(p));
@@ -421,12 +445,15 @@ function renderDetail(p, { quiet = false } = {}) {
     const loc = describeLocation(store.map, shelf);
     const inAisle = hereShelf?.id === shelf.id;
     $('detail-how').textContent = inAisle ? `${t('in_your_aisle')}${p.level ? ` · ${levelName(p.level)}` : ''}` : [t(`side_${loc.side}`), t(`depth_${loc.depth}`)].join(' · ');
-    const n = path ? path.length - 1 : 0;
+    const via = path && !inAisle ? discoveryRoute(shelf, here || store.map.entrance, path, p) : null;
+    const n = via ? via.total : path ? path.length - 1 : 0;
     if (path && !inAisle) chips.push(chip(t(here ? 'm_from_here' : 'm_from_entrance', { n })));
+    $('detail-via').textContent = via ? t('via_detail', { name: shortName(via.deal), promo: via.deal.promo }) : '';
+    $('detail-via').classList.toggle('hidden', !via);
     // Product names are in Hebrew, so other languages speak the aisle, shelf and distance only.
     spokenAnswer = [lang === 'he' ? p.name : '', aisleName(shelf, { short: true }), levelName(p.level), path && !inAisle ? t(here ? 'say_from_here' : 'say_from_entrance', { n }) : '']
       .filter(Boolean).join('. ');
-    if (path && !inAisle) navRoute = { shelf, path, here };
+    if (path && !inAisle) navRoute = { shelf, path: via ? via.path : path, here, via };
   }
   $('detail-chips').innerHTML = chips.filter(Boolean).join('');
   $('go-btn').classList.toggle('hidden', !navRoute);
@@ -451,7 +478,7 @@ async function loadRelated(p) {
   const r = await api(pub(`/products/${p.id}/related`)).catch(() => null);
   if (!r || relatedFor !== p.id || !r.products.length) return;
   $('related-title').textContent = t(r.kind === 'together' ? 'related_together' : 'related_aisle');
-  $('related-row').replaceChildren(...r.products.map((x) => miniCard(x)));
+  $('related-row').replaceChildren(...r.products.map((x) => miniCard(x, { source: 'related' })));
   $('related').classList.remove('hidden');
   return r;
 }
@@ -483,6 +510,24 @@ function renderNav() {
     const text = toward ? t('step_toward', { n, a: aisleName(toward, { short: true }) }) : t(toEntrance ? 'step_to_entrance' : 'step_from_entrance', { n });
     Object.assign(steps[0], { turn: 'straight', ico: '🚶', text, speech: text, big: text.replace(/^\S+\s+\S+\s+\S+\s*/, '') || text });
   }
+  // the discovery route: a stop at the deal on the way, splitting the step it falls in
+  const via = navRoute.via;
+  if (via) {
+    const d = via.deal;
+    const stop = { turn: 'deal', meters: 0, ico: '🔥', big: t('via_big'), sub: `${shortName(d)} · ${d.promo}`, text: t('via_text', { name: shortName(d), promo: d.promo }), speech: t('via_say', { name: shortName(d), promo: d.promo }), deal: d };
+    let acc = 0;
+    for (let i = 0; i < steps.length; i++) {
+      const st = steps[i];
+      if (acc + st.meters < via.at) { acc += st.meters; continue; }
+      const before = via.at - acc, after = st.meters - before;
+      const parts = [];
+      if (before > 0) parts.push({ ...st, meters: before, text: t(`step_${st.turn}`, { n: before }), speech: st.turn === 'straight' ? t('step_straight', { n: before }) : `${t(`go_${st.turn}`)}, ${t('m_more', { n: before })}` });
+      parts.push(stop);
+      if (after > 0) parts.push(before > 0 ? { turn: 'straight', meters: after, ico: '⬆', big: t('go_straight'), text: t('step_straight', { n: after }), speech: t('step_straight', { n: after }) } : st);
+      steps.splice(i, 1, ...parts);
+      break;
+    }
+  }
   const look = current.level ? t('step_look', { l: levelName(current.level) }) : t('step_look_nolevel');
   const sideText = t(SIDE_KEY[dir.side], { a: aisleName(shelf, { short: true }) });
   const arrive = { turn: `arrive-${dir.side}`, meters: 0, ico: '📍', big: sideText, sub: current.level ? t('look_level', { l: levelName(current.level) }) : t('look_here'), text: `${sideText} · ${look}` };
@@ -499,7 +544,7 @@ function renderNav() {
 
   // the map, zoomed to the route, with the walked part lit up and the goal pulsing
   const svgEl = $('nav-map');
-  renderMap(svgEl, store.map, { targetShelfId: shelf.id, path, here, ...mapLabels() });
+  renderMap(svgEl, store.map, { targetShelfIds: via ? [shelf.id, via.dealShelf.id] : [shelf.id], path, here, ...mapLabels() });
   const CELL = 20, NS = 'http://www.w3.org/2000/svg';
   const pts = path.map((c) => [c.x * CELL + CELL / 2, c.y * CELL + CELL / 2]);
   const xs = [...pts.map((p) => p[0]), shelf.x * CELL, (shelf.x + shelf.w) * CELL], ys = [...pts.map((p) => p[1]), shelf.y * CELL, (shelf.y + shelf.h) * CELL];
@@ -526,7 +571,7 @@ function renderNav() {
   const MS_PER_M = 850, MIN_STEP_MS = 2600;
   const sched = []; let tAcc = 0, cAcc = 0;
   for (const st of steps) {
-    const dur = Math.max(st.meters * MS_PER_M, MIN_STEP_MS);
+    const dur = st.turn === 'deal' ? 4200 : Math.max(st.meters * MS_PER_M, MIN_STEP_MS); // a real pause at the deal
     sched.push({ t0: tAcc, dur, c0: cAcc, c1: cAcc + st.meters });
     tAcc += dur; cAcc += st.meters;
   }
@@ -543,10 +588,13 @@ function renderNav() {
     $('nav-big').textContent = st.big;
     $('nav-sub').textContent = st.sub || t('m_more', { n: st.meters });
     const next = all[i + 1];
-    $('nav-then').textContent = !next ? '' : next.turn.startsWith('arrive') ? t('then_shelf') : next.turn === 'straight' ? '' : t(`then_${next.turn}`);
+    $('nav-then').textContent = !next ? '' : next.turn.startsWith('arrive') ? t('then_shelf') : next.turn === 'deal' ? t('then_deal') : next.turn === 'straight' ? '' : t(`then_${next.turn}`);
     items.forEach((li, j) => { li.classList.toggle('on', j === i); li.classList.toggle('done', j < i); });
     const isEnd = i === all.length - 1;
     $('nav-hero').classList.toggle('arrive', isEnd);
+    $('nav-hero').classList.toggle('deal', st.turn === 'deal');
+    $('nav-deal-add').classList.toggle('hidden', st.turn !== 'deal');
+    if (st.deal) { navDeal = st.deal; $('nav-deal-add').textContent = t(inList(st.deal.id) ? 'in_short' : 'add_short'); }
     $('nav-shelf').classList.toggle('hidden', !isEnd || !current.photo);
     $('arrived-btn').classList.toggle('pulse', isEnd);
     buzz(isEnd ? [30, 60, 30] : 15);
@@ -596,6 +644,12 @@ function renderNav() {
   spokenAnswer = all.map((st) => st.text).join('. ');
   start();
 }
+let navDeal = null;
+$('nav-deal-add').addEventListener('click', () => {
+  if (!navDeal) return;
+  if (!inList(navDeal.id)) toggleList(navDeal, 'detour');
+  $('nav-deal-add').textContent = t('in_short');
+});
 function renderArrived() {
   if (!current || !navRoute) return renderHome();
   setView('arrived');
@@ -642,7 +696,7 @@ async function afterFound() {
   const aisle = await api(pub(`/aisle/${encodeURIComponent(current.shelfId)}`)).catch(() => []);
   const more = aisle.filter((x) => x.id !== current.id).slice(0, 8);
   if (more.length) {
-    $('arr-more-row').replaceChildren(...more.map((x) => miniCard(x)));
+    $('arr-more-row').replaceChildren(...more.map((x) => miniCard(x, { source: 'aisle' })));
     $('arr-more').classList.remove('hidden');
   }
 }
@@ -793,7 +847,7 @@ function renderTour(i) {
   $('tour-hint').classList.toggle('hidden', !a.photos.some((ph) => ph.products.length));
   $('tour-prev').disabled = tour.i === 0;
   $('tour-next').textContent = tour.i === tour.aisles.length - 1 ? t('tour_done') : t('tour_next');
-  $('tour-products').replaceChildren(...a.products.slice(0, 20).map((p) => miniCard(p)));
+  $('tour-products').replaceChildren(...a.products.slice(0, 20).map((p) => miniCard(p, { source: 'tour' })));
   $('tour-products-title').classList.toggle('hidden', !a.products.length);
   renderMap($('tour-map'), store.map, { targetShelfId: a.shelfId, ...mapLabels() });
   const deals = a.products.filter((p) => p.promo).length;
@@ -851,14 +905,14 @@ $('tp-add').addEventListener('click', () => {
   if (!tourPick) return;
   $('tour-sheet').classList.add('hidden');
   const adding = !inList(tourPick.id);
-  toggleList(tourPick);
+  toggleList(tourPick, 'tour');
   if (s3d && document.body.dataset.view === 's3d') {
     if (adding) { s3d.flyToCart(tourPick); setTimeout(kaching, 450); } else s3d.refreshTag(tourPick.id);
     setTimeout(paintCart3d, adding ? 650 : 0);
   }
   for (const h of document.querySelectorAll(`[data-hot="${tourPick.id}"]`)) h.classList.toggle('in', inList(tourPick.id));
 });
-$('tp-more').addEventListener('click', () => { $('tour-sheet').classList.add('hidden'); if (tourPick) openProduct(tourPick); });
+$('tp-more').addEventListener('click', () => { $('tour-sheet').classList.add('hidden'); if (tourPick) openProduct(tourPick, { source: 'tour' }); });
 $('tour-sheet').addEventListener('click', (e) => { if (e.target === $('tour-sheet')) $('tour-sheet').classList.add('hidden'); });
 
 // ---------- the store in 3D ----------
@@ -1138,7 +1192,7 @@ function saveList(list) {
   for (const b of document.querySelectorAll('.add-btn')) b.dispatchEvent(new Event('list-changed'));
 }
 function inList(id) { return loadList().some((i) => i.id === id); }
-function toggleList(p) {
+function toggleList(p, source = 'search') {
   const list = loadList();
   const i = list.findIndex((x) => x.id === p.id);
   if (i >= 0) { list.splice(i, 1); toast(t('removed')); buzz(8); }
@@ -1147,6 +1201,7 @@ function toggleList(p) {
     const shelf = shelfOf(p);
     toast(t('added', { a: shelf ? shortShelf(shelf) : '' }));
     buzz(15);
+    track('cart', { productId: p.id, source }).catch(() => {});
     offerWith(p, list);
     const badge = $('list-count');
     badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
@@ -1193,7 +1248,7 @@ function markPicked(id) {
   const item = list.find((i) => i.id === id);
   if (item) { item.picked = true; saveList(list); }
 }
-$('list-toggle').addEventListener('click', () => { if (current) { toggleList(current); updateListToggle(); } });
+$('list-toggle').addEventListener('click', () => { if (current) { toggleList(current, currentSource); updateListToggle(); } });
 
 // "89.90" counts toward the estimate; deals written as text ("2 ב-25") don't
 const priceValue = (p) => (/^\s*₪?\s*\d+(\.\d+)?\s*₪?\s*$/.test(p || '') ? Number(p.replace(/[^\d.]/g, '')) : 0);

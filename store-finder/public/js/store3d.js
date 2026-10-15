@@ -32,14 +32,15 @@ function canvasTex(THREE, w, h, draw) {
   c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);
-  t.anisotropy = 4;
+  t.anisotropy = 4; t.encoding = THREE.sRGBEncoding;
   return t;
 }
 // shelves full of colourful packs, for a shelf that has no photo yet
 function packedShelfTex(THREE, seed, fridge) {
   const r = rng(seed);
   return canvasTex(THREE, 512, 384, (g, W, H) => {
-    g.fillStyle = fridge ? '#cfe3f2' : '#f4f1ea'; g.fillRect(0, 0, W, H);
+    const back = g.createLinearGradient(0, 0, 0, H); back.addColorStop(0, fridge ? '#dcecf7' : '#4a3b2e'); back.addColorStop(1, fridge ? '#a9c6dc' : '#2a2119');
+    g.fillStyle = back; g.fillRect(0, 0, W, H);
     const rows = 4, rh = H / rows;
     const palette = ['#e63946', '#f4a261', '#2a9d8f', '#457b9d', '#ffb703', '#8ecae6', '#e76f51', '#6a4c93', '#90be6d', '#f72585', '#4cc9f0', '#ffd166'];
     for (let i = 0; i < rows; i++) {
@@ -50,7 +51,8 @@ function packedShelfTex(THREE, seed, fridge) {
         g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x + 4, (i + 1) * rh - 12 - h * 0.7, (w - 12) * 0.8, h * 0.18);
         x += w;
       }
-      g.fillStyle = '#9aa3b1'; g.fillRect(0, (i + 1) * rh - 12, W, 12);
+      g.fillStyle = '#1a1511'; g.fillRect(0, (i + 1) * rh - 12, W, 12);
+      g.fillStyle = 'rgba(255,214,150,.5)'; g.fillRect(0, (i + 1) * rh - 12, W, 2); // LED strip on the shelf edge
       g.fillStyle = '#ffd400'; for (let p = 20; p < W; p += 90) g.fillRect(p, (i + 1) * rh - 11, 34, 9); // price strips
     }
     if (fridge) { g.fillStyle = 'rgba(255,255,255,.25)'; for (let d = 0; d < W; d += W / 4) g.fillRect(d, 0, 6, H); }
@@ -62,6 +64,9 @@ export function deptColor(name) {
   const n = Number(String(name).match(/מעבר\s*(\d+)/)?.[1]);
   return n ? DEPT[(n - 1) % DEPT.length] : '#ff6a2a';
 }
+// colours as designers pick them (sRGB), converted for the renderer: without this every dark tone comes out washed-out grey
+let LIN = null;
+function C(hex) { return new LIN.Color(hex).convertSRGBToLinear(); }
 function shade(hex, k) { // k < 1 darker
   const n = parseInt(hex.slice(1), 16);
   const c = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
@@ -110,6 +115,7 @@ function posterTex(THREE, p, price, color) {
 function thumbTex(THREE, p) {
   const c = document.createElement('canvas');
   const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
   drawCrop(c, p.image || p.photo, p.image ? null : p.box, 128).then(() => { tex.needsUpdate = true; });
   return tex;
 }
@@ -149,6 +155,7 @@ export class Store3D {
   }
   build() {
     const T = this.THREE, map = this.map;
+    LIN = T;
     const r = this.renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     r.outputEncoding = T.sRGBEncoding;
@@ -156,10 +163,10 @@ export class Store3D {
     this.el.appendChild(r.domElement);
     const scene = this.scene = new T.Scene();
     // a premium store: dark ceiling, warm wood, the light falls on the products
-    scene.background = new T.Color(0x1b1814);
-    scene.fog = new T.Fog(0x1b1814, 14, Math.max(38, map.cols * 0.95, map.rows * 0.95));
-    scene.add(new T.HemisphereLight(0xffe7c4, 0x4a3d30, 1.05));
-    const sun = new T.DirectionalLight(0xfff1dc, 0.5); sun.position.set(6, 12, 4); scene.add(sun);
+    scene.background = new T.Color(0x14110e);
+    scene.fog = new T.Fog(C(0x14110e), 12, Math.max(34, map.cols * 0.9, map.rows * 0.9));
+    scene.add(new T.HemisphereLight(C(0xffe2b8), C(0x3a2c20), 1.25));
+    const sun = new T.DirectionalLight(C(0xfff1dc), 0.55); sun.position.set(6, 12, 4); scene.add(sun);
     this.camera = new T.PerspectiveCamera(64, 1, 0.05, 250);
     scene.add(this.camera);
 
@@ -183,20 +190,20 @@ export class Store3D {
       }
     });
     floorTex.wrapS = floorTex.wrapT = T.RepeatWrapping; floorTex.repeat.set(map.cols / 3, map.rows / 3);
-    const floor = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshLambertMaterial({ map: floorTex, color: 0x8f7f6c }));
+    const floor = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshLambertMaterial({ map: floorTex, color: C(0xa8927a) }));
     floor.rotation.x = -Math.PI / 2; floor.position.set(map.cols / 2, 0, map.rows / 2);
     scene.add(floor); this.floor = floor;
-    const ceil = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshBasicMaterial({ color: 0x24211d }));
+    const ceil = new T.Mesh(new T.PlaneGeometry(map.cols, map.rows), new T.MeshBasicMaterial({ color: C(0x16130f) }));
     ceil.rotation.x = Math.PI / 2; ceil.position.set(map.cols / 2, 3.6, map.rows / 2); scene.add(ceil);
-    const beamMat = new T.MeshLambertMaterial({ color: 0x2f2a24 });
+    const beamMat = new T.MeshLambertMaterial({ color: C(0x2a2219) });
     for (let x = 2; x < map.cols; x += 4) { const b = new T.Mesh(new T.BoxGeometry(0.18, 0.25, map.rows), beamMat); b.position.set(x, 3.45, map.rows / 2); scene.add(b); }
     // pendant lamps: a warm glowing shade on a cord
-    const shadeGeo = new T.CylinderGeometry(0.16, 0.34, 0.26, 20, 1, true), shadeMat = new T.MeshLambertMaterial({ color: 0x1d1b18, side: T.DoubleSide });
-    const bulbGeo = new T.CircleGeometry(0.31, 20), bulbMat = new T.MeshBasicMaterial({ color: 0xffe2b0, toneMapped: false });
+    const shadeGeo = new T.CylinderGeometry(0.16, 0.34, 0.26, 20, 1, true), shadeMat = new T.MeshBasicMaterial({ color: C(0x0f0d0b), side: T.DoubleSide });
+    const bulbGeo = new T.CircleGeometry(0.31, 20), bulbMat = new T.MeshBasicMaterial({ color: 0xffe6b8, toneMapped: false });
     const cordGeo = new T.CylinderGeometry(0.008, 0.008, 0.7, 4), cordMat = new T.MeshBasicMaterial({ color: 0x111111 });
     const panelGeo = new T.PlaneGeometry(1.6, 0.35), panelMat = new T.MeshBasicMaterial({ color: 0xffffff });
     // under every light a warm pool on the floor: the glow that makes a store feel alive
-    const poolMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(255,214,150,0.32)', 'rgba(255,214,150,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
+    const poolMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(255,200,130,0.42)', 'rgba(255,200,130,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending, toneMapped: false });
     const poolGeo = new T.PlaneGeometry(2.6, 2.6);
     for (let z = 2; z < map.rows; z += 3) for (let x = 1.5; x < map.cols; x += 4) {
       if (!this.free(x, z)) continue; // lamps hang over the walkways, not inside the shelves
@@ -206,7 +213,7 @@ export class Store3D {
       const pool = new T.Mesh(poolGeo, poolMat); pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.006, z); scene.add(pool);
     }
     this.shadowMat = new T.MeshBasicMaterial({ map: softTex(T, 'rgba(20,24,36,0.55)', 'rgba(20,24,36,0)'), transparent: true, depthWrite: false });
-    const wallMat = new T.MeshLambertMaterial({ color: 0x3b342c }), bandMat = new T.MeshBasicMaterial({ color: 0xff6a2a, toneMapped: false });
+    const wallMat = new T.MeshLambertMaterial({ color: C(0x221c16) }), bandMat = new T.MeshBasicMaterial({ color: 0xff6a2a, toneMapped: false });
     const slatTex = canvasTex(T, 256, 256, (g, W) => {
       g.fillStyle = '#9a6b3f'; g.fillRect(0, 0, W, W);
       for (let x = 0; x < W; x += 32) { g.fillStyle = x % 64 ? '#a87648' : '#8f6038'; g.fillRect(x, 0, 28, W); g.fillStyle = '#3a2614'; g.fillRect(x + 28, 0, 4, W); }
@@ -216,25 +223,26 @@ export class Store3D {
       const m = new T.Mesh(new T.BoxGeometry(w, 3.6, d), wallMat); m.position.set(x, 1.8, z); scene.add(m);
       // warm wood slats up to 2.2 m, and the chain's glowing orange band above them
       const long = Math.max(w, d), t = slatTex.clone(); t.needsUpdate = true; t.repeat.set(long / 2, 1);
-      const slats = new T.Mesh(new T.BoxGeometry(w + (d < 1 ? 0 : 0.04), 2.2, d + (d < 1 ? 0.04 : 0)), new T.MeshLambertMaterial({ map: t }));
+      const slats = new T.Mesh(new T.BoxGeometry(w + (d < 1 ? 0 : 0.04), 2.2, d + (d < 1 ? 0.04 : 0)), new T.MeshLambertMaterial({ map: t, color: C(0xd9c3a5) }));
       slats.position.set(x, 1.1, z); scene.add(slats);
       const band = new T.Mesh(new T.BoxGeometry(w + (d < 1 ? 0 : 0.05), 0.12, d + (d < 1 ? 0.05 : 0)), bandMat); band.position.set(x, 2.32, z); scene.add(band);
     }
     // entrance mat and sign
     const e = map.entrance;
-    const mat = new T.Mesh(new T.PlaneGeometry(2.2, 1.4), new T.MeshLambertMaterial({ color: 0x22a35a }));
+    const mat = new T.Mesh(new T.PlaneGeometry(2.2, 1.4), new T.MeshLambertMaterial({ color: C(0x1f6b45) }));
     mat.rotation.x = -Math.PI / 2; mat.position.set(e.x + 0.5, 0.01, e.y + 0.5); scene.add(mat);
     this.buildWelcome(e);
 
-    const bodyMat = new T.MeshLambertMaterial({ color: 0xe9edf3 }), baseMat = new T.MeshLambertMaterial({ color: 0x3a4254 });
-    const counterMat = new T.MeshLambertMaterial({ color: 0x2b3242 });
+    // gondolas in dark walnut and charcoal: the products are what's lit, the furniture steps back
+    const bodyMat = new T.MeshLambertMaterial({ color: C(0x3a2e24) }), baseMat = new T.MeshLambertMaterial({ color: C(0x141210) });
+    const counterMat = new T.MeshLambertMaterial({ color: C(0x2a2420) });
     for (const s of map.shelves) this.buildShelf(s, { bodyMat, baseMat, counterMat });
 
     // the cart, in front of you at the bottom of the view
     const cart = this.cart = new T.Group();
     // a chrome wire basket made of real bars: a grid on every side, a solid rim
     const W = 0.56, Hc = 0.28, D = 0.38;
-    const wire = new T.MeshLambertMaterial({ color: 0xaeb8c6 });
+    const wire = new T.MeshLambertMaterial({ color: C(0x9aa3ae) });
     const bar = (len, axis, x, y, z, th = 0.01) => {
       const g = axis === 'x' ? new T.BoxGeometry(len, th, th) : axis === 'y' ? new T.BoxGeometry(th, len, th) : new T.BoxGeometry(th, th, len);
       const m = new T.Mesh(g, wire); m.position.set(x, y, z); cart.add(m);
@@ -243,7 +251,7 @@ export class Store3D {
     for (let i = 0; i <= 4; i++) { const z = -D / 2 + (D * i) / 4; bar(Hc, 'y', -W / 2, 0, z); bar(Hc, 'y', W / 2, 0, z); }
     for (let i = 0; i <= 2; i++) { const y = -Hc / 2 + (Hc * i) / 2; bar(W, 'x', 0, y, -D / 2); bar(W, 'x', 0, y, D / 2); bar(D, 'z', -W / 2, y, 0); bar(D, 'z', W / 2, y, 0); }
     for (const [len, ax, x, z] of [[W, 'x', 0, -D / 2], [W, 'x', 0, D / 2], [D, 'z', -W / 2, 0], [D, 'z', W / 2, 0]]) bar(len, ax, x, Hc / 2, z, 0.022);
-    const handle = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, W + 0.06, 10), new T.MeshLambertMaterial({ color: 0xff3d2e }));
+    const handle = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, W + 0.06, 10), new T.MeshLambertMaterial({ color: C(0xff5a1f) }));
     handle.rotation.z = Math.PI / 2; handle.position.set(0, Hc / 2 + 0.1, D / 2 + 0.1); cart.add(handle);
     const plate = new T.Mesh(new T.PlaneGeometry(0.22, 0.06), new T.MeshBasicMaterial({ map: signTex(T, this.on.storeName?.() || '🛒'), toneMapped: false }));
     plate.position.set(0, Hc / 2 + 0.03, D / 2 + 0.012); cart.add(plate);
@@ -254,7 +262,44 @@ export class Store3D {
     this.pos = new T.Vector3(e.x + 0.5, EYE, e.y + 0.5);
     this.yaw = this.faceInto(e);
     // a step back from anything right in front, so the first view takes in the store
-    for (let i = 0; i < 3 && !this.free(this.pos.x - Math.sin(this.yaw) * 1.2, this.pos.z - Math.cos(this.yaw) * 1.2); i++) this.yaw += Math.PI / 4;
+    const base = this.yaw;
+    let best = -1;
+    for (let k = -2; k <= 2; k++) {
+      const a = base + (k * Math.PI) / 4;
+      let d = 0;
+      while (d < 25 && this.free(this.pos.x - Math.sin(a) * d, this.pos.z - Math.cos(a) * d)) d += 0.25;
+      // how many gondolas this view takes in, and room to see them (not a unit right in your face)
+      let seen = 0;
+      for (const sh of this.map.shelves) {
+        if (/^(c\d+|w-)/.test(sh.id)) continue;
+        const dx = sh.x + sh.w / 2 - this.pos.x, dz = sh.y + sh.h / 2 - this.pos.z;
+        const off = Math.atan2(Math.sin(Math.atan2(-dx, -dz) - a), Math.cos(Math.atan2(-dx, -dz) - a));
+        if (Math.abs(off) < 0.6 && Math.hypot(dx, dz) < 26) seen++;
+      }
+      const score = seen * 2 + Math.min(d, 5) - Math.abs(k) * 0.5;
+      if (score > best) { best = score; this.yaw = a; }
+    }
+    // and stand at the mouth of an aisle, so the first view is a corridor of full shelves, not the end of a unit
+    {
+      const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), px = -fz, pz = fx;
+      const run = (x, z) => { let d = 0; while (d < 14 && this.free(x + fx * d, z + fz * d)) d += 0.25; return d; };
+      let bestRun = run(this.pos.x, this.pos.z), bestO = 0;
+      for (let o = -5; o <= 5; o += 0.5) {
+        const x = this.pos.x + px * o, z = this.pos.z + pz * o;
+        if (!this.free(x, z)) continue;
+        const d = run(x, z) - Math.abs(o) * 0.2;
+        if (d > bestRun + 2) { bestRun = d; bestO = o; }
+      }
+      // the centre of that corridor
+      let x = this.pos.x + px * bestO, z = this.pos.z + pz * bestO;
+      for (let ahead = 1; ahead < 12; ahead += 0.5) {
+        let l = 0, rr = 0;
+        while (l < 4 && this.free(x + fx * ahead - px * (l + 0.25), z + fz * ahead - pz * (l + 0.25))) l += 0.25;
+        while (rr < 4 && this.free(x + fx * ahead + px * (rr + 0.25), z + fz * ahead + pz * (rr + 0.25))) rr += 0.25;
+        if (l < 4 && rr < 4) { x += px * (rr - l) / 2; z += pz * (rr - l) / 2; break; }
+      }
+      if (this.free(x, z)) { this.pos.x = x; this.pos.z = z; }
+    }
     this.ray = new T.Raycaster();
     this.clock = new T.Clock();
     this.resize();
@@ -302,12 +347,21 @@ export class Store3D {
     const color = deptColor(s.name);
     // end caps in the department's colour, the way supermarket gondolas end
     if (!wall) {
-      const capMat = new T.MeshLambertMaterial({ color: new T.Color(color) });
+      const capMat = this._capMat ||= new T.MeshLambertMaterial({ color: C(0x6b4c34) });
+      const stripeMat = new T.MeshBasicMaterial({ color: C(color), toneMapped: false });
       const alongZc = s.h >= s.w;
       for (const end of [-1, 1]) {
         const cap = new T.Mesh(alongZc ? new T.BoxGeometry(s.w + 0.04, H + 0.02, 0.06) : new T.BoxGeometry(0.06, H + 0.02, s.h + 0.04), capMat);
         if (alongZc) cap.position.set(cx, H / 2, cz + end * (s.h / 2)); else cap.position.set(cx + end * (s.w / 2), H / 2, cz);
         this.scene.add(cap);
+        // a thin glowing stripe of the department's colour along the top and the sides of the end
+        for (const [gw, gh, gy, off] of [[1, 0.05, H - 0.03, 0], [0.04, H - 0.2, H / 2, -1], [0.04, H - 0.2, H / 2, 1]]) {
+          const wdt = (alongZc ? s.w : s.h) + 0.06;
+          const st = new T.Mesh(alongZc ? new T.BoxGeometry(gw === 1 ? wdt : gw, gh, 0.07) : new T.BoxGeometry(0.07, gh, gw === 1 ? wdt : gw), stripeMat);
+          const lat = off * (wdt / 2 - 0.02);
+          if (alongZc) st.position.set(cx + lat, gy, cz + end * (s.h / 2 + 0.005)); else st.position.set(cx + end * (s.w / 2 + 0.005), gy, cz + lat);
+          this.scene.add(st);
+        }
       }
     }
 
@@ -363,11 +417,21 @@ export class Store3D {
         const b = new T.Mesh(new T.PlaneGeometry(Math.min(len, 3.2), 0.36), board);
         b.position.set(side.x + side.nx * 0.01, H + 0.22, side.z + side.nz * 0.01); b.rotation.y = side.rot; this.scene.add(b);
       }
-      const rail = new T.Mesh(alongZ ? new T.BoxGeometry(s.w, 0.04, Math.min(len, 3.2)) : new T.BoxGeometry(Math.min(len, 3.2), 0.04, s.h), new T.MeshLambertMaterial({ color: 0x3a4254 }));
+      const rail = new T.Mesh(alongZ ? new T.BoxGeometry(s.w, 0.04, Math.min(len, 3.2)) : new T.BoxGeometry(Math.min(len, 3.2), 0.04, s.h), new T.MeshLambertMaterial({ color: C(0x141210) }));
       rail.position.set(cx, H + 0.03, cz); this.scene.add(rail);
     }
     // deal posters on the ends of the unit: the store's best offers, where everyone walks past
     const deals = (aisle?.products || []).filter((p) => p.promo);
+    // no deal here: the end of the unit is a display of packs, the way real gondola ends are stocked
+    if (!wall && !deals.length) {
+      const endW = (alongZ ? s.w : s.h) - 0.1;
+      if (endW > 0.4) [-1, 1].forEach((end, k) => {
+        const tex = packedShelfTex(T, `${s.id}-end${k}`, /מקרר/.test(s.name));
+        const pl = new T.Mesh(new T.PlaneGeometry(endW, H - 0.3), new T.MeshBasicMaterial({ map: tex, toneMapped: false }));
+        if (alongZ) { pl.position.set(cx, 0.14 + (H - 0.3) / 2, cz + end * (s.h / 2 + 0.035)); pl.rotation.y = end > 0 ? 0 : Math.PI; } else { pl.position.set(cx + end * (s.w / 2 + 0.035), 0.14 + (H - 0.3) / 2, cz); pl.rotation.y = end > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        this.scene.add(pl);
+      });
+    }
     if (!wall && deals.length) {
       [-1, 1].forEach((end, k) => {
         const p = deals[k % deals.length];
@@ -386,14 +450,14 @@ export class Store3D {
     const yaw = Math.round(this.faceInto(e) / (Math.PI / 2)) * (Math.PI / 2);
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw), px = Math.cos(yaw), pz = -Math.sin(yaw);
     const ox = e.x + 0.5 + fx * 1.2, oz = e.y + 0.5 + fz * 1.2;
-    const pillarMat = new T.MeshLambertMaterial({ color: 0xff6a2a });
+    const pillarMat = new T.MeshLambertMaterial({ color: C(0x2b221a) });
     for (const k of [-1, 1]) {
       const x = ox + px * 1.5 * k, z = oz + pz * 1.5 * k;
       const pil = new T.Mesh(new T.BoxGeometry(0.22, 2.7, 0.22), pillarMat); pil.position.set(x, 1.35, z); this.scene.add(pil);
       // a plant in a pot beside each pillar
       const px2 = x - fx * 0.5, pz2 = z - fz * 0.5;
-      const pot = new T.Mesh(new T.CylinderGeometry(0.22, 0.17, 0.45, 16), new T.MeshLambertMaterial({ color: 0x2b3242 })); pot.position.set(px2, 0.22, pz2); this.scene.add(pot);
-      const leaves = new T.Mesh(new T.SphereGeometry(0.38, 14, 10), new T.MeshLambertMaterial({ color: 0x3f9b54 })); leaves.position.set(px2, 0.78, pz2); leaves.scale.y = 1.25; this.scene.add(leaves);
+      const pot = new T.Mesh(new T.CylinderGeometry(0.22, 0.17, 0.45, 16), new T.MeshLambertMaterial({ color: C(0x1b1714) })); pot.position.set(px2, 0.22, pz2); this.scene.add(pot);
+      const leaves = new T.Mesh(new T.SphereGeometry(0.38, 14, 10), new T.MeshLambertMaterial({ color: C(0x2f7a43) })); leaves.position.set(px2, 0.78, pz2); leaves.scale.y = 1.25; this.scene.add(leaves);
     }
     const sign = new T.Mesh(new T.PlaneGeometry(3.3, 0.6), new T.MeshBasicMaterial({ map: signTex(T, 'ברוכים הבאים', this.on.storeName?.() || ''), side: T.DoubleSide, toneMapped: false }));
     sign.position.set(ox, 2.85, oz); sign.rotation.y = yaw; this.scene.add(sign);
@@ -652,11 +716,12 @@ export class Store3D {
     const g = canvas.getContext('2d'), W = canvas.width, H = canvas.height, map = this.map;
     const s = Math.min(W / map.cols, H / map.rows), ox = (W - map.cols * s) / 2, oy = (H - map.rows * s) / 2;
     g.clearRect(0, 0, W, H);
-    g.fillStyle = 'rgba(11,18,36,.72)'; g.fillRect(ox, oy, map.cols * s, map.rows * s);
-    g.fillStyle = '#5b6b9c';
-    for (const sh of map.shelves) g.fillRect(ox + sh.x * s, oy + sh.y * s, sh.w * s, sh.h * s);
+    g.fillStyle = 'rgba(20,16,12,.82)'; g.fillRect(0, 0, W, H);
+    g.fillStyle = 'rgba(255,214,150,.08)'; g.fillRect(ox, oy, map.cols * s, map.rows * s);
+    for (const sh of map.shelves) { g.fillStyle = /^c\d+$/.test(sh.id) ? '#7a6a5a' : deptColor(sh.name); g.fillRect(ox + sh.x * s, oy + sh.y * s, sh.w * s, sh.h * s); }
     const px = ox + this.pos.x * s, py = oy + this.pos.z * s;
-    g.fillStyle = '#ff7a1a'; g.beginPath();
+    g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.arc(px, py, 13, 0, 7); g.fill();
+    g.fillStyle = '#fff'; g.beginPath();
     g.moveTo(px - Math.sin(this.yaw) * 9, py - Math.cos(this.yaw) * 9);
     g.lineTo(px + Math.cos(this.yaw) * 5, py - Math.sin(this.yaw) * 5);
     g.lineTo(px - Math.cos(this.yaw) * 5, py + Math.sin(this.yaw) * 5);

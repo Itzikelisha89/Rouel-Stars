@@ -99,6 +99,9 @@ if (!productCols.includes('active')) db.exec('ALTER TABLE products ADD COLUMN ac
 if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'staff_pin_hash')) {
   db.exec('ALTER TABLE stores ADD COLUMN staff_pin_hash TEXT'); // workers' code, set by the manager
 }
+if (!db.prepare('PRAGMA table_info(stores)').all().some((c) => c.name === 'detour_pct')) {
+  db.exec('ALTER TABLE stores ADD COLUMN detour_pct INTEGER NOT NULL DEFAULT 20'); // "discovery route": how much longer the way may be, to pass a deal
+}
 if (!db.prepare('PRAGMA table_info(sessions)').all().some((c) => c.name === 'role')) {
   db.exec("ALTER TABLE sessions ADD COLUMN role TEXT NOT NULL DEFAULT 'owner'"); // 'owner' or 'staff'
 }

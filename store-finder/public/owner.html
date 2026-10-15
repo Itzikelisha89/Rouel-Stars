@@ -292,6 +292,10 @@
         <div class="card"><h2>🔎 מה הכי מחפשים</h2><div id="r-top" class="rank"></div></div>
         <div class="card"><h2>📭 מוצרים שלא היו במקום</h2><p class="muted">דיווחים של לקוחות: מדף ריק או מוצר שזז. לבדוק מלאי וסידור.</p><div id="r-problems" class="rank"></div></div>
       </div>
+      <div class="card basket-card"><h2>🛒 מוצרים נוספים לסל</h2><p class="muted">כמה מוצרים לקוחות הוסיפו לעגלה מעבר למה שחיפשו, ובזכות מה: הצעות "הולך עם", מבצעים, מסלול מגלה וסיור בחנות.</p>
+        <div class="kpis k4" id="r-basket-kpis"></div>
+        <div class="grid2"><div><h3>מאיפה הגיעו התוספות</h3><div id="r-basket-src" class="rank"></div></div><div><h3>המוצרים שהכי נוספו</h3><div id="r-basket-top" class="rank"></div></div></div>
+      </div>
       <div class="card"><h2>📣 מוצרים שלקוחות ביקשו שנביא</h2><div id="r-requests" class="rank"></div></div>
       <p class="muted" style="font-size:.85rem">* זמן עבודה שנחסך: הערכה של 2 דקות לכל לקוח שמצא מוצר לבד, בלי לשאול עובד.</p>
     </section>
@@ -314,6 +318,16 @@
           <p class="muted" style="font-size:.85rem;margin:8px 0 0">אחרי ההחלפה, כל מכשיר אחר שמחובר לחנות ינותק.</p>
         </form>
       </div>
+      <form class="card" id="detour-form">
+        <h2>🔥 מסלול מגלה</h2>
+        <p class="muted">כשלקוח מחפש מוצר, המסלול אליו יכול לעבור ליד מבצע. הלקוח עדיין מגיע מהר, אבל רואה בדרך עוד משהו ששווה לקנות. כאן קובעים כמה הליכה נוספת מותר להוסיף.</p>
+        <label for="s-detour">הליכה נוספת לכל היותר</label>
+        <div class="row">
+          <select id="s-detour" class="grow"><option value="0">כבוי: תמיד הדרך הקצרה</option><option value="10">עד 10% יותר</option><option value="20">עד 20% יותר (מומלץ)</option><option value="30">עד 30% יותר</option><option value="40">עד 40% יותר</option></select>
+          <button class="primary" type="submit">שמירה</button>
+        </div>
+        <p class="muted" id="s-detour-status" style="margin-top:8px"></p>
+      </form>
       <form class="card" id="staff-form">
         <h2>👷 עובדים</h2>
         <p class="muted">עובדים נכנסים מהטלפון עם קוד עובדים. הם רואים את ההתראות (קריאות לעזרה, מדפים ריקים) ויכולים להעביר מוצר למעבר אחר או לסמן שאזל. הם לא יכולים למחוק, לשנות מפה או לראות דוחות.</p>

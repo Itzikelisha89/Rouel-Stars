@@ -23,6 +23,14 @@ const rnd = () => {
 };
 const poisson = (lambda) => { let k = 0, p = Math.exp(-lambda), s = p; const u = rnd(); while (u > s) { k++; p *= lambda / k; s += p; } return k; };
 
+let cseed = 7;
+const crnd = () => {
+  cseed = (cseed + 0x6d2b79f5) | 0;
+  let t = Math.imul(cseed ^ (cseed >>> 15), 1 | cseed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
 function seedBranch(SLUG, NAME, o) {
   const old = db.prepare('SELECT id FROM stores WHERE slug = ?').get(SLUG);
   if (old) db.prepare('DELETE FROM stores WHERE id = ?').run(old.id);
@@ -97,6 +105,8 @@ function seedBranch(SLUG, NAME, o) {
   // ---------- a simulated 30-day pilot: shoppers, "found it" taps, shelf reports, help calls ----------
   const sqlTime = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
   const rows = db.prepare('SELECT * FROM products WHERE store_id = ?').all(storeId);
+  const deals = rows.filter((x) => x.promo);
+  const EXTRA_SOURCES = ['suggest', 'suggest', 'suggest', 'deal', 'deal', 'detour', 'detour', 'aisle', 'related', 'tour'];
   const visitorId = () => Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(rnd() * 36)]).join('');
   const ev = db.prepare('INSERT INTO events (store_id, visitor, type, product_id, shelf_id, query, note, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const srch = db.prepare('INSERT INTO searches (store_id, query, result_count, visitor, created_at) VALUES (?, ?, ?, ?, ?)');
@@ -145,7 +155,20 @@ function seedBranch(SLUG, NAME, o) {
         ev.run(storeId, v, 'view', p.id, p.shelf_id, '', '', sqlTime(t), null);
         const r = rnd();
         const walk = (25 + rnd() * 70 + (rnd() < 0.15 ? rnd() * 120 : 0)) * 1000 * o.walk;
-        if (r < o.found) { ev.run(storeId, v, 'found', p.id, p.shelf_id, '', '', sqlTime(new Date(t.getTime() + walk)), null); pilot.found++; }
+        if (r < o.found) {
+          ev.run(storeId, v, 'found', p.id, p.shelf_id, '', '', sqlTime(new Date(t.getTime() + walk)), null); pilot.found++;
+          // into the cart: what they came for, and sometimes something they didn't (own random stream,
+          // so the rest of the demo numbers stay the same)
+          if (crnd() < 0.7) {
+            ev.run(storeId, v, 'cart', p.id, p.shelf_id, '', 'search', sqlTime(new Date(t.getTime() + walk + 4000)), null);
+            for (let x = (crnd() < 0.38) + (crnd() < 0.15); x > 0; x--) {
+              const src = EXTRA_SOURCES[Math.floor(crnd() * EXTRA_SOURCES.length)];
+              const pool = src === 'deal' || src === 'detour' ? deals : rows;
+              const q2 = pool[Math.floor(crnd() * pool.length)] || p;
+              ev.run(storeId, v, 'cart', q2.id, q2.shelf_id, '', src, sqlTime(new Date(t.getTime() + walk + 30000 + crnd() * 90000)), null);
+            }
+          }
+        }
         else if (r < o.found + o.problems) {
           const at = new Date(t.getTime() + walk);
           ev.run(storeId, v, rnd() < 0.55 ? 'empty' : 'not_there', p.id, p.shelf_id, '', '', sqlTime(at), sqlTime(new Date(at.getTime() + (8 + rnd() * 50) * 60000)));

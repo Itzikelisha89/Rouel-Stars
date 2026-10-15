@@ -86,6 +86,37 @@ function report(searches, events, { days = 30, now = new Date(), productNames = 
     requested.set(q, v);
   }
 
+  // The bigger basket: what went into carts, and how much of it the shopper didn't come for
+  const cartEvents = byType('cart');
+  const carts = new Map(); // visitor -> { items, extra }
+  const bySource = {};
+  const extraProducts = new Map();
+  for (const e of cartEvents) {
+    const c = carts.get(e.visitor || e.id) || { items: 0, extra: 0 };
+    c.items++;
+    const src = e.note || 'search';
+    bySource[src] = (bySource[src] || 0) + 1;
+    if (src !== 'search') {
+      c.extra++;
+      const v = extraProducts.get(e.product_id) || { productId: e.product_id, name: productNames.get(e.product_id) || 'מוצר שנמחק', count: 0 };
+      v.count++;
+      extraProducts.set(e.product_id, v);
+    }
+    carts.set(e.visitor || e.id, c);
+  }
+  const cartList = [...carts.values()];
+  const basket = {
+    carts: cartList.length,
+    items: cartEvents.length,
+    avgItems: cartList.length ? Math.round((cartEvents.length / cartList.length) * 10) / 10 : null,
+    extraItems: cartList.reduce((t, c) => t + c.extra, 0),
+    cartsWithExtraRate: pct(cartList.filter((c) => c.extra > 0).length, cartList.length),
+    // of every 100 items in carts, how many the shopper didn't search for
+    extraShare: pct(cartList.reduce((t, c) => t + c.extra, 0), cartEvents.length),
+    bySource,
+    topExtra: top(extraProducts, 8),
+  };
+
   const foundSearches = searches.filter((s) => s.result_count > 0).length;
   return {
     from: dayFmt.format(from), to: dayFmt.format(now), days,
@@ -109,6 +140,7 @@ function report(searches, events, { days = 30, now = new Date(), productNames = 
     topSearches: top(queries, 10),
     problemProducts: top(problemProducts, 8),
     topRequests: top(requested, 8),
+    basket,
   };
 }
 

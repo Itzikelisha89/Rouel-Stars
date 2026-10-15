@@ -229,6 +229,11 @@ const T = {
   fin_more: { he: 'להמשיך לטייל בחנות', ar: 'متابعة التجول', ru: 'Гулять дальше', en: 'Keep browsing' },
   fin_say: { he: 'איזה יופי! העגלה מוכנה, {n} מוצרים. נחכה לך בסניף', ar: 'رائع! السلة جاهزة', ru: 'Отлично! Корзина готова', en: 'Lovely! Your cart is ready' },
   fin_wa: { he: 'הרשימה שלי ל{store}:', ar: 'قائمتي لـ{store}:', ru: 'Мой список для {store}:', en: 'My list for {store}:' },
+  via_big: { he: '🔥 מבצע בדרך!', ar: '🔥 عرض في الطريق!', ru: '🔥 Акция по пути!', en: '🔥 Deal on the way!' },
+  via_text: { he: 'בדרך: {name} · {promo}', ar: 'في الطريق: {name} · {promo}', ru: 'По пути: {name} · {promo}', en: 'On the way: {name} · {promo}' },
+  via_say: { he: 'רגע, ממש פה יש מבצע: {name}, {promo}. שווה להציץ!', ar: 'لحظة، هنا عرض: {promo}', ru: 'Минутку, здесь акция: {promo}', en: 'Wait, there is a deal right here: {promo}' },
+  via_detail: { he: '🔥 בדרך תעבור ליד מבצע: {name} ({promo})', ar: '🔥 في طريقك عرض: {promo}', ru: '🔥 По пути акция: {promo}', en: '🔥 On your way, a deal: {promo}' },
+  then_deal: { he: 'ואז מבצע בדרך 🔥', ar: 'ثم عرض في الطريق 🔥', ru: 'затем акция по пути 🔥', en: 'then a deal on the way 🔥' },
   see_all: { he: 'הכל ←', ar: 'الكل ←', ru: 'Все →', en: 'See all →' },
   also_try: { he: 'אולי זה יעזור:', ar: 'ربما يساعدك هذا:', ru: 'Может, это поможет:', en: 'Maybe this helps:' },
 

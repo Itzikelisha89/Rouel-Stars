@@ -1073,12 +1073,23 @@ async function loadReport() {
   $('r-top').innerHTML = rankList(r.topSearches, (q) => q.query, (q) => q.count, { miss: (q) => !q.found, sub: (q) => (q.found ? '' : 'לא נמצא בחנות') });
   $('r-problems').innerHTML = rankList(r.problemProducts, (p) => p.name, (p) => p.count, { miss: () => true, sub: (p) => (p.empty ? `${p.empty} מדף ריק` : '') });
   $('r-requests').innerHTML = rankList(r.topRequests, (q) => q.query, (q) => q.count, { sub: (q) => (q.withPhone ? `${q.withPhone} השאירו טלפון` : '') });
+  const b = r.basket || {};
+  $('r-basket-kpis').innerHTML = [
+    kpi(num(b.extraItems || 0), 'מוצרים נוספים לסל', 'מעבר למה שחיפשו', true),
+    kpi(b.extraShare == null ? '—' : `${b.extraShare}%`, 'מכל ההוספות לעגלה', 'הגיעו מהצעות, מבצעים וסיור', true),
+    kpi(b.cartsWithExtraRate == null ? '—' : `${b.cartsWithExtraRate}%`, 'מהלקוחות הוסיפו עוד משהו', `${num(b.carts || 0)} לקוחות מילאו עגלה`),
+    kpi(b.avgItems == null ? '—' : b.avgItems, 'מוצרים בעגלה בממוצע', `${num(b.items || 0)} הוספות סה״כ`),
+  ].join('');
+  const SRC = { suggest: '💡 "הולך עם"', deal: '🏷️ מבצעים', aisle: '🧭 באותו מעבר', tour: '🛒 סיור בחנות', detour: '🔥 מסלול מגלה', related: '👥 לקחו גם' };
+  $('r-basket-src').innerHTML = rankList(Object.entries(b.bySource || {}).filter(([k, v]) => k !== 'search' && v).sort((x, y) => y[1] - x[1]), ([k]) => SRC[k] || k, ([, v]) => v);
+  $('r-basket-top').innerHTML = rankList(b.topExtra || [], (p) => p.name, (p) => p.count);
 }
 $('r-days').addEventListener('change', loadReport);
 
 // ---------- settings ----------
 function loadSettings() {
   $('s-name').value = store.name;
+  $('s-detour').value = String(store.detourPct ?? 20);
   const url = `${location.origin}/staff.html?store=${encodeURIComponent(store.slug)}`;
   $('staff-url').textContent = url;
   $('staff-qr').src = `/api/public/${encodeURIComponent(store.slug)}/staff-qr.svg`;
@@ -1094,6 +1105,14 @@ $('staff-form').addEventListener('submit', async (e) => {
     loadSettings();
     $('s-pin-status').textContent = 'הקוד נשמר ✓';
   } catch (err) { $('s-pin-status').textContent = err.message; }
+});
+$('detour-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/api/store/settings', { method: 'PUT', body: { detourPct: Number($('s-detour').value) } });
+    store.detourPct = r.detourPct;
+    $('s-detour-status').textContent = Number(r.detourPct) ? `נשמר ✓ מסלולים יעברו ליד מבצעים כשזה מוסיף עד ${r.detourPct}% הליכה.` : 'נשמר ✓ מסלול מגלה כבוי.';
+  } catch (err) { $('s-detour-status').textContent = err.message; }
 });
 $('name-form').addEventListener('submit', async (e) => {
   e.preventDefault();
