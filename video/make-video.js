@@ -107,13 +107,14 @@ body::before{content:"";position:absolute;inset:0;background:repeating-linear-gr
 @keyframes drop{from{opacity:0;translate:0 -120px;scale:1.3}}
 .card h1{margin:0;font-size:170px;font-weight:900;color:#e8b84a;text-shadow:0 6px 0 #5b3f08,0 20px 40px rgba(0,0,0,.5);line-height:1;animation:rise 1s .6s both}
 .card .ded{font-size:58px;font-weight:700;color:#ffe9b5;padding:8px 40px;border:2px solid rgba(232,184,74,.6);border-radius:999px;background:rgba(232,184,74,.12);animation:rise 1s .9s both}
+.card .credit{position:absolute;bottom:28px;font-size:18px;color:rgba(255,255,255,.45);direction:ltr}
 .card .sub{font-size:34px;color:#a9c2b4;animation:rise 1s 1.2s both}
 @keyframes rise{from{opacity:0;transform:translateY(30px)}}
 </style></head><body>${defs}
 <div class="header"><div class="brand"><div class="lt" id="brand-tiles"></div><div><h1>חמישיות</h1><div class="ded">הדומינו של יוסי פרג</div></div></div><div class="chapter" id="chapter">סרטון הסבר</div></div>
 <div class="panel"><div class="num" id="num"></div><div class="title" id="title"></div><div class="say" id="say"></div></div>
 <div class="phones">${phones}</div>
-<div class="card" id="card"><div class="tiles" id="card-tiles"></div><h1>חמישיות</h1><div class="ded">הדומינו של יוסי פרג</div><div class="sub" id="card-sub">סרטון הסבר · איך משחקים</div></div>
+<div class="card" id="card"><div class="tiles" id="card-tiles"></div><h1>חמישיות</h1><div class="ded">הדומינו של יוסי פרג</div><div class="sub" id="card-sub">סרטון הסבר · איך משחקים</div><div class="credit" id="card-credit"></div></div>
 <script src="${ORIGINS[0]}/js/tiles.js"></script>
 <script>
 document.getElementById('brand-tiles').innerHTML = [[5,5],[6,6]].map(([a,b]) => '<div>' + Tiles.handTileSVG(a,b) + '</div>').join('');
@@ -124,7 +125,7 @@ window.setScene = (o) => {
   [0,1,2].forEach((i) => { const p = document.getElementById('ph' + i); p.className = 'phone' + (o.focus == null ? '' : o.focus.includes(i) ? ' focus' : o.gone ? ' gone' : ' dim'); });
 };
 window.tapAt = (x, y) => { const t = document.createElement('div'); t.className = 'tap'; t.style.left = x + 'px'; t.style.top = y + 'px'; document.body.appendChild(t); setTimeout(() => t.remove(), 700); };
-window.card = (show, sub) => { const c = document.getElementById('card'); c.classList.toggle('hidden', !show); if (sub) document.getElementById('card-sub').textContent = sub;
+window.card = (show, sub, credit) => { const c = document.getElementById('card'); c.classList.toggle('hidden', !show); if (sub) document.getElementById('card-sub').textContent = sub; if (credit) document.getElementById('card-credit').textContent = credit;
   if (show) c.querySelectorAll('.tiles>div,h1,.ded,.sub').forEach((e) => { e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }); };
 </script></body></html>`;
 }
@@ -254,7 +255,13 @@ const FAKE_CAM = fs.readFileSync(path.join(__dirname, 'fake-cam.js'), 'utf8');
     await sleep(1200);
     await Promise.all([0, 1, 2].map(async (i) => {
       await sleep(i * 120);
-      for (const s of slotOf[i]) await tap(i, `.pool-tile[data-slot="${s}"]`, { fast: true, after: 160 });
+      for (const s of slotOf[i]) {
+        try {
+          await tap(i, `.pool-tile[data-slot="${s}"]`, { fast: true, after: 160 });
+        } catch {
+          await ev(i, (x) => emit('game:pick', { slot: x }), s);
+        }
+      }
     }));
   });
 
@@ -392,7 +399,7 @@ const FAKE_CAM = fs.readFileSync(path.join(__dirname, 'fake-cam.js'), 'utf8');
   await sleep(2500);
 
   // 15. סיום
-  await page.evaluate(() => window.card(true, 'שולחים קישור לחברים · מתחילים לשחק'));
+  await page.evaluate(() => window.card(true, 'שולחים קישור לחברים · מתחילים לשחק', 'Music: "Life of Riley" by Kevin MacLeod (incompetech.com) · Licensed under CC BY 4.0'));
   await scene('outro', { focus: null, chapter: 'בהצלחה!' });
   await sleep(1200);
   const total = now();
@@ -419,17 +426,27 @@ const FAKE_CAM = fs.readFileSync(path.join(__dirname, 'fake-cam.js'), 'utf8');
   const valid = cues.filter((c) => fs.existsSync(c.file) && c.t >= 0 && c.t < total);
   const args = ['-y', '-loglevel', 'error'];
   valid.forEach((c) => args.push('-i', c.file));
-  args.push('-f', 'lavfi', '-t', total.toFixed(2), '-i', 'anoisesrc=color=brown:amplitude=0.6:sample_rate=44100');
+  // מוזיקת רקע: "Life of Riley" – Kevin MacLeod (incompetech.com), רישיון CC BY 4.0
+  const MUSIC = path.join(OUT, 'music.mp3');
+  args.push('-i', MUSIC);
   const fl = valid.map((c, i) => `[${i}:a]aresample=44100,aformat=channel_layouts=stereo,volume=${c.vol},adelay=${Math.round(c.t * 1000)}|${Math.round(c.t * 1000)}[a${i}]`);
-  const amb = valid.length;
-  fl.push(`[${amb}:a]lowpass=f=450,volume=0.05,aformat=channel_layouts=stereo,afade=t=in:d=2,afade=t=out:st=${(total - 2.5).toFixed(2)}:d=2.5[amb]`);
-  fl.push(`${valid.map((_, i) => `[a${i}]`).join('')}[amb]amix=inputs=${valid.length + 1}:normalize=0:dropout_transition=0,alimiter=limit=0.95,apad[mix]`);
+  // שלושה ערוצים: קריינות, צלילי משחק, מוזיקה. המוזיקה "מתכופפת" אוטומטית כשהקריין מדבר.
+  const isVO = (c) => c.file.includes(`${path.sep}vo${path.sep}`);
+  const vo = valid.map((c, i) => (isVO(c) ? `[a${i}]` : '')).join('');
+  const fx = valid.map((c, i) => (isVO(c) ? '' : `[a${i}]`)).join('');
+  const nVO = valid.filter(isVO).length;
+  const mus = valid.length;
+  fl.push(`${vo}amix=inputs=${nVO}:normalize=0:dropout_transition=0,asplit=2[vo][vokey]`);
+  fl.push(`${fx}amix=inputs=${valid.length - nVO}:normalize=0:dropout_transition=0[fx]`);
+  fl.push(`[${mus}:a]aresample=44100,aformat=channel_layouts=stereo,volume=0.42,afade=t=in:d=1.2,afade=t=out:st=${(total - 4).toFixed(2)}:d=4[m0]`);
+  fl.push(`[m0][vokey]sidechaincompress=threshold=0.015:ratio=9:attack=25:release=700:makeup=1[music]`);
+  fl.push(`[vo][fx][music]amix=inputs=3:normalize=0:dropout_transition=0,alimiter=limit=0.95,apad[mix]`);
   fs.writeFileSync(path.join(OUT, 'filter.txt'), fl.join(';\n'));
   const audio = path.join(OUT, 'audio.m4a');
   args.push('-filter_complex_script', path.join(OUT, 'filter.txt'), '-map', '[mix]', '-t', total.toFixed(2), '-c:a', 'aac', '-b:a', '192k', audio);
   execFileSync('ffmpeg', args, { stdio: 'inherit' });
   const final = path.join(OUT, 'domino-yossi-explainer.mp4');
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-i', audio, '-c', 'copy', '-shortest', '-movflags', '+faststart', final], { stdio: 'inherit' });
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-i', audio, '-c:v', 'copy', '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', final], { stdio: 'inherit' });
   console.log('DONE', final);
   process.exit(0);
 })().catch(async (e) => {

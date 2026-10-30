@@ -5,13 +5,21 @@ import edge_tts
 OUT = sys.argv[1]
 os.makedirs(f'{OUT}/vo', exist_ok=True); os.makedirs(f'{OUT}/sfx', exist_ok=True)
 script = json.load(open(os.path.join(os.path.dirname(__file__), 'script.json'), encoding='utf-8'))
+# ניקוד/ניסוח לקריין בלבד, במקומות שהמנוע הגה לא נכון (נבדק עם זיהוי דיבור בעברית)
+TTS = {
+  'open': 'את היד הראשונה פותח מי שמחזיק את הַשֵּׁשׁ, שֵׁשׁ. ואם היא נשארה בקופה – פותח מי שיש לו חָמֵשׁ־חָמֵשׁ.',
+  'spinner': 'הכפולה הראשונה היא הַסְּפִּינֶר. ברגע שתופסים את שְׁנֵי הַצְּדָדִים שֶׁלָּהּ – ממשיכים ממנה גם למעלה וגם למטה.',
+  'draw': 'אין מה לשים? בוחרים אבן מהקופה – עד פעמיים בתור. ועדיין כלום? דופקים על השולחן: פָּאס.',
+  'missed': 'כאן היו חמש עשרה על הלוח, ואף אחד לא אמר כלום. התור עבר... וְהַנְּקוּדוֹת הָלְכוּ.',
+}
 async def one(k, t):
     for _ in range(4):
         try:
-            await edge_tts.Communicate(t, 'he-IL-HilaNeural', rate='-3%', pitch='-2Hz', proxy=os.environ.get('HTTPS_PROXY')).save(f'{OUT}/vo/{k}.mp3'); return
+            await edge_tts.Communicate(t, 'he-IL-AvriNeural', rate='+2%', pitch='+0Hz', proxy=os.environ.get('HTTPS_PROXY')).save(f'{OUT}/vo/{k}.mp3'); return
         except Exception: await asyncio.sleep(1.5)
     print('FAILED', k)
-async def main(): await asyncio.gather(*(one(k, t) for k, t in script.items()))
+ONLY = sys.argv[2:]
+async def main(): await asyncio.gather(*(one(k, TTS.get(k, t)) for k, t in script.items() if not ONLY or k in ONLY))
 asyncio.run(main())
 dur = {}
 for k in script:
