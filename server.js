@@ -167,14 +167,17 @@ function afterAction(room) {
   const events = g.drainEvents();
   for (const ev of events) {
     if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.count} = ${ev.scored} ${ev.scored === 1 ? 'נקודה' : 'נקודות'}`, 'score');
+    if (ev.type === 'reachedTarget') sys(room, `🏁 ${sideLabel(room, ev.side)} הגיע${g.teams ? 'ו' : ''} ל-${g.target}! מסיימים את הסיבוב…`, 'score');
     if (ev.type === 'newHand') {
       const opener = ev.required ? ` – ${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : ` – ${nameAtSeat(room, ev.starter)} פותח`;
       sys(room, `🀄 יד ${ev.handNo} חולקה${opener}`);
     }
+    if (ev.type === 'handOver' && ev.tieAtTop) sys(room, '⚖️ תיקו בראש הטבלה – משחקים עוד יד!', 'score');
     if (ev.type === 'handOver' || ev.type === 'gameOver') {
+      const handSide = ev.type === 'gameOver' ? ev.handWinSide : ev.winSide;
       if (ev.reason === 'domino') sys(room, `🙌 ${nameAtSeat(room, ev.winnerSeat)} גמר את האבנים! +${ev.points}`, 'score');
       if (ev.reason === 'blocked')
-        sys(room, ev.winSide == null ? '🔒 המשחק נחסם – תיקו, אף אחד לא מקבל' : `🔒 המשחק נחסם – ${sideLabel(room, ev.winSide)} עם הכי מעט: +${ev.points}`, 'score');
+        sys(room, handSide == null ? '🔒 המשחק נחסם – תיקו, אף אחד לא מקבל' : `🔒 המשחק נחסם – ${sideLabel(room, handSide)} עם הכי מעט: +${ev.points}`, 'score');
     }
     if (ev.type === 'gameOver') sys(room, `🏆 ${sideLabel(room, ev.winSide)} ניצח${g.teams ? 'ו' : ''} את המשחק!`, 'score');
   }

@@ -677,6 +677,8 @@ function processFx(g) {
         Sound.play(won || g.mySeat < 0 ? 'win' : 'lose');
         if (won) confetti();
       }, 900);
+    } else if (ev.type === 'reachedTarget') {
+      setTimeout(() => floatMsg(`🏁 ${sideName(g, ev.side)} עבר ${g.target} – מסיימים את הסיבוב`), 700);
     } else if (ev.type === 'handOver' && ev.reason === 'blocked') {
       floatMsg('המשחק נחסם 🔒');
     }
@@ -778,14 +780,15 @@ function renderHandModal(g) {
     let title = '';
     if (r.reason === 'domino') title = `${esc(winnerName)} גמר את האבנים! 🙌`;
     else if (r.reason === 'blocked') title = 'המשחק נחסם 🔒';
-    else title = `${esc(winnerName)} הגיע ל-${g.target}! 🎯`;
+
     let sub = '';
     if (r.winSide != null && r.points) sub = `+${r.points} ${r.points === 1 ? 'נקודה' : 'נקודות'} ל${esc(sideName(g, r.winSide))} (מה שנשאר ליריבים, מעוגל ל-5 ומחולק ב-5)`;
     else if (r.reason === 'blocked' && r.winSide == null) sub = 'תיקו בספירה – אף אחד לא מקבל נקודות';
+    if (r.tieAtTop) sub += `${sub ? '<br>' : ''}⚖️ תיקו מעל ${g.target} – משחקים עוד יד`;
     if (g.state === 'gameOver') {
       const won = g.mySeat >= 0 && sideOf(g, g.mySeat) === g.winnerSide;
       title = `<div class="winner-big">🏆</div>${won ? (g.teams ? 'ניצחתם!' : 'ניצחת!') : `${esc(sideName(g, g.winnerSide))} ניצח${g.teams ? 'ו' : ''}!`}`;
-      sub = `${r.reason === 'target' ? `הגיע ל-${g.target} באמצע היד` : sub}`;
+      sub = `${sub ? sub + ' · ' : ''}סוף הסיבוב: ${g.scores[g.winnerSide]} נקודות`;
     }
     $('#hand-title').innerHTML = title;
     $('#hand-sub').innerHTML = sub;

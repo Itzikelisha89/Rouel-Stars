@@ -200,9 +200,11 @@ class Game {
     this.lastMove = { seat, tileId, end, scored, count };
     this.events.push({ type: 'play', seat, tile: { a: tile.a, b: tile.b }, tileId, end, scored, count });
 
-    if (this.scores[side] >= this.target) {
-      this.finish(side, { reason: 'target', winnerSeat: seat, winSide: side, points: 0 });
-    } else if (hand.length === 0) {
+    // הגעה ל-51 לא עוצרת את המשחק – מסיימים את הסיבוב, ורק אז בודקים מי ניצח
+    if (scored && this.scores[side] >= this.target && this.scores[side] - scored < this.target) {
+      this.events.push({ type: 'reachedTarget', seat, side, score: this.scores[side] });
+    }
+    if (hand.length === 0) {
       this.endHand(seat);
     } else {
       this.turn = (this.turn + 1) % this.n;
@@ -276,8 +278,12 @@ class Game {
     }
     if (winSide != null) this.scores[winSide] += points;
     const result = { reason, winnerSeat, winSide, points, handPips, sidePips };
-    if (winSide != null && this.scores[winSide] >= this.target) this.finish(winSide, result);
+    // סוף סיבוב: אם מישהו עבר את היעד – המוביל מנצח. תיקו בראש = עוד יד.
+    const top = Math.max(...this.scores);
+    const leaders = this.scores.map((s, i) => (s === top ? i : -1)).filter((i) => i >= 0);
+    if (top >= this.target && leaders.length === 1) this.finish(leaders[0], result);
     else {
+      if (top >= this.target) result.tieAtTop = true;
       this.state = 'handOver';
       this.handOverAt = Date.now();
       this.handResult = { ...result, hands: this.revealHands() };
@@ -289,7 +295,7 @@ class Game {
     this.state = 'gameOver';
     this.winnerSide = side;
     this.handResult = { ...result, handPips: this.hands.map(pipsOf), hands: this.revealHands() };
-    this.events.push({ type: 'gameOver', winSide: side, ...result });
+    this.events.push({ type: 'gameOver', ...result, handWinSide: result.winSide, winSide: side });
   }
 
   revealHands() {

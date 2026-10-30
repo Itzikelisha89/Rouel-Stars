@@ -57,6 +57,7 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
     if (n === 4) assert.strictEqual(game.boneyard.length, 0);
     if (n < 4 && !game.hands.some((h) => h.some((t) => t.id === '66'))) assert.ok(game.required === '55' || !game.hands.some((h) => h.some((t) => t.id === '55')), 'בלי 6:6 – פותח 5:5');
     let guard = 0;
+    let overEv = null;
     while (game.state !== 'gameOver') {
       if (++guard > 5000) throw new Error('לולאה אינסופית');
       if (game.state === 'handOver') {
@@ -71,7 +72,9 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
       if (moves.length) {
         const m = moves[Math.floor(Math.random() * moves.length)];
         const before = game.scores[game.sideOf(seat)];
+        const lastTile = game.hands[seat].length === 1;
         game.play(seat, m.tileId, m.end);
+        if (!lastTile && game.passes === 0) assert.strictEqual(game.state, 'playing', 'לא עוצרים באמצע סיבוב');
         assert.strictEqual(game.scores[game.sideOf(seat)] - before >= m.score, true);
       } else if (game.boneyard.length) {
         assert.throws(() => game.pass(seat));
@@ -79,9 +82,11 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
       } else {
         game.pass(seat);
       }
-      game.drainEvents();
+      for (const e of game.drainEvents()) if (e.type === 'gameOver') overEv = e;
     }
     assert.ok(game.scores[game.winnerSide] >= 51);
+    assert.strictEqual(overEv.winSide, game.winnerSide, 'אירוע סוף המשחק מציין את המנצח הנכון');
+    assert.ok(game.scores.every((s, i) => i === game.winnerSide || s < game.scores[game.winnerSide]), 'המנצח הוא המוביל');
   }
 }
 
