@@ -41,12 +41,13 @@ const OUT = process.argv[2] || '.';
         if (!g.ready.includes(g.mySeat)) await emit('game:ready');
         return 'ready';
       }
-      if (g.turn !== g.mySeat) return 'wait';
+      if (g.state !== 'playing' || g.turn !== g.mySeat) return 'wait';
       if (g.canDraw) await emit('game:draw');
       else if (g.canPass) await emit('game:pass');
       else {
         const m = [...g.moves].sort((a, b) => b.score - a.score)[0];
         await emit('game:play', { tileId: m.tileId, end: m.end });
+        if (m.score) await emit('game:call', { value: m.count });
       }
       return 'acted';
     });

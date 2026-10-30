@@ -59,6 +59,7 @@ const S = {
   readySent: false,
   wakeLock: null,
   typing: new Map(),
+  reach: {},
 };
 
 function codeFromUrl() {
@@ -120,6 +121,10 @@ socket.on('typing', ({ pid }) => {
   S.typing.set(pid, Date.now());
   renderTyping();
   setTimeout(renderTyping, 2600);
+});
+socket.on('reach', ({ seat, index }) => {
+  S.reach[seat] = index == null ? null : { index, t: Date.now() };
+  if (S.game) renderSeats(S.game);
 });
 socket.on('react', ({ pid, emoji }) => {
   showBubble(pid, emoji, true);
@@ -388,6 +393,7 @@ function renderGame(prev) {
   renderBoard(g);
   renderHand(g);
   renderStatus(g);
+  renderCallBar(g);
   processFx(g);
   renderHandModal(g);
   notifyTurn(g);
@@ -423,9 +429,13 @@ function renderSeats(g) {
     el.className = `opp${g.state === 'playing' && g.turn === seat ? ' turn' : ''}${!p.connected || p.left ? ' off' : ''}`;
     el.id = `seat-${seat}`;
     const count = g.handCounts[seat];
-    const backs = Array.from({ length: Math.min(count, 12) }, () => Tiles.backSVG(false)).join('');
+    // היריב "מושיט יד" לאבן – רואים אותה מורמת אצלו
+    const reach = S.reach[seat];
+    const upIdx = g.turn === seat && reach && Date.now() - reach.t < 6000 ? Math.min(reach.index, Math.min(count, 12) - 1) : -1;
+    const backs = Array.from({ length: Math.min(count, 12) }, (_, i) => Tiles.backSVG(false).replace('class="tile-svg back"', `class="tile-svg back${i === upIdx ? ' up' : ''}"`)).join('');
     const team = g.teams ? `<span class="team-chip" style="background:${TEAM_COLORS[seat % 2]}">${sideOf(g, seat) === sideOf(g, viewSeat(g)) && g.mySeat >= 0 ? 'שותף' : 'יריב'}</span>` : '';
-    const sub = p.left ? '🤖 מחשב' : !p.connected ? '📴 מנותק' : `${count} אבנים`;
+    const thinking = g.state === 'playing' && g.turn === seat && p.connected && !p.left ? '<span class="think"><i></i><i></i><i></i></span>' : '';
+    const sub = p.left ? '🤖 מחשב' : !p.connected ? '📴 מנותק' : `${count} אבנים${thinking}`;
     el.innerHTML = `<div class="avatar-ring">${esc(p.avatar)}<div class="timer" hidden></div></div>
       <div class="info"><div class="nm">${esc(p.name)}</div><div class="sub">${sub} ${team}</div></div>
       <div class="backs">${backs}</div>`;
@@ -492,7 +502,8 @@ function renderBoard(g) {
 
   // סכום הקצוות
   const pill = $('#count-pill');
-  if (g.board.center) {
+  if (!hints) pill.textContent = '';
+  else if (g.board.center) {
     const pts = g.count > 0 && g.count % 5 === 0 ? g.count / 5 : 0;
     pill.textContent = pts ? `סכום הקצוות: ${g.count} = ${pts} נק׳` : `סכום הקצוות: ${g.count}`;
     pill.classList.toggle('five', g.count > 0 && g.count % 5 === 0);
@@ -591,6 +602,7 @@ function onTileClick(t) {
   if (uniqueEnds.size === 1) return playMove(t.id, opts[0].end);
   S.selected = S.selected === t.id ? null : t.id;
   Sound.play('clack', 0.25);
+  socket.emit('game:reach', { index: S.selected ? S.handOrder.indexOf(S.selected) : null });
   renderHand(g);
   renderBoard(g);
   if (S.selected) renderStatus(g);
@@ -622,6 +634,111 @@ $('#btn-sort').onclick = () => {
   toast(S.sortMode === 0 ? 'מסודר לפי סכום' : 'מסודר לפי מספר');
 };
 
+// ---------- הכרזה ----------
+const CALLS = [5, 10, 15, 20, 25, 30, 35, 40, 45];
+function renderCallBar(g) {
+  const bar = $('#call-bar');
+  const open = !!g.canCall;
+  if (open && bar.hidden) {
+    // הכפתור מופיע אחרי כל מהלך שלך – גם כשאין נקודות. לשים לב זה חלק מהמשחק.
+    $('#call-chips').innerHTML = CALLS.map((v) => `<button data-v="${v}">${v}</button>`).join('');
+    $$('#call-chips button').forEach((b) => (b.onclick = () => doCall(Number(b.dataset.v))));
+  }
+  bar.hidden = !open;
+}
+async function doCall(value) {
+  $('#call-bar').hidden = true;
+  Sound.unlock();
+  await emit('game:call', { value });
+}
+
+const NUM_WORDS = { 0: 'אפס', 5: 'חמש', 10: 'עשר', 15: 'חמש עשרה', 20: 'עשרים', 25: 'עשרים וחמש', 30: 'שלושים', 35: 'שלושים וחמש', 40: 'ארבעים', 45: 'ארבעים וחמש', 50: 'חמישים' };
+const numberWord = (n) => NUM_WORDS[n] || String(n);
+
+// קריינות: כל שחקן "אומר" את ההכרזה שלו בקול, בגובה קול אחר
+function say(text, seat = 0) {
+  if (Sound.muted || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'he-IL';
+    const voice = speechSynthesis.getVoices().find((v) => v.lang?.startsWith('he'));
+    if (voice) u.voice = voice;
+    u.rate = 1.05;
+    u.pitch = [1, 0.75, 1.25, 0.9][seat % 4];
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+function stamp(text) {
+  const el = document.createElement('div');
+  el.className = 'stamp';
+  el.textContent = text;
+  $('#floaters').appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+function shuffleAnim() {
+  const box = document.createElement('div');
+  box.className = 'shuffle';
+  for (let i = 0; i < 18; i++) {
+    const d = document.createElement('div');
+    d.style.setProperty('--x', `${(Math.random() - 0.5) * 180}px`);
+    d.style.setProperty('--y', `${(Math.random() - 0.5) * 120}px`);
+    d.style.setProperty('--r', `${Math.random() * 360}deg`);
+    d.style.setProperty('--r2', `${Math.random() * 360}deg`);
+    d.innerHTML = Tiles.backSVG(true);
+    box.appendChild(d);
+  }
+  $('#floaters').appendChild(box);
+  setTimeout(() => box.remove(), 1500);
+}
+
+function flyFromBoneyard(seat) {
+  const g = S.game;
+  const from = $('#boneyard .stack')?.getBoundingClientRect();
+  const target = seat === g.mySeat ? $('#hand') : $(`#seat-${seat} .backs`) || $(`#seat-${seat}`);
+  if (!from || !target) return;
+  const to = target.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'flyer';
+  el.innerHTML = Tiles.backSVG(false);
+  el.style.left = `${from.left}px`;
+  el.style.top = `${from.top - 20}px`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => {
+    el.style.transform = `translate(${to.left + to.width / 2 - from.left - 12}px, ${to.top + to.height / 2 - from.top}px) rotate(${seat === g.mySeat ? 0 : 90}deg) scale(${seat === g.mySeat ? 1.6 : 0.7})`;
+    el.style.opacity = '0.2';
+  });
+  setTimeout(() => el.remove(), 650);
+}
+
+// ---------- דף ניקוד ----------
+function renderPad() {
+  const g = S.game;
+  if (!g) return;
+  const sides = g.scores.length;
+  const hands = [...new Set(g.history.map((h) => h.hand))];
+  if (!hands.includes(g.handNo)) hands.push(g.handNo);
+  const head = Array.from({ length: sides }, (_, s) => `<th>${esc(g.teams ? (s === sideOf(g, viewSeat(g)) && g.mySeat >= 0 ? 'אנחנו' : 'הם') : playerAt(s).name)}</th>`).join('');
+  const rows = hands
+    .map((h) => {
+      const cells = Array.from({ length: sides }, (_, s) => {
+        const items = g.history.filter((x) => x.hand === h && x.side === s);
+        const marks = items.map((x) => (x.kind === 'call' ? `<span>${x.pts}</span>` : `<span class="bonus">${x.pts}★</span>`)).join(' ');
+        return `<td>${marks || '<span class="dash">–</span>'}</td>`;
+      }).join('');
+      return `<tr><th class="hn">${h}</th>${cells}</tr>`;
+    })
+    .join('');
+  const totals = g.scores.map((s) => `<td class="tot">${s}</td>`).join('');
+  $('#pad').innerHTML = `<table><thead><tr><th class="hn">יד</th>${head}</tr></thead><tbody>${rows}</tbody><tfoot><tr><th class="hn">סה״כ</th>${totals}</tr></tfoot></table>
+    <div class="pad-note">★ = בונוס סוף יד · עד ${g.target}</div>`;
+}
+$('#scoreboard').onclick = () => {
+  renderPad();
+  $('#pad-modal').hidden = false;
+};
+
 function renderStatus(g) {
   const st = $('#status');
   const myTurn = g.state === 'playing' && g.mySeat === g.turn;
@@ -630,7 +747,8 @@ function renderStatus(g) {
   $('#btn-pass').hidden = !g.canPass;
   $('#btn-sort').hidden = g.mySeat < 0;
   let text = '';
-  if (g.state !== 'playing') text = g.state === 'gameOver' ? 'המשחק נגמר' : 'סוף היד';
+  if (g.state === 'closing') text = `🁫 ${esc(playerAt(g.closingSeat).name)} גמר! ${g.canCall ? 'הכרז על האבן האחרונה' : 'רגע…'}`;
+  else if (g.state !== 'playing') text = g.state === 'gameOver' ? 'המשחק נגמר' : 'סוף היד';
   else if (myTurn) {
     if (g.required) text = `תורך לפתוח! הנח את <b>${g.required[0]}|${g.required[1]}</b>`;
     else if (!g.board.center) text = 'תורך לפתוח – הנח איזו אבן שתרצה';
@@ -654,23 +772,40 @@ function processFx(g) {
   for (const ev of list) {
     const pid = g.seats[ev.seat];
     if (ev.type === 'play') {
-      Sound.play('clack');
-      if (ev.scored) {
+      Sound.play('clack', ev.last ? 1.4 : 1);
+      S.reach[ev.seat] = null;
+      if (ev.last) {
+        stamp('דומינו!');
+        say('דומינו!', ev.seat);
+      }
+    } else if (ev.type === 'call') {
+      say(numberWord(ev.value), ev.seat);
+      if (ev.ok) {
+        showBubble(pid, `${ev.value}! 📣`);
         setTimeout(() => {
           Sound.play('score', ev.count);
-          floatAtTile(ev.tileId, `+${ev.scored}`);
-        }, 260);
+          floatAtTile(ev.tileId, `+${ev.points}`);
+        }, 350);
         navigator.vibrate?.(30);
+      } else {
+        showBubble(pid, `${ev.value}?`);
+        setTimeout(() => floatMsg(`❌ על הלוח ${ev.count}`), 400);
       }
+    } else if (ev.type === 'missed') {
+      Sound.play('lose');
+      showBubble(pid, '😶');
+      floatMsg(ev.seat === g.mySeat ? `🤐 שכחת להגיד ${ev.count}! ${ev.points} נק׳ הלכו` : `🤐 ${playerAt(ev.seat).name} שכח להגיד ${ev.count}!`);
     } else if (ev.type === 'draw') {
       Sound.play('draw');
-      if (ev.seat !== g.mySeat) showBubble(pid, 'שולף מהקופה 🂠');
+      flyFromBoneyard(ev.seat);
+      if (ev.seat !== g.mySeat) showBubble(pid, 'שולף 🂠');
     } else if (ev.type === 'pass') {
-      Sound.play('pass');
-      showBubble(pid, 'פאס ✋');
+      Sound.play('knock');
+      showBubble(pid, '✊ טוק-טוק (פאס)');
     } else if (ev.type === 'newHand') {
       Sound.play('shuffle');
-      floatMsg(`יד ${ev.handNo}`);
+      shuffleAnim();
+      setTimeout(() => floatMsg(`יד ${ev.handNo}`), 900);
     } else if (ev.type === 'gameOver') {
       const won = g.mySeat >= 0 && sideOf(g, g.mySeat) === ev.winSide;
       setTimeout(() => {
@@ -1016,6 +1151,7 @@ document.addEventListener('click', (e) => {
   const open = e.target.closest('[data-open]');
   if (open) {
     $('#menu-modal').hidden = true;
+    if (open.dataset.open === 'pad-modal') renderPad();
     $(`#${open.dataset.open}`).hidden = false;
   }
   if (e.target.closest('[data-close]')) e.target.closest('.modal').hidden = true;

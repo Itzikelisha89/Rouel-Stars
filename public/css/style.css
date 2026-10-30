@@ -352,3 +352,50 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 @media (max-height: 640px) {
   .reactions { display: none; }
 }
+
+/* ---------- הכרזה ---------- */
+.call-bar { position: absolute; bottom: 100%; inset-inline: 8px; margin-bottom: 8px; z-index: 6; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 16px; background: rgba(10, 30, 20, 0.92); border: 1px solid var(--gold); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); animation: rise-in 0.25s; }
+.call-q { font-weight: 700; color: var(--gold); white-space: nowrap; font-size: 0.9em; }
+.call-chips { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+.call-chips::-webkit-scrollbar { display: none; }
+.call-chips button { flex: none; min-width: 40px; height: 38px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.1); font-weight: 900; font-size: 1em; cursor: pointer; }
+.call-chips button:active { transform: scale(0.92); background: var(--gold); color: #2b1d02; }
+
+/* ---------- יריב חושב / מושיט יד ---------- */
+.think { display: inline-flex; gap: 2px; margin-inline-start: 4px; vertical-align: middle; }
+.think i { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); animation: think 1.2s infinite; }
+.think i:nth-child(2) { animation-delay: 0.2s; }
+.think i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes think { 0%, 60%, 100% { opacity: 0.25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+.opp .backs .tile-svg { transition: transform 0.2s; }
+.opp .backs .tile-svg.up { transform: translateY(-7px); filter: drop-shadow(0 0 4px rgba(232, 184, 74, 0.9)); }
+
+/* ---------- דומינו! / ערבוב / שליפה ---------- */
+.stamp { position: absolute; left: 50%; top: 45%; font-weight: 900; font-size: 3.4em; color: #ffe8a3; border: 6px solid #ffe8a3; border-radius: 16px; padding: 4px 22px; text-shadow: 0 3px 0 #5b3f08; box-shadow: 0 0 30px rgba(232, 184, 74, 0.6); animation: stamp 2.1s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; white-space: nowrap; }
+@keyframes stamp { 0% { transform: translate(-50%, -50%) rotate(-14deg) scale(3); opacity: 0; } 18% { transform: translate(-50%, -50%) rotate(-8deg) scale(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(-50%, -50%) rotate(-8deg) scale(1); opacity: 0; } }
+.shuffle { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.shuffle > div { position: absolute; width: 44px; height: 22px; margin: -11px 0 0 -22px; animation: shuf 1.4s ease-in-out forwards; }
+@keyframes shuf {
+  0% { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; }
+  15% { opacity: 1; }
+  45% { transform: translate(calc(var(--x) * -0.6), calc(var(--y) * -0.6)) rotate(var(--r2)); }
+  75% { transform: translate(calc(var(--x) * 0.3), calc(var(--y) * 0.3)) rotate(var(--r)); opacity: 1; }
+  100% { transform: translate(0, 0) rotate(0); opacity: 0; }
+}
+.flyer { position: fixed; z-index: 55; width: 16px; height: 32px; pointer-events: none; transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.3, 1), opacity 0.55s; }
+
+/* ---------- דף ניקוד (נייר) ---------- */
+.modal-card.paper { background: repeating-linear-gradient(#fdfbf3 0 30px, #c8d7ea 30px 31px), #fdfbf3; color: #24324d; border: none; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 30px 0 0 -28px #e46b6b; }
+.paper h2 { color: #24324d; font-family: 'Amatic SC', 'Rubik', sans-serif; font-size: 2.2em; }
+#pad table { width: 100%; border-collapse: collapse; font-family: 'Amatic SC', 'Rubik', sans-serif; font-size: 1.55em; text-align: center; }
+#pad th, #pad td { padding: 2px 6px; border-inline-start: 2px solid rgba(36, 50, 77, 0.35); }
+#pad thead th { border-bottom: 2px solid #24324d; }
+#pad .hn { width: 40px; color: #8a96ad; border-inline-start: none; }
+#pad td span { margin: 0 3px; }
+#pad .bonus { color: #b5341f; }
+#pad .dash { color: #b9c2d3; }
+#pad tfoot th, #pad tfoot td { border-top: 3px double #24324d; }
+#pad .tot { font-size: 1.3em; color: #b5341f; }
+.pad-note { text-align: center; margin-top: 8px; color: #6b7891; font-size: 0.85em; }
+.paper .btn.primary { color: #2b1d02; }
+.scoreboard { cursor: pointer; }

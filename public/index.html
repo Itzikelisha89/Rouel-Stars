@@ -11,7 +11,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 2'><rect width='1' height='2' rx='.15' fill='%23f6efdf'/><line x1='.12' y1='1' x2='.88' y2='1' stroke='%23555' stroke-width='.05'/><g fill='%23111'><circle cx='.26' cy='.26' r='.09'/><circle cx='.74' cy='.26' r='.09'/><circle cx='.5' cy='.5' r='.09'/><circle cx='.26' cy='.74' r='.09'/><circle cx='.74' cy='.74' r='.09'/><circle cx='.5' cy='1.5' r='.09'/></g></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -174,6 +174,10 @@
     </div>
 
     <div class="me-area" id="me-area">
+      <div class="call-bar" id="call-bar" hidden>
+        <span class="call-q">📣 עשית משהו? תגיד!</span>
+        <div class="call-chips" id="call-chips"></div>
+      </div>
       <div class="status-row">
         <div class="me-badge" id="me-badge"></div>
         <div class="status" id="status"></div>
@@ -216,6 +220,14 @@
     </div>
   </div>
 
+  <div class="modal" id="pad-modal" hidden>
+    <div class="modal-card paper">
+      <h2>📝 דף הניקוד</h2>
+      <div id="pad"></div>
+      <div class="modal-actions"><button class="btn primary" data-close>סגור</button></div>
+    </div>
+  </div>
+
   <div class="modal" id="menu-modal" hidden>
     <div class="modal-card">
       <h2>תפריט</h2>
@@ -224,6 +236,7 @@
         <button class="btn" id="m-hints"></button>
         <button class="btn" id="m-colors"></button>
         <button class="btn" id="m-copy">🔗 העתק קישור לשולחן</button>
+        <button class="btn" data-open="pad-modal" id="m-pad">📝 דף הניקוד</button>
         <button class="btn" data-open="rules-modal">📖 חוקי המשחק</button>
         <button class="btn" id="m-lobby" hidden>↩ חזרה ללובי (מארח)</button>
         <button class="btn danger" id="m-leave">🚪 עזוב את השולחן</button>
@@ -241,6 +254,7 @@
         <li><b>מהלך:</b> מניחים אבן שאחד מצדדיה תואם לקצה פתוח. כפולות מונחות לרוחב.</li>
         <li><b>ספינר:</b> הכפולה הראשונה שעל השולחן היא "ספינר" – אחרי שתפסו את שני צדדיה, אפשר להמשיך גם למעלה ולמטה. עד ארבעה קצוות פתוחים!</li>
         <li><b>ניקוד:</b> אחרי כל הנחה סוכמים את כל הקצוות הפתוחים (כפולה בקצה נספרת פעמיים). אם הסכום מתחלק ב-5 – כל 5 שווה נקודה: <b>5 = 1, 10 = 2, 15 = 3, 20 = 4</b>…</li>
+        <li><b>📣 חייבים להגיד!</b> הנקודות לא נכנסות לבד. אחרי שהנחת אבן – תגיד כמה יש על הלוח (בכפתור "תגיד!" או כתוב את המספר בצ'אט). אם לא אמרת והשחקן הבא כבר התחיל (הניח, שלף או דפק פאס) – הנקודות הלכו. אמרת מספר לא נכון – אין נקודות.</li>
         <li><b>אין מה לשים?</b> שולפים מהקופה אבן אחרי אבן עד שאפשר לשחק. אם הקופה ריקה – פאס.</li>
         <li><b>סוף יד:</b> מי שגמר את האבנים סופר את מה שנשאר ליריבים, מעגל ל-5 הקרוב ומקבל נקודה על כל 5 (נשאר 23 → 25 → 5 נקודות). אם המשחק נחסם – מי שנשאר לו הכי מעט מקבל את ההפרש, באותה שיטה.</li>
         <li><b>זמן:</b> לכל שחקן יש עד 30 שניות לתור. נגמר הזמן? המחשב משחק במקומך את המהלך הכי משתלם (ושולף מהקופה אם צריך).</li>

@@ -71,11 +71,22 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
       const moves = game.movesFor(seat);
       if (moves.length) {
         const m = moves[Math.floor(Math.random() * moves.length)];
-        const before = game.scores[game.sideOf(seat)];
+        const side = game.sideOf(seat);
+        const before = game.scores[side];
         const lastTile = game.hands[seat].length === 1;
         game.play(seat, m.tileId, m.end);
-        if (!lastTile && game.passes === 0) assert.strictEqual(game.state, 'playing', 'לא עוצרים באמצע סיבוב');
-        assert.strictEqual(game.scores[game.sideOf(seat)] - before >= m.score, true);
+        assert.strictEqual(game.scores[side], before, 'הנקודות לא נכנסות בלי הכרזה');
+        assert.strictEqual(game.state, lastTile ? 'closing' : 'playing', 'לא עוצרים באמצע סיבוב');
+        // שחקן מכריז נכון / טועה / שוכח
+        const r = Math.random();
+        if (r < 0.6) {
+          game.callPoints(seat, m.count);
+          assert.strictEqual(game.scores[side] - before, m.score);
+        } else if (r < 0.7) {
+          game.callPoints(seat, m.count + 5);
+          assert.strictEqual(game.scores[side], before, 'הכרזה שגויה – אין נקודות');
+        }
+        if (game.state === 'closing') game.closeHand();
       } else if (game.boneyard.length) {
         assert.throws(() => game.pass(seat));
         game.draw(seat);
@@ -87,6 +98,47 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
     assert.ok(game.scores[game.winnerSide] >= 51);
     assert.strictEqual(overEv.winSide, game.winnerSide, 'אירוע סוף המשחק מציין את המנצח הנכון');
     assert.ok(game.scores.every((s, i) => i === game.winnerSide || s < game.scores[game.winnerSide]), 'המנצח הוא המוביל');
+  }
+}
+
+// --- חובה להכריז ---
+{
+  const setup = () => {
+    const game = new Game({ players: 2 });
+    const me = game.turn, other = 1 - me;
+    game.required = null;
+    game.hands[me] = [{ id: '55', a: 5, b: 5 }, { id: '01', a: 0, b: 1 }];
+    game.hands[other] = [{ id: '56', a: 5, b: 6 }, { id: '33', a: 3, b: 3 }];
+    game.boneyard = [];
+    return { game, me, other };
+  };
+  { // שכחתי להגיד, היריב התחיל → הנקודות הלכו
+    const { game, me, other } = setup();
+    game.play(me, '55', 'center');
+    game.play(other, '56', 'right');
+    assert.throws(() => game.callPoints(me, 10), 'מאוחר מדי');
+    assert.strictEqual(game.scores[me], 0);
+    assert.ok(game.drainEvents().some((e) => e.type === 'missed' && e.seat === me && e.points === 2));
+  }
+  { // אמרתי בזמן → 10 = 2 נקודות
+    const { game, me } = setup();
+    game.play(me, '55', 'center');
+    assert.strictEqual(game.callPoints(me, 10), 2);
+    assert.strictEqual(game.scores[me], 2);
+    assert.throws(() => game.callPoints(me, 10), 'אי אפשר להכריז פעמיים');
+  }
+  { // היריב לא יכול להכריז במקומי
+    const { game, me, other } = setup();
+    game.play(me, '55', 'center');
+    assert.throws(() => game.callPoints(other, 10));
+  }
+  { // גם שליפה של היריב סוגרת את ההכרזה
+    const { game, me, other } = setup();
+    game.hands[other] = [{ id: '33', a: 3, b: 3 }];
+    game.boneyard = [{ id: '44', a: 4, b: 4 }];
+    game.play(me, '55', 'center');
+    game.draw(other);
+    assert.throws(() => game.callPoints(me, 10));
   }
 }
 

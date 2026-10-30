@@ -102,6 +102,23 @@ const Sound = (() => {
       if (!c) return;
       tone(c, 520, c.currentTime, 0.08, 'sine', 0.08);
     },
+    // דפיקה על השולחן – כמו שעושים בפאס
+    knock() {
+      const c = ac();
+      if (!c) return;
+      const t = c.currentTime;
+      [0, 0.16].forEach((d) => {
+        const n = noise(c, 0.09);
+        const lp = c.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 700;
+        const g = c.createGain();
+        g.gain.value = 1.4;
+        n.connect(lp).connect(g).connect(c.destination);
+        n.start(t + d);
+        tone(c, 95, t + d, 0.12, 'sine', 0.45);
+      });
+    },
     pass() {
       const c = ac();
       if (!c) return;

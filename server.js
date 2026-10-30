@@ -4,13 +4,16 @@ const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
 const { Server } = require('socket.io');
-const { Game, TARGET } = require('./game');
+const { Game, TARGET, toPoints: toPoint } = require('./game');
 
 const PORT = process.env.PORT || 3000;
 const AVATARS = ['😎', '🦁', '🐯', '🦊', '🐻', '🐼', '🐸', '🦉', '🐙', '🦄', '🐲', '👑', '🎩', '🧔', '👵', '👴', '🧕', '🕵️', '🤠', '🥷'];
 const TURN_MS = 30000; // גג של 30 שניות לכל תור
 const TURN_GRACE_MS = 700; // מרווח קטן לעיכובי רשת
 const HAND_BREAK_MS = 45000;
+const BOT_MS = 3500; // המחשב מחכה רגע – כדי שלשחקן הקודם יהיה זמן להכריז
+const CLOSE_OPEN_MS = 6000; // אחרי האבן האחרונה: זמן להכריז לפני שסוגרים את היד
+const CLOSE_DONE_MS = 1600;
 
 const app = express();
 const PUBLIC = path.join(__dirname, 'public');
@@ -127,11 +130,25 @@ function scheduleTurn(room) {
     g.turnDeadline = Date.now() + TURN_MS;
   }
   if (!bot) g.deadline = g.turnDeadline;
-  const ms = bot ? 1400 : Math.max(0, g.turnDeadline - Date.now()) + TURN_GRACE_MS;
+  const ms = bot ? BOT_MS : Math.max(0, g.turnDeadline - Date.now()) + TURN_GRACE_MS;
   room.turnTimer = setTimeout(() => {
     if (room.game !== g || g.state !== 'playing' || g.turn !== seat) return;
     if (p && !p.left) sys(room, `⏰ נגמר הזמן ל${p.name} – מהלך אוטומטי`);
     g.autoMove(seat);
+    // המחשב (במקום שחקן שעזב) לא שוכח להכריז. מי שנגמר לו הזמן – עדיין יכול להכריז בעצמו.
+    if (bot && g.call?.seat === seat && g.call.points) g.callPoints(seat, g.call.count);
+    afterAction(room);
+  }, ms);
+}
+
+function scheduleClosing(room) {
+  clearTimeout(room.closeTimer);
+  const g = room.game;
+  if (!g || g.state !== 'closing') return;
+  const ms = g.call ? CLOSE_OPEN_MS : CLOSE_DONE_MS;
+  room.closeTimer = setTimeout(() => {
+    if (room.game !== g || g.state !== 'closing') return;
+    g.closeHand();
     afterAction(room);
   }, ms);
 }
@@ -166,7 +183,12 @@ function afterAction(room) {
   const g = room.game;
   const events = g.drainEvents();
   for (const ev of events) {
-    if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.count} = ${ev.scored} ${ev.scored === 1 ? 'נקודה' : 'נקודות'}`, 'score');
+    const pts = (n) => `${n} ${n === 1 ? 'נקודה' : 'נקודות'}`;
+    if (ev.type === 'call' && ev.ok) sys(room, `📣 ${nameAtSeat(room, ev.seat)}: "${ev.value}!" ✓ +${pts(ev.points)}`, 'score');
+    if (ev.type === 'call' && !ev.ok)
+      sys(room, toPoint(ev.count) ? `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count} 😬 אין נקודות` : `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count}, לא היה כלום 😅`);
+    if (ev.type === 'missed') sys(room, `🤐 ${nameAtSeat(room, ev.seat)} שכח להגיד ${ev.count} – ${pts(ev.points)} הלכו!`, 'score');
+    if (ev.type === 'play' && ev.last) sys(room, `🁫 ${nameAtSeat(room, ev.seat)} הניח את האבן האחרונה – דומינו!`);
     if (ev.type === 'reachedTarget') sys(room, `🏁 ${sideLabel(room, ev.side)} הגיע${g.teams ? 'ו' : ''} ל-${g.target}! מסיימים את הסיבוב…`, 'score');
     if (ev.type === 'newHand') {
       const opener = ev.required ? ` – ${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : ` – ${nameAtSeat(room, ev.starter)} פותח`;
@@ -183,6 +205,7 @@ function afterAction(room) {
   }
   if (events.length) io.to(room.code).emit('fx', events);
   scheduleTurn(room);
+  scheduleClosing(room);
   if (g.state === 'handOver') scheduleHandBreak(room);
   broadcast(room);
 }
@@ -202,6 +225,7 @@ function startGame(room) {
 function backToLobby(room) {
   clearTimeout(room.turnTimer);
   clearTimeout(room.handTimer);
+  clearTimeout(room.closeTimer);
   room.game = null;
   room.seatPids = [];
   room.players = room.players.filter((p) => !p.left);
@@ -415,6 +439,22 @@ io.on('connection', (socket) => {
     afterAction(room);
   });
 
+  on('game:call', (data) => {
+    const { room, g, seat } = gameCtx();
+    g.callPoints(seat, data.value);
+    afterAction(room);
+  });
+
+  let lastReach = 0;
+  on('game:reach', (data) => {
+    const room = roomOf();
+    const seat = room?.game ? seatOf(room, pid) : -1;
+    if (seat < 0 || Date.now() - lastReach < 120) return;
+    lastReach = Date.now();
+    const index = Number.isInteger(data.index) && data.index >= 0 && data.index < 30 ? data.index : null;
+    socket.to(room.code).emit('reach', { seat, index });
+  });
+
   on('game:ready', () => {
     const { room, g, seat } = gameCtx();
     g.markReady(seat);
@@ -432,6 +472,13 @@ io.on('connection', (socket) => {
     if (!text) return;
     const m = findMember(room, pid);
     pushChat(room, { kind: 'user', pid, name: m.name, avatar: m.avatar, text });
+    // הכרזה בצ'אט: מי שיש לו הכרזה פתוחה וכותב רק מספר ("15" / "15!") – זה נחשב כאילו אמר
+    const num = text.match(/^\s*(\d{1,2})\s*!*\s*$/);
+    const g = room.game;
+    if (num && g && g.call && g.call.seat === seatOf(room, pid)) {
+      g.callPoints(g.call.seat, Number(num[1]));
+      afterAction(room);
+    }
   });
 
   on('chat:typing', () => {
@@ -471,6 +518,7 @@ setInterval(() => {
     if (!everyone.some((m) => m.connected) && now - room.lastActive > 2 * 3600 * 1000) {
       clearTimeout(room.turnTimer);
       clearTimeout(room.handTimer);
+      clearTimeout(room.closeTimer);
       rooms.delete(room.code);
       continue;
     }

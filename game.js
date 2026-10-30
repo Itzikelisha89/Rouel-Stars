@@ -99,6 +99,7 @@ class Game {
     this.nextStarter = null;
     this.events = [];
     this.winnerSide = null;
+    this.history = []; // דף הניקוד: { hand, side, seat, pts, kind, count }
     this.startHand();
   }
 
@@ -148,6 +149,8 @@ class Game {
     this.handResult = null;
     this.ready = new Set();
     this.handOverAt = null;
+    this.call = null; // הכרזה פתוחה: { seat, side, count, points }
+    this.closingSeat = null;
     this.events.push({ type: 'newHand', handNo: this.handNo, starter, required });
   }
 
@@ -183,8 +186,36 @@ class Game {
     if (seat !== this.turn) throw new Error('זה לא התור שלך');
   }
 
+  // מי שעשה נקודות חייב להגיד. כשהשחקן הבא מתחיל (מניח / שולף / פאס) – ההזדמנות הלכה.
+  closeCall(actorSeat) {
+    const c = this.call;
+    if (!c || c.seat === actorSeat) return;
+    if (c.points) this.events.push({ type: 'missed', seat: c.seat, count: c.count, points: c.points });
+    this.call = null;
+  }
+
+  callPoints(seat, value) {
+    const c = this.call;
+    if (!c || c.seat !== seat || (this.state !== 'playing' && this.state !== 'closing')) throw new Error('אין מה להכריז עכשיו');
+    value = Number(value);
+    if (!Number.isInteger(value) || value < 0 || value > 60) throw new Error('מספר לא חוקי');
+    this.call = null;
+    if (c.points && value === c.count) {
+      this.scores[c.side] += c.points;
+      this.history.push({ hand: this.handNo, side: c.side, seat, pts: c.points, kind: 'call', count: c.count });
+      this.events.push({ type: 'call', seat, value, ok: true, points: c.points, count: c.count, tileId: this.lastMove?.tileId });
+      // הגעה ל-51 לא עוצרת את המשחק – מסיימים את הסיבוב, ורק אז בודקים מי ניצח
+      const s = this.scores[c.side];
+      if (s >= this.target && s - c.points < this.target) this.events.push({ type: 'reachedTarget', seat, side: c.side, score: s });
+    } else {
+      this.events.push({ type: 'call', seat, value, ok: false, count: c.count });
+    }
+    return c.points && value === c.count ? c.points : 0;
+  }
+
   play(seat, tileId, end) {
     this.assertTurn(seat);
+    this.closeCall(seat);
     if (!ENDS.includes(end) && end !== 'center') throw new Error('קצה לא חוקי');
     const move = this.movesFor(seat).find((m) => m.tileId === tileId && m.end === end);
     if (!move) throw new Error('אי אפשר להניח את האבן הזו כאן');
@@ -194,25 +225,30 @@ class Game {
     this.required = null;
     this.passes = 0;
     const count = boardCount(this.board);
-    const scored = toPoints(count);
-    const side = this.sideOf(seat);
-    if (scored) this.scores[side] += scored;
-    this.lastMove = { seat, tileId, end, scored, count };
-    this.events.push({ type: 'play', seat, tile: { a: tile.a, b: tile.b }, tileId, end, scored, count });
+    // הניקוד לא נכנס לבד – צריך להכריז עליו (callPoints)
+    this.call = { seat, side: this.sideOf(seat), count, points: toPoints(count) };
+    this.lastMove = { seat, tileId, end, count };
+    this.events.push({ type: 'play', seat, tile: { a: tile.a, b: tile.b }, tileId, end, count, last: hand.length === 0 });
 
-    // הגעה ל-51 לא עוצרת את המשחק – מסיימים את הסיבוב, ורק אז בודקים מי ניצח
-    if (scored && this.scores[side] >= this.target && this.scores[side] - scored < this.target) {
-      this.events.push({ type: 'reachedTarget', seat, side, score: this.scores[side] });
-    }
     if (hand.length === 0) {
-      this.endHand(seat);
+      // גמר את האבנים: רגע להכריז על האבן האחרונה, ואז השרת סוגר את היד (closeHand)
+      this.state = 'closing';
+      this.closingSeat = seat;
     } else {
       this.turn = (this.turn + 1) % this.n;
     }
   }
 
+  closeHand() {
+    if (this.state !== 'closing') return;
+    if (this.call?.points) this.events.push({ type: 'missed', seat: this.call.seat, count: this.call.count, points: this.call.points });
+    this.call = null;
+    this.endHand(this.closingSeat);
+  }
+
   draw(seat) {
     this.assertTurn(seat);
+    this.closeCall(seat);
     if (this.movesFor(seat).length) throw new Error('יש לך אבן לשחק – אין צורך לשלוף');
     if (!this.boneyard.length) throw new Error('הקופה ריקה');
     const tile = this.boneyard.pop();
@@ -223,6 +259,7 @@ class Game {
 
   pass(seat) {
     this.assertTurn(seat);
+    this.closeCall(seat);
     if (this.movesFor(seat).length) throw new Error('יש לך מהלך חוקי');
     if (this.boneyard.length) throw new Error('צריך לשלוף מהקופה קודם');
     this.passes++;
@@ -277,6 +314,7 @@ class Game {
       }
     }
     if (winSide != null) this.scores[winSide] += points;
+    if (winSide != null && points) this.history.push({ hand: this.handNo, side: winSide, seat: winnerSeat, pts: points, kind: reason });
     const result = { reason, winnerSeat, winSide, points, handPips, sidePips };
     // סוף סיבוב: אם מישהו עבר את היעד – המוביל מנצח. תיקו בראש = עוד יד.
     const top = Math.max(...this.scores);
@@ -331,6 +369,9 @@ class Game {
       boneyard: this.boneyard.length,
       handCounts: this.hands.map((h) => h.length),
       hand: mine ? this.hands[seat] : null,
+      canCall: mine && !!this.call && this.call.seat === seat,
+      closingSeat: this.state === 'closing' ? this.closingSeat : null,
+      history: this.history,
       moves,
       canDraw: myTurn && !moves.length && this.boneyard.length > 0,
       canPass: myTurn && !moves.length && this.boneyard.length === 0,

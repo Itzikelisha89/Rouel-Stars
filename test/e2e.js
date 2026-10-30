@@ -97,6 +97,22 @@ const OUT = process.argv[2] || '.';
           await p.dispatchEvent(`.ghost[data-tile="${m.tileId}"][data-end="${m.end}"]`, 'click');
         }
         turns++;
+        // הכרזה: בדרך כלל דרך הכפתור, לפעמים בצ'אט, ולפעמים "שוכחים"
+        if (m.score) {
+          await p.waitForSelector('#call-bar:not([hidden])', { timeout: 5000 });
+          if (turns === 3 || !(await p.evaluate(() => window.__shotCall))) {
+            await p.evaluate(() => (window.__shotCall = 1));
+            await p.screenshot({ path: `${OUT}/10-call-bar.png` });
+          }
+          const mode = turns % 5;
+          if (mode === 1) {
+            await p.fill('#chat-input', `${m.count}!`);
+            await p.press('#chat-input', 'Enter');
+          } else if (mode !== 4) {
+            await p.click(`#call-chips button[data-v="${m.count}"]`, { force: true });
+          }
+          await p.waitForTimeout(300);
+        }
       }
       await p.waitForTimeout(250);
     }
@@ -109,6 +125,11 @@ const OUT = process.argv[2] || '.';
   await p3.waitForTimeout(400);
   await p3.screenshot({ path: `${OUT}/09-chat-mobile.png` });
 
+  const log = await host.evaluate(() => [...document.querySelectorAll('.msg.sys')].map((e) => e.textContent));
+  console.log('calls ok:', log.filter((t) => t.includes('✓')).length, '| forgot:', log.filter((t) => t.includes('🤐')).length);
+  await host.evaluate(() => { renderPad(); document.getElementById('pad-modal').hidden = false; });
+  await host.waitForTimeout(300);
+  await host.screenshot({ path: `${OUT}/11-score-pad.png` });
   const summary = await host.evaluate(() => ({ hand: S.game.handNo, scores: S.game.scores, placed: S.boardIds.size, state: S.game.state }));
   console.log('turns played via UI:', turns, summary);
   console.log('errors:', errors.length ? errors : 'none');
