@@ -399,3 +399,37 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 .pad-note { text-align: center; margin-top: 8px; color: #6b7891; font-size: 0.85em; }
 .paper .btn.primary { color: #2b1d02; }
 .scoreboard { cursor: pointer; }
+
+/* ---------- קול ---------- */
+.voice-seg { align-self: flex-start; }
+.voice-seg button { padding: 9px 14px; }
+
+/* ---------- השולחן: אבנים הפוכות לבחירה ---------- */
+.pool-layer { position: absolute; inset: 0; z-index: 4; background: radial-gradient(ellipse at center, rgba(13, 59, 38, 0.55), rgba(13, 59, 38, 0.85)); animation: fadein 0.3s; }
+.pool-layer.drawing { background: rgba(8, 30, 20, 0.78); backdrop-filter: blur(1px); }
+.pool-head { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.6); border: 1px solid var(--gold); color: var(--gold); padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 0.9em; white-space: nowrap; z-index: 2; }
+.pool-tile { position: absolute; width: 44px; height: 22px; padding: 0; border: none; background: none; transform: rotate(var(--r)); transition: transform 0.15s, opacity 0.2s; animation: scatter 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.pool-tile .tile-svg { filter: drop-shadow(1px 3px 2px rgba(0, 0, 0, 0.55)); }
+.pool-tile.can { cursor: pointer; }
+.pool-tile.can:hover, .pool-tile.can:active { transform: rotate(var(--r)) scale(1.18) translateY(-2px); }
+.pool-tile.taking { opacity: 0.2; transform: rotate(var(--r)) scale(0.8); }
+@keyframes scatter { from { transform: rotate(0) scale(0.4); opacity: 0; } }
+@media (min-width: 700px) { .pool-tile { width: 56px; height: 28px; } }
+
+/* ---------- פרייש ---------- */
+.freish-bar { position: absolute; z-index: 7; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(340px, 92%); background: #102f21; border: 2px solid var(--gold); border-radius: 18px; padding: 14px; text-align: center; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); animation: rise-in 0.3s; }
+.freish-bar .fq { font-size: 1.05em; margin-bottom: 8px; }
+.freish-bar .fv { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; font-size: 0.85em; }
+.freish-bar .fv span { padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); }
+.freish-bar .fv span.ok { background: rgba(87, 209, 138, 0.2); color: var(--ok); }
+.freish-bar .fa { display: flex; gap: 8px; justify-content: center; }
+
+/* ---------- וידאו ---------- */
+#btn-cam.on { background: rgba(87, 209, 138, 0.25); border-color: var(--ok); }
+.avatar-ring video.cam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; transform: scaleX(-1); background: #000; }
+.avatar-ring.has-cam { width: 72px !important; height: 72px !important; font-size: 0 !important; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25); }
+.seat-slot.left .avatar-ring.has-cam, .seat-slot.right .avatar-ring.has-cam { width: 60px !important; height: 60px !important; }
+.me-badge .avatar-ring.has-cam { width: 64px !important; height: 64px !important; }
+.avatar-ring .timer, .avatar-ring .secs { z-index: 2; }
+.mic-off { position: absolute; z-index: 3; top: -4px; right: -4px; font-size: 13px; background: #0b2a1d; border-radius: 50%; width: 20px; height: 20px; display: grid; place-items: center; }
+.floaters { z-index: 6; }

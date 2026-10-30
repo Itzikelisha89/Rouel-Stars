@@ -51,6 +51,7 @@ const OUT = process.argv[2] || '.';
 
   const pages = [host, p2, p3];
   let turns = 0;
+  let freishDone = false;
   let lastShot = 0;
   for (let i = 0; i < 400 && turns < 40; i++) {
     let acted = false;
@@ -58,9 +59,40 @@ const OUT = process.argv[2] || '.';
       const state = await p.evaluate(() => {
         const g = S.game;
         if (!g) return null;
-        return { state: g.state, mine: g.state === 'playing' && g.turn === g.mySeat, moves: g.moves, canDraw: g.canDraw, canPass: g.canPass, ready: g.mySeat >= 0 && g.ready.includes(g.mySeat) };
+        return { state: g.state, mine: g.state === 'playing' && g.turn === g.mySeat && !g.freish, moves: g.moves, canDraw: g.canDraw, canPass: g.canPass, ready: g.mySeat >= 0 && g.ready.includes(g.mySeat), needPick: g.state === 'picking' && g.hand.length < g.handSize, freishVote: !!g.freish && !(g.mySeat in g.freish.votes), canFreish: g.canFreish, hand: g.handNo };
       });
       if (!state) continue;
+      // בוחרים אבן מהשולחן (לחיצה אמיתית על אבן הפוכה)
+      if (state.needPick) {
+        const tiles = await p.$$('.pool-tile.can:not(.taking)');
+        if (tiles.length) {
+          if (!(await p.evaluate(() => window.__shotPick))) {
+            await p.evaluate(() => (window.__shotPick = 1));
+            await p.screenshot({ path: `${OUT}/12-pick-from-table.png` });
+          }
+          await tiles[Math.floor(Math.random() * tiles.length)].click({ force: true }).catch(() => {});
+          acted = true;
+          await p.waitForTimeout(120);
+        }
+        continue;
+      }
+      if (state.freishVote) {
+        await p.waitForSelector('#fr-yes', { timeout: 4000 }).catch(() => {});
+        if (!(await p.evaluate(() => window.__shotFreish))) {
+          await p.evaluate(() => (window.__shotFreish = 1));
+          await p.screenshot({ path: `${OUT}/13-freish-vote.png` });
+        }
+        await p.click('#fr-yes').catch(() => {});
+        acted = true;
+        continue;
+      }
+      // פרייש פעם אחת: המארח מבקש ביד הראשונה
+      if (p === host && state.canFreish && state.hand === 1 && !freishDone) {
+        freishDone = true;
+        await p.click('#btn-freish');
+        acted = true;
+        continue;
+      }
       if (state.state === 'handOver' && !state.ready) {
         await p.waitForSelector('#btn-ready', { timeout: 5000 }).catch(() => {});
         if (turns - lastShot > 0) {
@@ -80,7 +112,12 @@ const OUT = process.argv[2] || '.';
       if (!state.mine) continue;
       acted = true;
       if (state.canDraw) {
-        await p.click('#btn-draw', { force: true });
+        await p.waitForSelector('#pool-layer .pool-tile.can', { timeout: 4000 });
+        if (!(await p.evaluate(() => window.__shotDraw))) {
+          await p.evaluate(() => (window.__shotDraw = 1));
+          await p.screenshot({ path: `${OUT}/14-draw-from-pile.png` });
+        }
+        await p.click('#pool-layer .pool-tile.can', { force: true });
       } else if (state.canPass) {
         await p.click('#btn-pass');
       } else {
@@ -126,6 +163,7 @@ const OUT = process.argv[2] || '.';
   await p3.screenshot({ path: `${OUT}/09-chat-mobile.png` });
 
   const log = await host.evaluate(() => [...document.querySelectorAll('.msg.sys')].map((e) => e.textContent));
+  console.log('freish happened:', log.some((t) => t.includes('כולם הסכימו')));
   console.log('calls ok:', log.filter((t) => t.includes('✓')).length, '| forgot:', log.filter((t) => t.includes('🤐')).length);
   await host.evaluate(() => { renderPad(); document.getElementById('pad-modal').hidden = false; });
   await host.waitForTimeout(300);

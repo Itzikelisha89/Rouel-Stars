@@ -14,6 +14,8 @@ const HAND_BREAK_MS = 45000;
 const BOT_MS = 3500; // המחשב מחכה רגע – כדי שלשחקן הקודם יהיה זמן להכריז
 const CLOSE_OPEN_MS = 6000; // אחרי האבן האחרונה: זמן להכריז לפני שסוגרים את היד
 const CLOSE_DONE_MS = 1600;
+const PICK_MS = 30000; // זמן לבחור 7 אבנים מהשולחן
+const FREISH_MS = 20000; // זמן להצביע על פרייש
 
 const app = express();
 const PUBLIC = path.join(__dirname, 'public');
@@ -40,7 +42,8 @@ function profileFrom(data) {
   const name = clean(data?.name, 16);
   if (!name) throw new Error('צריך שם כדי לשבת לשולחן');
   const avatar = AVATARS.includes(data?.avatar) ? data.avatar : AVATARS[0];
-  return { name, avatar };
+  const voice = data?.voice === 'f' ? 'f' : 'm';
+  return { name, avatar, voice };
 }
 
 function createRoom(hostPid) {
@@ -89,8 +92,8 @@ function publicRoom(room, pid) {
     hostPid: room.hostPid,
     me: pid,
     role: room.players.some((p) => p.pid === pid) ? 'player' : 'spectator',
-    players: room.players.map(({ pid, name, avatar, connected, left }) => ({ pid, name, avatar, connected, left })),
-    spectators: room.spectators.map(({ pid, name, avatar }) => ({ pid, name, avatar })),
+    players: room.players.map(({ pid, name, avatar, voice, connected, left, media }) => ({ pid, name, avatar, voice, connected, left, media: media || null })),
+    spectators: room.spectators.map(({ pid, name, avatar, voice, media }) => ({ pid, name, avatar, voice, media: media || null })),
     settings: room.settings,
     game: g
       ? {
@@ -98,6 +101,8 @@ function publicRoom(room, pid) {
           seats: room.seatPids,
           mySeat: seat,
           deadline: g.deadline || null,
+          pickDeadline: g.state === 'picking' ? g.pickDeadline || null : null,
+          freishEnds: g.freish ? g.freish.at + FREISH_MS : null,
           handBreakEnds: g.state === 'handOver' && g.handOverAt ? g.handOverAt + HAND_BREAK_MS : null,
         }
       : null,
@@ -118,7 +123,7 @@ function scheduleTurn(room) {
   const g = room.game;
   if (!g) return;
   g.deadline = null;
-  if (g.state !== 'playing') return;
+  if (g.state !== 'playing' || g.freish) return;
   const seat = g.turn;
   const p = room.players.find((x) => x.pid === room.seatPids[seat]);
   const bot = !p || p.left;
@@ -139,6 +144,42 @@ function scheduleTurn(room) {
     if (bot && g.call?.seat === seat && g.call.points) g.callPoints(seat, g.call.count);
     afterAction(room);
   }, ms);
+}
+
+const isBot = (room, seat) => {
+  const p = room.players.find((x) => x.pid === room.seatPids[seat]);
+  return !p || p.left;
+};
+
+// בחירת אבנים מהשולחן: 30 שניות, ואז מי שלא סיים – המחשב בוחר לו. שחקן שעזב בוחר מיד.
+function schedulePick(room) {
+  clearTimeout(room.pickTimer);
+  const g = room.game;
+  if (!g || g.state !== 'picking') return;
+  if (!g.pickDeadline) g.pickDeadline = Date.now() + PICK_MS;
+  const bots = room.seatPids.map((_, s) => s).filter((s) => isBot(room, s) && g.hands[s].length < g.view(s).handSize);
+  const ms = bots.length ? 1500 : Math.max(0, g.pickDeadline - Date.now()) + TURN_GRACE_MS;
+  room.pickTimer = setTimeout(() => {
+    if (room.game !== g || g.state !== 'picking') return;
+    const targets = bots.length ? bots : room.seatPids.map((_, s) => s);
+    for (const s of targets) if (g.state === 'picking') g.autoPick(s);
+    afterAction(room);
+  }, ms);
+}
+
+function scheduleFreish(room) {
+  clearTimeout(room.freishTimer);
+  const g = room.game;
+  if (!g?.freish) return;
+  // המחשב (במקום מי שעזב) תמיד מסכים
+  for (let s = 0; s < g.n; s++) if (g.freish && isBot(room, s) && !(s in g.freish.votes)) g.voteFreish(s, true);
+  if (!g.freish) return;
+  room.freishTimer = setTimeout(() => {
+    if (room.game !== g || !g.freish) return;
+    g.endFreish(false, true);
+    g.turnDeadline = null;
+    afterAction(room);
+  }, Math.max(0, g.freish.at + FREISH_MS - Date.now()));
 }
 
 function scheduleClosing(room) {
@@ -188,11 +229,22 @@ function afterAction(room) {
     if (ev.type === 'call' && !ev.ok)
       sys(room, toPoint(ev.count) ? `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count} 😬 אין נקודות` : `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count}, לא היה כלום 😅`);
     if (ev.type === 'missed') sys(room, `🤐 ${nameAtSeat(room, ev.seat)} שכח להגיד ${ev.count} – ${pts(ev.points)} הלכו!`, 'score');
-    if (ev.type === 'play' && ev.last) sys(room, `🁫 ${nameAtSeat(room, ev.seat)} הניח את האבן האחרונה – דומינו!`);
+    if (ev.type === 'play' && ev.last) sys(room, `${nameAtSeat(room, ev.seat)} הניח את האבן האחרונה – דומינו!`);
     if (ev.type === 'reachedTarget') sys(room, `🏁 ${sideLabel(room, ev.side)} הגיע${g.teams ? 'ו' : ''} ל-${g.target}! מסיימים את הסיבוב…`, 'score');
     if (ev.type === 'newHand') {
-      const opener = ev.required ? ` – ${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : ` – ${nameAtSeat(room, ev.starter)} פותח`;
-      sys(room, `🀄 יד ${ev.handNo} חולקה${opener}`);
+      g.pickDeadline = null;
+      sys(room, ev.redeal ? '🔀 מערבבים מחדש – בחרו אבנים מהשולחן' : `🀄 יד ${ev.handNo} – האבנים על השולחן, כל אחד בוחר ${g.view(0).handSize}`);
+    }
+    if (ev.type === 'handReady') {
+      const opener = ev.required ? `${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : `${nameAtSeat(room, ev.starter)} פותח`;
+      sys(room, `▶ ${opener}`);
+    }
+    if (ev.type === 'redeal') sys(room, 'אף אחד לא קיבל כפולה – מערבבים מחדש');
+    if (ev.type === 'freishAsk') sys(room, `🔄 ${nameAtSeat(room, ev.seat)} מבקש פרייש! מסכימים?`, 'score');
+    if (ev.type === 'freishVote' && !ev.yes) sys(room, `✋ ${nameAtSeat(room, ev.seat)} לא מסכים לפרייש`);
+    if (ev.type === 'freishResult') {
+      g.turnDeadline = null;
+      sys(room, ev.ok ? '🔄 כולם הסכימו – פרייש! מחלקים מחדש' : ev.timeout ? '⏱ לא כולם ענו – ממשיכים לשחק' : 'ממשיכים לשחק עם האבנים שיש');
     }
     if (ev.type === 'handOver' && ev.tieAtTop) sys(room, '⚖️ תיקו בראש הטבלה – משחקים עוד יד!', 'score');
     if (ev.type === 'handOver' || ev.type === 'gameOver') {
@@ -205,6 +257,8 @@ function afterAction(room) {
   }
   if (events.length) io.to(room.code).emit('fx', events);
   scheduleTurn(room);
+  schedulePick(room);
+  scheduleFreish(room);
   scheduleClosing(room);
   if (g.state === 'handOver') scheduleHandBreak(room);
   broadcast(room);
@@ -226,6 +280,8 @@ function backToLobby(room) {
   clearTimeout(room.turnTimer);
   clearTimeout(room.handTimer);
   clearTimeout(room.closeTimer);
+  clearTimeout(room.pickTimer);
+  clearTimeout(room.freishTimer);
   room.game = null;
   room.seatPids = [];
   room.players = room.players.filter((p) => !p.left);
@@ -247,7 +303,10 @@ function detach(socket) {
   if (m) {
     m.sockets.delete(socket.id);
     m.connected = m.sockets.size > 0;
-    if (!m.connected) m.disconnectedAt = Date.now();
+    if (!m.connected) {
+      m.disconnectedAt = Date.now();
+      m.media = null;
+    }
   }
   return { room, member: m };
 }
@@ -426,9 +485,43 @@ io.on('connection', (socket) => {
     afterAction(room);
   });
 
-  on('game:draw', () => {
+  on('game:pick', (data) => {
     const { room, g, seat } = gameCtx();
-    const tile = g.draw(seat);
+    g.pick(seat, Number(data.slot));
+    afterAction(room);
+  });
+
+  on('game:freish', () => {
+    const { room, g, seat } = gameCtx();
+    g.proposeFreish(seat);
+    afterAction(room);
+  });
+
+  on('game:freishVote', (data) => {
+    const { room, g, seat } = gameCtx();
+    g.voteFreish(seat, !!data.yes);
+    afterAction(room);
+  });
+
+  // וידאו וקול בין השחקנים (WebRTC): השרת רק מעביר הודעות חיבור בין הדפדפנים
+  on('rtc:state', (data) => {
+    const room = roomOf();
+    const m = room && findMember(room, pid);
+    if (!m) return;
+    m.media = data.cam || data.mic ? { cam: !!data.cam, mic: !!data.mic } : null;
+    broadcast(room);
+  });
+
+  socket.on('rtc:signal', (data) => {
+    const room = roomOf();
+    const to = room && findMember(room, String(data?.to || ''));
+    if (!to || !data.data || JSON.stringify(data.data).length > 20000) return;
+    for (const sid of to.sockets) io.to(sid).emit('rtc:signal', { from: pid, data: data.data });
+  });
+
+  on('game:draw', (data) => {
+    const { room, g, seat } = gameCtx();
+    const tile = g.draw(seat, Number.isInteger(data.slot) ? data.slot : undefined);
     afterAction(room);
     return { tileId: tile.id };
   });
@@ -519,6 +612,8 @@ setInterval(() => {
       clearTimeout(room.turnTimer);
       clearTimeout(room.handTimer);
       clearTimeout(room.closeTimer);
+      clearTimeout(room.pickTimer);
+      clearTimeout(room.freishTimer);
       rooms.delete(room.code);
       continue;
     }

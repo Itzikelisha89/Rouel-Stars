@@ -29,6 +29,23 @@ const round5 = (n) => Math.round(n / 5) * 5;
 const isDouble = (t) => t.a === t.b;
 const pipsOf = (hand) => hand.reduce((s, t) => s + t.a + t.b, 0);
 
+// האבנים מפוזרות הפוכות על השולחן: מיקום וסיבוב לכל אחת (x,y בין 0 ל-1)
+function makePool() {
+  const tiles = shuffle(fullSet());
+  const cells = shuffle([...Array(28).keys()]);
+  return tiles.map((tile, i) => {
+    const col = cells[i] % 7;
+    const row = Math.floor(cells[i] / 7);
+    return {
+      tile,
+      taken: false,
+      x: +((col + 0.5) / 7 + (Math.random() - 0.5) * 0.05).toFixed(3),
+      y: +((row + 0.5) / 4 + (Math.random() - 0.5) * 0.07).toFixed(3),
+      r: Math.round((Math.random() - 0.5) * 50 + (Math.random() < 0.35 ? 90 : 0)),
+    };
+  });
+}
+
 function emptyBoard() {
   return { center: null, arms: { left: [], right: [], up: [], down: [] }, spinner: null };
 }
@@ -111,22 +128,57 @@ class Game {
     return this.teams ? seat % 2 : seat;
   }
 
-  startHand() {
-    this.handNo++;
-    const size = HAND_SIZE[this.n];
-    let hands, boneyard, starter, required = null;
-    for (;;) {
-      const set = shuffle(fullSet());
-      hands = [];
-      for (let i = 0; i < this.n; i++) hands.push(set.splice(0, size));
-      boneyard = set;
-      if (this.nextStarter != null) {
-        starter = this.nextStarter;
-        break;
-      }
+  // יד חדשה: האבנים נשפכות הפוכות על השולחן וכל שחקן בוחר לעצמו 7 (pick)
+  startHand(redeal = false) {
+    if (!redeal) {
+      this.handNo++;
+      this.freishUsed = new Set();
+    }
+    this.pool = makePool();
+    this.hands = Array.from({ length: this.n }, () => []);
+    this.boneyard = [];
+    this.starter = null;
+    this.turn = null;
+    this.required = null;
+    this.board = emptyBoard();
+    this.passes = 0;
+    this.state = 'picking';
+    this.lastMove = null;
+    this.handResult = null;
+    this.ready = new Set();
+    this.handOverAt = null;
+    this.call = null; // הכרזה פתוחה: { seat, side, count, points }
+    this.closingSeat = null;
+    this.freish = null;
+    this.events.push({ type: 'newHand', handNo: this.handNo, redeal });
+  }
+
+  pick(seat, idx) {
+    if (this.state !== 'picking') throw new Error('עכשיו לא בוחרים אבנים');
+    if (this.hands[seat].length >= HAND_SIZE[this.n]) throw new Error(`כבר יש לך ${HAND_SIZE[this.n]} אבנים`);
+    const slot = this.pool[idx];
+    if (!slot || slot.taken) throw new Error('מישהו כבר לקח את האבן הזו');
+    slot.taken = true;
+    this.hands[seat].push(slot.tile);
+    this.events.push({ type: 'pick', seat, slot: idx });
+    if (this.hands.every((h) => h.length === HAND_SIZE[this.n])) this.beginPlay();
+  }
+
+  autoPick(seat) {
+    while (this.state === 'picking' && this.hands[seat].length < HAND_SIZE[this.n]) {
+      const free = this.pool.map((s, i) => (s.taken ? -1 : i)).filter((i) => i >= 0);
+      this.pick(seat, free[crypto.randomInt(free.length)]);
+    }
+  }
+
+  beginPlay() {
+    this.boneyard = this.pool.map((s, idx) => ({ idx, tile: s.tile, taken: s.taken })).filter((s) => !s.taken);
+    let starter = this.nextStarter;
+    let required = null;
+    if (starter == null) {
       // יד ראשונה: 6:6 פותח. אם היא בקופה (פחות מ-4 שחקנים) – 5:5, וכן הלאה
       let best = -1;
-      hands.forEach((h, seat) =>
+      this.hands.forEach((h, seat) =>
         h.forEach((t) => {
           if (isDouble(t) && t.a > best) {
             best = t.a;
@@ -135,23 +187,44 @@ class Game {
           }
         })
       );
-      if (best >= 0) break;
+      if (best < 0) {
+        this.events.push({ type: 'redeal' });
+        return this.startHand(true);
+      }
     }
-    this.hands = hands;
-    this.boneyard = boneyard;
     this.starter = starter;
     this.turn = starter;
     this.required = required;
-    this.board = emptyBoard();
-    this.passes = 0;
     this.state = 'playing';
-    this.lastMove = null;
-    this.handResult = null;
-    this.ready = new Set();
-    this.handOverAt = null;
-    this.call = null; // הכרזה פתוחה: { seat, side, count, points }
-    this.closingSeat = null;
-    this.events.push({ type: 'newHand', handNo: this.handNo, starter, required });
+    this.events.push({ type: 'handReady', handNo: this.handNo, starter, required });
+  }
+
+  // פרייש: מי שקיבל יד גרועה מבקש לחלק מחדש. רק לפני האבן הראשונה, וכולם צריכים להסכים.
+  proposeFreish(seat) {
+    if (this.state !== 'playing' || this.board.center) throw new Error('פרייש מבקשים רק לפני שמניחים את האבן הראשונה');
+    if (this.freish) throw new Error('כבר יש הצבעה על פרייש');
+    if (this.freishUsed.has(seat)) throw new Error('כבר ביקשת פרייש ביד הזו');
+    this.freishUsed.add(seat);
+    this.freish = { by: seat, votes: { [seat]: true }, at: Date.now() };
+    this.events.push({ type: 'freishAsk', seat });
+  }
+
+  voteFreish(seat, yes) {
+    const f = this.freish;
+    if (!f) throw new Error('אין הצבעה פתוחה');
+    if (seat in f.votes) return;
+    f.votes[seat] = !!yes;
+    this.events.push({ type: 'freishVote', seat, yes: !!yes });
+    if (!yes) return this.endFreish(false);
+    if (Object.keys(f.votes).length === this.n) this.endFreish(true);
+  }
+
+  endFreish(ok, timeout = false) {
+    const f = this.freish;
+    if (!f) return;
+    this.freish = null;
+    this.events.push({ type: 'freishResult', ok, by: f.by, timeout });
+    if (ok) this.startHand(true);
   }
 
   movesFor(seat) {
@@ -183,6 +256,7 @@ class Game {
 
   assertTurn(seat) {
     if (this.state !== 'playing') throw new Error('היד לא פעילה כרגע');
+    if (this.freish) throw new Error('מחכים להצבעה על פרייש');
     if (seat !== this.turn) throw new Error('זה לא התור שלך');
   }
 
@@ -246,14 +320,18 @@ class Game {
     this.endHand(this.closingSeat);
   }
 
-  draw(seat) {
+  // שליפה: השחקן בוחר איזו אבן הפוכה לקחת מהקופה (slot), ואם לא בחר – אקראית
+  draw(seat, slot) {
     this.assertTurn(seat);
-    this.closeCall(seat);
     if (this.movesFor(seat).length) throw new Error('יש לך אבן לשחק – אין צורך לשלוף');
     if (!this.boneyard.length) throw new Error('הקופה ריקה');
-    const tile = this.boneyard.pop();
+    this.closeCall(seat);
+    let i = this.boneyard.findIndex((s) => s.idx === slot);
+    if (i < 0) i = crypto.randomInt(this.boneyard.length);
+    const { tile, idx } = this.boneyard.splice(i, 1)[0];
+    if (this.pool?.[idx]) this.pool[idx].taken = true;
     this.hands[seat].push(tile);
-    this.events.push({ type: 'draw', seat, tileId: tile.id, left: this.boneyard.length });
+    this.events.push({ type: 'draw', seat, tileId: tile.id, slot: idx, left: this.boneyard.length });
     return tile;
   }
 
@@ -353,7 +431,7 @@ class Game {
 
   view(seat) {
     const mine = seat != null && seat >= 0;
-    const myTurn = mine && seat === this.turn && this.state === 'playing';
+    const myTurn = mine && seat === this.turn && this.state === 'playing' && !this.freish;
     const moves = myTurn ? this.movesFor(seat) : [];
     return {
       n: this.n,
@@ -370,10 +448,16 @@ class Game {
       handCounts: this.hands.map((h) => h.length),
       hand: mine ? this.hands[seat] : null,
       canCall: mine && !!this.call && this.call.seat === seat,
+      // השולחן עם האבנים ההפוכות (בלי לחשוף מה יש בהן)
+      pool: this.state === 'picking' ? this.pool.map(({ x, y, r, taken }) => ({ x, y, r, taken })) : null,
+      boneSlots: this.state === 'playing' ? this.boneyard.map((s) => ({ idx: s.idx, x: this.pool[s.idx]?.x ?? 0.5, y: this.pool[s.idx]?.y ?? 0.5, r: this.pool[s.idx]?.r ?? 0 })) : [],
+      handSize: HAND_SIZE[this.n],
+      freish: this.freish ? { by: this.freish.by, votes: this.freish.votes } : null,
+      canFreish: mine && this.state === 'playing' && !this.board.center && !this.freish && !this.freishUsed.has(seat),
       closingSeat: this.state === 'closing' ? this.closingSeat : null,
       history: this.history,
       moves,
-      canDraw: myTurn && !moves.length && this.boneyard.length > 0,
+      canDraw: myTurn && !this.freish && !moves.length && this.boneyard.length > 0,
       canPass: myTurn && !moves.length && this.boneyard.length === 0,
       required: mine && seat === this.turn ? this.required : null,
       firstHandOpening: !this.board.center && this.handNo === 1,

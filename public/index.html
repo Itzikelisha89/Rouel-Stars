@@ -78,6 +78,13 @@
           <span>בחר דמות</span>
           <div class="avatars" id="avatar-grid"></div>
         </div>
+        <div class="field">
+          <span>הקול שלך ליד השולחן <small class="muted">(ככה ישמעו אותך מכריז)</small></span>
+          <div class="seg voice-seg" id="voice-seg">
+            <button type="button" data-v="m">🧔 קול גבר</button>
+            <button type="button" data-v="f">👩 קול אישה</button>
+          </div>
+        </div>
         <button type="submit" class="btn primary big" id="btn-main">צור שולחן חדש</button>
         <div class="join-row" id="join-row">
           <span class="or">או הצטרף עם קוד</span>
@@ -152,6 +159,8 @@
     <header class="topbar">
       <button class="icon-btn" id="game-menu" title="תפריט">☰</button>
       <div class="scoreboard" id="scoreboard"></div>
+      <button class="icon-btn" id="btn-cam" title="וידאו וקול עם השחקנים">📹</button>
+      <button class="icon-btn" id="btn-mic" title="השתק מיקרופון" hidden>🎤</button>
       <button class="icon-btn chat-btn" id="btn-chat" title="צ'אט">💬<span class="badge" id="chat-badge" hidden>0</span></button>
     </header>
 
@@ -167,6 +176,8 @@
           </div>
           <div class="boneyard" id="boneyard" title="הקופה"></div>
           <div class="hand-no" id="hand-no"></div>
+          <div class="pool-layer" id="pool-layer" hidden></div>
+          <div class="freish-bar" id="freish-bar" hidden></div>
           <div class="floaters" id="floaters"></div>
         </div>
       </div>
@@ -183,6 +194,7 @@
         <div class="status" id="status"></div>
         <div class="actions">
           <button class="btn" id="btn-sort" title="סדר את האבנים">⇅</button>
+          <button class="btn" id="btn-freish" hidden title="מבקש לחלק מחדש">🔄 פרייש</button>
           <button class="btn gold" id="btn-draw" hidden>שלוף מהקופה</button>
           <button class="btn" id="btn-pass" hidden>פאס</button>
         </div>
@@ -234,6 +246,7 @@
       <div class="menu-list">
         <button class="btn" id="m-sound"></button>
         <button class="btn" id="m-hints"></button>
+        <button class="btn" id="m-amb"></button>
         <button class="btn" id="m-colors"></button>
         <button class="btn" id="m-copy">🔗 העתק קישור לשולחן</button>
         <button class="btn" data-open="pad-modal" id="m-pad">📝 דף הניקוד</button>
@@ -249,13 +262,14 @@
     <div class="modal-card wide rules">
       <h2>חוקי חמישיות (All Fives)</h2>
       <ol>
-        <li><b>חלוקה:</b> כל שחקן מקבל 7 אבנים. בשניים או שלושה השאר נשארות בקופה; בארבעה מחלקים את כל האבנים ואין קופה.</li>
+        <li><b>חלוקה:</b> האבנים מתערבבות הפוכות על השולחן, וכל שחקן בוחר לעצמו 7 (יש 30 שניות). בשניים או שלושה השאר נשארות בקופה; בארבעה מחלקים את כל האבנים ואין קופה.</li>
         <li><b>פתיחה:</b> ביד הראשונה פותח מי שיש לו <b>6:6</b>. אם אף אחד לא מחזיק אותה (פחות מ-4 שחקנים) – פותח מי שיש לו <b>5:5</b>, ואם גם היא בקופה – הכפולה הבאה. בידיים הבאות פותח מי שניצח ביד הקודמת, עם איזו אבן שירצה.</li>
         <li><b>מהלך:</b> מניחים אבן שאחד מצדדיה תואם לקצה פתוח. כפולות מונחות לרוחב.</li>
         <li><b>ספינר:</b> הכפולה הראשונה שעל השולחן היא "ספינר" – אחרי שתפסו את שני צדדיה, אפשר להמשיך גם למעלה ולמטה. עד ארבעה קצוות פתוחים!</li>
         <li><b>ניקוד:</b> אחרי כל הנחה סוכמים את כל הקצוות הפתוחים (כפולה בקצה נספרת פעמיים). אם הסכום מתחלק ב-5 – כל 5 שווה נקודה: <b>5 = 1, 10 = 2, 15 = 3, 20 = 4</b>…</li>
         <li><b>📣 חייבים להגיד!</b> הנקודות לא נכנסות לבד. אחרי שהנחת אבן – תגיד כמה יש על הלוח (בכפתור "תגיד!" או כתוב את המספר בצ'אט). אם לא אמרת והשחקן הבא כבר התחיל (הניח, שלף או דפק פאס) – הנקודות הלכו. אמרת מספר לא נכון – אין נקודות.</li>
-        <li><b>אין מה לשים?</b> שולפים מהקופה אבן אחרי אבן עד שאפשר לשחק. אם הקופה ריקה – פאס.</li>
+        <li><b>אין מה לשים?</b> בוחרים אבן הפוכה מהקופה שעל השולחן, אחת אחרי השנייה, עד שאפשר לשחק. אם הקופה ריקה – דופקים על השולחן (פאס).</li>
+        <li><b>🔄 פרייש:</b> קיבלת אבנים גרועות? לפני שמניחים את האבן הראשונה אפשר לבקש פרייש. אם <b>כולם</b> מסכימים – מערבבים ובוחרים מחדש. כל שחקן יכול לבקש פעם אחת ביד.</li>
         <li><b>סוף יד:</b> מי שגמר את האבנים סופר את מה שנשאר ליריבים, מעגל ל-5 הקרוב ומקבל נקודה על כל 5 (נשאר 23 → 25 → 5 נקודות). אם המשחק נחסם – מי שנשאר לו הכי מעט מקבל את ההפרש, באותה שיטה.</li>
         <li><b>זמן:</b> לכל שחקן יש עד 30 שניות לתור. נגמר הזמן? המחשב משחק במקומך את המהלך הכי משתלם (ושולף מהקופה אם צריך).</li>
         <li><b>ניצחון:</b> משחקים עד <b>51 נקודות</b>. מי שהגיע ל-51 – <b>חייבים לסיים את הסיבוב</b>, ורק בסוף היד בודקים: מי שיש לו הכי הרבה (51 ומעלה) מנצח. תיקו בראש – משחקים עוד יד.</li>
@@ -271,6 +285,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/sound.js"></script>
   <script src="/js/tiles.js"></script>
+  <script src="/js/rtc.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

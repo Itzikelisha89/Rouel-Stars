@@ -37,12 +37,18 @@ const OUT = process.argv[2] || '.';
       const g = S.game;
       if (!g) return 'none';
       if (g.state === 'gameOver') return 'over';
+      if (g.state === 'picking') {
+        if (g.hand.length >= g.handSize) return 'wait';
+        const free = g.pool.map((x, i) => (x.taken ? -1 : i)).filter((i) => i >= 0);
+        await emit('game:pick', { slot: free[Math.floor(Math.random() * free.length)] });
+        return 'acted';
+      }
       if (g.state === 'handOver') {
         if (!g.ready.includes(g.mySeat)) await emit('game:ready');
         return 'ready';
       }
       if (g.state !== 'playing' || g.turn !== g.mySeat) return 'wait';
-      if (g.canDraw) await emit('game:draw');
+      if (g.canDraw) await emit('game:draw', { slot: g.boneSlots[0].idx });
       else if (g.canPass) await emit('game:pass');
       else {
         const m = [...g.moves].sort((a, b) => b.score - a.score)[0];

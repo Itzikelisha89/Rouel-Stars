@@ -143,6 +143,116 @@ const Sound = (() => {
     },
   };
 
+  // ---- קול בעברית: הקלטות של קריין (גבר/אישה) ----
+  const buffers = new Map();
+  async function loadVoice(voice, key) {
+    const id = `${voice}/${key}`;
+    if (!buffers.has(id)) {
+      buffers.set(
+        id,
+        fetch(`/audio/${id}.mp3`)
+          .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+          .then((b) => new Promise((res, rej) => ac().decodeAudioData(b, res, rej)))
+          .catch(() => null)
+      );
+    }
+    return buffers.get(id);
+  }
+  let lastVoiceAt = 0;
+  async function voice(v, key, delay = 0) {
+    if (muted || !ac()) return;
+    const buf = await loadVoice(v === 'f' ? 'f' : 'm', key);
+    if (!buf) return;
+    const c = ac();
+    // שני אנשים לא מדברים בדיוק באותה שנייה
+    const at = Math.max(c.currentTime + delay, lastVoiceAt);
+    lastVoiceAt = at + buf.duration * 0.6;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const g = c.createGain();
+    g.gain.value = 1.15;
+    src.connect(g).connect(c.destination);
+    src.start(at);
+  }
+  function preload(keys) {
+    for (const v of ['m', 'f']) for (const k of keys) loadVoice(v, k);
+  }
+
+  // ---- אווירה: רעש חדר של בית קפה + צלצולי כוסות ונקישות רחוקות ----
+  let amb = null;
+  let ambOn = true;
+  try {
+    ambOn = localStorage.getItem('dm_amb') !== '0';
+  } catch {}
+  function startAmbience() {
+    const c = ac();
+    if (!c || amb || muted || !ambOn) return;
+    const len = c.sampleRate * 4;
+    const buf = c.createBuffer(2, len, c.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; // רעש חום – המיית חדר
+        d[i] = last * 3.2;
+      }
+    }
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 520;
+    const g = c.createGain();
+    g.gain.value = 0;
+    g.gain.linearRampToValueAtTime(0.16, c.currentTime + 2);
+    src.connect(lp).connect(g).connect(c.destination);
+    src.start();
+    const tick = () => {
+      if (!amb) return;
+      const t = c.currentTime;
+      const r = Math.random();
+      if (r < 0.45) {
+        // כפית בכוס / כוס על צלוחית
+        const f = 2200 + Math.random() * 2600;
+        tone(c, f, t, 0.5, 'sine', 0.012 + Math.random() * 0.01);
+        tone(c, f * 1.5, t + 0.01, 0.35, 'sine', 0.006);
+      } else if (r < 0.8) {
+        // דומינו בשולחן אחר
+        const n = noise(c, 0.05);
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 2000;
+        const gg = c.createGain();
+        gg.gain.value = 0.06;
+        n.connect(bp).connect(gg).connect(c.destination);
+        n.start(t);
+      } else {
+        // כיסא זז
+        const n = noise(c, 0.35);
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 300;
+        const gg = c.createGain();
+        gg.gain.value = 0.05;
+        n.connect(bp).connect(gg).connect(c.destination);
+        n.start(t);
+      }
+      amb.timer = setTimeout(tick, 2500 + Math.random() * 6000);
+    };
+    amb = { src, g, timer: setTimeout(tick, 3000) };
+  }
+  function stopAmbience() {
+    if (!amb) return;
+    clearTimeout(amb.timer);
+    try {
+      amb.g.gain.linearRampToValueAtTime(0, ac().currentTime + 0.5);
+      const s = amb.src;
+      setTimeout(() => s.stop(), 600);
+    } catch {}
+    amb = null;
+  }
+
   function play(name, ...args) {
     if (muted || !fx[name]) return;
     try {
@@ -152,12 +262,28 @@ const Sound = (() => {
 
   return {
     play,
+    voice,
+    preload,
+    startAmbience,
+    stopAmbience,
+    get ambience() {
+      return ambOn;
+    },
+    toggleAmbience() {
+      ambOn = !ambOn;
+      try {
+        localStorage.setItem('dm_amb', ambOn ? '1' : '0');
+      } catch {}
+      ambOn ? startAmbience() : stopAmbience();
+      return ambOn;
+    },
     unlock: () => ac(),
     get muted() {
       return muted;
     },
     toggle() {
       muted = !muted;
+      if (muted) stopAmbience();
       try {
         localStorage.setItem('dm_muted', muted ? '1' : '0');
       } catch {}

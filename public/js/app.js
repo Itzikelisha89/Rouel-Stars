@@ -60,6 +60,8 @@ const S = {
   wakeLock: null,
   typing: new Map(),
   reach: {},
+  poolRects: {},
+  lastDrawSeat: null,
 };
 
 function codeFromUrl() {
@@ -98,6 +100,7 @@ socket.on('connect_error', () => ($('#conn-banner').hidden = false));
 
 socket.on('room', (room) => {
   S.clockSkew = room.now ? room.now - Date.now() : 0;
+  RTC.sync(room.me, [...room.players, ...room.spectators].filter((m) => m.connected !== false && !m.left).map((m) => m.pid));
   const prev = S.game;
   S.room = room;
   S.game = room.game;
@@ -136,7 +139,10 @@ socket.on('toast', (t) => toast(t));
 function showScreen(name) {
   $$('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${name}`));
   placeChat();
-  if (name === 'game') requestWakeLock();
+  if (name === 'game') {
+    requestWakeLock();
+    Sound.startAmbience();
+  } else Sound.stopAmbience();
 }
 
 const desktop = matchMedia('(min-width: 1000px)');
@@ -185,6 +191,19 @@ function initHome() {
     grid.appendChild(b);
   });
   $('#name-input').value = profile?.name || '';
+  let voice = profile?.voice || 'm';
+  const voiceSeg = $('#voice-seg');
+  const markVoice = () => $$('button', voiceSeg).forEach((b) => b.classList.toggle('on', b.dataset.v === voice));
+  markVoice();
+  $$('button', voiceSeg).forEach(
+    (b) =>
+      (b.onclick = () => {
+        voice = b.dataset.v;
+        markVoice();
+        Sound.unlock();
+        Sound.voice(voice, 'q0');
+      })
+  );
 
   let invite = codeFromUrl();
   const setInviteMode = () => {
@@ -208,7 +227,7 @@ function initHome() {
       $('#name-input').focus();
       return false;
     }
-    profile = { name, avatar };
+    profile = { name, avatar, voice };
     store.set('dm_profile', profile);
     Sound.unlock();
     return true;
@@ -394,6 +413,8 @@ function renderGame(prev) {
   renderHand(g);
   renderStatus(g);
   renderCallBar(g);
+  renderPool(g);
+  renderFreish(g);
   processFx(g);
   renderHandModal(g);
   notifyTurn(g);
@@ -441,6 +462,7 @@ function renderSeats(g) {
       <div class="backs">${backs}</div>`;
     $(`#slot-${pos}`).appendChild(el);
   }
+  placeVideosSoon();
   const me = $('#me-badge');
   if (g.mySeat >= 0) {
     const p = playerAt(g.mySeat);
@@ -514,7 +536,7 @@ function renderBoard(g) {
   const stack = Array.from({ length: Math.min(3, g.boneyard) }, (_, i) => `<div style="bottom:${i * 3}px;left:${i * 2}px">${Tiles.backSVG(true)}</div>`).join('');
   by.innerHTML = `<div class="stack">${stack}</div><span class="n">${g.boneyard ? `קופה: ${g.boneyard}` : 'הקופה ריקה'}</span>`;
   by.classList.toggle('can', g.canDraw);
-  by.onclick = g.canDraw ? doDraw : null;
+  by.onclick = null;
   $('#hand-no').textContent = `יד ${g.handNo}`;
 }
 
@@ -652,22 +674,10 @@ async function doCall(value) {
   await emit('game:call', { value });
 }
 
-const NUM_WORDS = { 0: 'אפס', 5: 'חמש', 10: 'עשר', 15: 'חמש עשרה', 20: 'עשרים', 25: 'עשרים וחמש', 30: 'שלושים', 35: 'שלושים וחמש', 40: 'ארבעים', 45: 'ארבעים וחמש', 50: 'חמישים' };
-const numberWord = (n) => NUM_WORDS[n] || String(n);
-
-// קריינות: כל שחקן "אומר" את ההכרזה שלו בקול, בגובה קול אחר
-function say(text, seat = 0) {
-  if (Sound.muted || !('speechSynthesis' in window)) return;
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'he-IL';
-    const voice = speechSynthesis.getVoices().find((v) => v.lang?.startsWith('he'));
-    if (voice) u.voice = voice;
-    u.rate = 1.05;
-    u.pitch = [1, 0.75, 1.25, 0.9][seat % 4];
-    speechSynthesis.speak(u);
-  } catch {}
-}
+// כל שחקן "מדבר" בקול שבחר (הקלטות בעברית)
+const voiceOf = (seat) => (S.game ? playerAt(seat).voice : 'm') || 'm';
+const speak = (seat, key, delay = 0) => Sound.voice(voiceOf(seat), key, delay);
+const VOICE_KEYS = ['n5', 'n10', 'n15', 'n20', 'n25', 'n30', 'n35', 'n40', 'n45', 'domino', 'pass', 'freish', 'freish_yes', 'freish_no', 'missed', 'wrong', 'draw'];
 
 function stamp(text) {
   const el = document.createElement('div');
@@ -693,24 +703,157 @@ function shuffleAnim() {
   setTimeout(() => box.remove(), 1500);
 }
 
-function flyFromBoneyard(seat) {
+// אבן הפוכה עפה מהשולחן אל השחקן שלקח אותה
+function flyTile(from, seat) {
   const g = S.game;
-  const from = $('#boneyard .stack')?.getBoundingClientRect();
+  if (!from || !g) return;
   const target = seat === g.mySeat ? $('#hand') : $(`#seat-${seat} .backs`) || $(`#seat-${seat}`);
-  if (!from || !target) return;
+  if (!target) return;
   const to = target.getBoundingClientRect();
   const el = document.createElement('div');
   el.className = 'flyer';
   el.innerHTML = Tiles.backSVG(false);
-  el.style.left = `${from.left}px`;
-  el.style.top = `${from.top - 20}px`;
+  el.style.left = `${from.left + from.width / 2 - 8}px`;
+  el.style.top = `${from.top + from.height / 2 - 16}px`;
   document.body.appendChild(el);
   requestAnimationFrame(() => {
-    el.style.transform = `translate(${to.left + to.width / 2 - from.left - 12}px, ${to.top + to.height / 2 - from.top}px) rotate(${seat === g.mySeat ? 0 : 90}deg) scale(${seat === g.mySeat ? 1.6 : 0.7})`;
-    el.style.opacity = '0.2';
+    el.style.transform = `translate(${to.left + to.width / 2 - from.left - from.width / 2}px, ${to.top + to.height / 2 - from.top - from.height / 2}px) rotate(${seat === g.mySeat ? 0 : 90}deg) scale(${seat === g.mySeat ? 1.8 : 0.7})`;
+    el.style.opacity = '0.15';
   });
   setTimeout(() => el.remove(), 650);
 }
+
+// ---------- השולחן: אבנים הפוכות לבחירה (חלוקה + קופה) ----------
+function renderPool(g) {
+  const layer = $('#pool-layer');
+  // שומרים איפה כל אבן הייתה, כדי שהאנימציה תצא מהמקום הנכון
+  S.poolRects = {};
+  $$('.pool-tile', layer).forEach((el) => (S.poolRects[el.dataset.slot] = el.getBoundingClientRect()));
+  let slots = null;
+  let head = '';
+  let canTake = false;
+  let action = null;
+  if (g.state === 'picking' && g.pool) {
+    slots = g.pool.map((s, idx) => ({ ...s, idx })).filter((s) => !s.taken);
+    canTake = g.mySeat >= 0 && (g.hand?.length || 0) < g.handSize;
+    head = canTake ? `בחר ${g.handSize - (g.hand?.length || 0)} אבנים · <span id="pick-left"></span>` : 'מחכים לשאר… <span id="pick-left"></span>';
+    action = (idx) => emit('game:pick', { slot: idx });
+  } else if (g.canDraw && g.boneSlots?.length) {
+    slots = g.boneSlots;
+    canTake = true;
+    head = 'אין לך מה לשים – בחר אבן מהקופה';
+    action = (idx) => emit('game:draw', { slot: idx });
+  }
+  if (!slots) {
+    layer.hidden = true;
+    layer.innerHTML = '';
+    return;
+  }
+  layer.hidden = false;
+  layer.classList.toggle('drawing', g.state !== 'picking');
+  layer.innerHTML =
+    `<div class="pool-head">${head}</div>` +
+    slots
+      .map(
+        (s) =>
+          `<button class="pool-tile${canTake ? ' can' : ''}" data-slot="${s.idx}" style="left:calc(4% + ${s.x * 92}% - 22px);top:calc(16% + ${s.y * 74}% - 11px);--r:${s.r}deg">${Tiles.backSVG(true)}</button>`
+      )
+      .join('');
+  if (canTake)
+    $$('.pool-tile', layer).forEach(
+      (el) =>
+        (el.onclick = () => {
+          if (el.classList.contains('taking')) return;
+          el.classList.add('taking');
+          Sound.unlock();
+          action(Number(el.dataset.slot));
+        })
+    );
+  tickPick();
+}
+
+function tickPick() {
+  const el = $('#pick-left');
+  const g = S.game;
+  if (!el || !g?.pickDeadline) return;
+  const secs = Math.max(0, Math.ceil((g.pickDeadline - (Date.now() + S.clockSkew)) / 1000));
+  el.textContent = `${secs} ש׳`;
+}
+
+// ---------- פרייש ----------
+function renderFreish(g) {
+  const bar = $('#freish-bar');
+  const f = g.freish;
+  if (!f) {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
+  const asker = playerAt(f.by).name;
+  const votes = g.seats
+    .map((pid, seat) => {
+      const v = f.votes[seat];
+      return `<span class="${v === true ? 'ok' : ''}">${v === true ? '✓' : '…'} ${esc(memberOf(pid).name)}</span>`;
+    })
+    .join('');
+  const needMe = g.mySeat >= 0 && !(g.mySeat in f.votes);
+  bar.innerHTML = `<div class="fq">🔄 <b>${esc(asker)}</b> מבקש פרייש – לערבב ולחלק מחדש?</div>
+    <div class="fv">${votes}</div>
+    ${needMe ? '<div class="fa"><button class="btn primary" id="fr-yes">✓ מסכים</button><button class="btn" id="fr-no">✗ לא, משחקים</button></div>' : `<div class="muted small">${g.mySeat === f.by ? 'מחכה לתשובות…' : 'הצבעת'}</div>`}`;
+  if (needMe) {
+    $('#fr-yes').onclick = () => emit('game:freishVote', { yes: true });
+    $('#fr-no').onclick = () => emit('game:freishVote', { yes: false });
+  }
+}
+$('#btn-freish').onclick = () => emit('game:freish');
+
+// ---------- וידאו וקול ----------
+RTC.init(socket, () => placeVideosSoon());
+let placeT = null;
+function placeVideosSoon() {
+  cancelAnimationFrame(placeT);
+  placeT = requestAnimationFrame(placeVideos);
+}
+function placeVideos() {
+  const g = S.game;
+  $('#btn-cam').classList.toggle('on', RTC.active);
+  $('#btn-mic').hidden = !RTC.active;
+  $('#btn-mic').textContent = RTC.state.mic ? '🎤' : '🔇';
+  if (!g || !S.room) return;
+  for (const m of [...S.room.players, ...S.room.spectators]) {
+    const seat = g.seats.indexOf(m.pid);
+    const ring = seat < 0 ? null : seat === g.mySeat ? $('#me-badge .avatar-ring') : $(`#seat-${seat} .avatar-ring`);
+    const v = RTC.video(m.pid);
+    const showCam = v && (m.pid === S.room.me ? RTC.state.cam : m.media?.cam);
+    if (ring && showCam) {
+      if (v.parentElement !== ring) ring.appendChild(v);
+      ring.classList.add('has-cam');
+      v.play().catch(() => {});
+    } else {
+      RTC.park(m.pid);
+      ring?.classList.remove('has-cam');
+    }
+    ring?.querySelector('.mic-off')?.remove();
+    if (ring && m.media && !m.media.mic) ring.insertAdjacentHTML('beforeend', '<span class="mic-off">🔇</span>');
+  }
+}
+$('#btn-cam').onclick = async () => {
+  if (RTC.active) {
+    RTC.stop();
+    toast('הווידאו כבוי');
+    return;
+  }
+  try {
+    await RTC.start();
+    toast('📹 המצלמה והמיקרופון פעילים – השחקנים רואים ושומעים אותך');
+  } catch (e) {
+    toast(e.name === 'NotAllowedError' ? 'צריך לאשר גישה למצלמה ולמיקרופון' : 'לא הצלחנו להפעיל מצלמה');
+  }
+};
+$('#btn-mic').onclick = () => {
+  RTC.toggle('mic');
+  toast(RTC.state.mic ? '🎤 המיקרופון פתוח' : '🔇 המיקרופון מושתק');
+};
 
 // ---------- דף ניקוד ----------
 function renderPad() {
@@ -743,16 +886,21 @@ function renderStatus(g) {
   const st = $('#status');
   const myTurn = g.state === 'playing' && g.mySeat === g.turn;
   st.classList.toggle('myturn', myTurn);
-  $('#btn-draw').hidden = !g.canDraw;
+  $('#btn-draw').hidden = true;
+  $('#btn-freish').hidden = !g.canFreish;
   $('#btn-pass').hidden = !g.canPass;
   $('#btn-sort').hidden = g.mySeat < 0;
   let text = '';
-  if (g.state === 'closing') text = `🁫 ${esc(playerAt(g.closingSeat).name)} גמר! ${g.canCall ? 'הכרז על האבן האחרונה' : 'רגע…'}`;
+  if (g.state === 'picking') {
+    const need = g.mySeat >= 0 ? g.handSize - (g.hand?.length || 0) : 0;
+    text = need > 0 ? `בחר עוד <b>${need}</b> ${need === 1 ? 'אבן' : 'אבנים'} מהשולחן` : 'מחכים שכולם יסיימו לבחור…';
+  } else if (g.freish) text = '🔄 הצבעה על פרייש…';
+  else if (g.state === 'closing') text = `${esc(playerAt(g.closingSeat).name)} גמר! ${g.canCall ? 'הכרז על האבן האחרונה' : 'רגע…'}`;
   else if (g.state !== 'playing') text = g.state === 'gameOver' ? 'המשחק נגמר' : 'סוף היד';
   else if (myTurn) {
     if (g.required) text = `תורך לפתוח! הנח את <b>${g.required[0]}|${g.required[1]}</b>`;
     else if (!g.board.center) text = 'תורך לפתוח – הנח איזו אבן שתרצה';
-    else if (g.canDraw) text = 'אין לך מה לשים – שלוף מהקופה';
+    else if (g.canDraw) text = 'אין לך מה לשים – <b>בחר אבן מהקופה</b> שעל השולחן';
     else if (g.canPass) text = 'אין מהלך והקופה ריקה – פאס';
     else if (S.selected) text = 'בחר איפה להניח (המקומות המסומנים)';
     else {
@@ -776,10 +924,11 @@ function processFx(g) {
       S.reach[ev.seat] = null;
       if (ev.last) {
         stamp('דומינו!');
-        say('דומינו!', ev.seat);
+        speak(ev.seat, 'domino');
       }
     } else if (ev.type === 'call') {
-      say(numberWord(ev.value), ev.seat);
+      if (ev.value % 5 === 0 && ev.value >= 5 && ev.value <= 45) speak(ev.seat, `n${ev.value}`);
+      if (!ev.ok) speak((ev.seat + 1) % g.n, 'wrong', 0.9);
       if (ev.ok) {
         showBubble(pid, `${ev.value}! 📣`);
         setTimeout(() => {
@@ -793,25 +942,48 @@ function processFx(g) {
       }
     } else if (ev.type === 'missed') {
       Sound.play('lose');
+      speak((ev.seat + 1) % g.n, 'missed', 0.2);
       showBubble(pid, '😶');
       floatMsg(ev.seat === g.mySeat ? `🤐 שכחת להגיד ${ev.count}! ${ev.points} נק׳ הלכו` : `🤐 ${playerAt(ev.seat).name} שכח להגיד ${ev.count}!`);
     } else if (ev.type === 'draw') {
       Sound.play('draw');
-      flyFromBoneyard(ev.seat);
+      flyTile(S.poolRects[ev.slot] || $('#boneyard .stack')?.getBoundingClientRect(), ev.seat);
       if (ev.seat !== g.mySeat) showBubble(pid, 'שולף 🂠');
+      if (S.lastDrawSeat !== ev.seat) speak(ev.seat, 'draw');
+      S.lastDrawSeat = ev.seat;
+    } else if (ev.type === 'pick') {
+      Sound.play('clack', 0.35);
+      flyTile(S.poolRects[ev.slot], ev.seat);
+    } else if (ev.type === 'handReady') {
+      Sound.play('shuffle');
+      floatMsg(ev.required ? `${playerAt(ev.starter).name} פותח עם ${ev.required[0]}|${ev.required[1]}` : `${playerAt(ev.starter).name} פותח`);
+    } else if (ev.type === 'freishAsk') {
+      speak(ev.seat, 'freish');
+      showBubble(pid, 'פרייש! 🔄');
+    } else if (ev.type === 'freishVote') {
+      speak(ev.seat, ev.yes ? 'freish_yes' : 'freish_no');
+      showBubble(pid, ev.yes ? '👍 פרייש' : '✋ לא');
+    } else if (ev.type === 'freishResult') {
+      if (ev.ok) stamp('פרייש!');
+      else floatMsg(ev.timeout ? 'לא כולם ענו – ממשיכים' : 'אין פרייש – ממשיכים לשחק');
     } else if (ev.type === 'pass') {
       Sound.play('knock');
+      speak(ev.seat, 'pass', 0.25);
       showBubble(pid, '✊ טוק-טוק (פאס)');
     } else if (ev.type === 'newHand') {
       Sound.play('shuffle');
+      setTimeout(() => Sound.play('shuffle'), 500);
       shuffleAnim();
-      setTimeout(() => floatMsg(`יד ${ev.handNo}`), 900);
+      S.lastDrawSeat = null;
+      Sound.preload(VOICE_KEYS);
+      setTimeout(() => floatMsg(ev.redeal ? 'מערבבים מחדש…' : `יד ${ev.handNo} – בחרו אבנים`), 900);
     } else if (ev.type === 'gameOver') {
       const won = g.mySeat >= 0 && sideOf(g, g.mySeat) === ev.winSide;
       setTimeout(() => {
         Sound.play(won || g.mySeat < 0 ? 'win' : 'lose');
         if (won) confetti();
       }, 900);
+      speak(ev.winSide, g.teams ? 'win_team' : 'win', 1.6);
     } else if (ev.type === 'reachedTarget') {
       setTimeout(() => floatMsg(`🏁 ${sideName(g, ev.side)} עבר ${g.target} – מסיימים את הסיבוב`), 700);
     } else if (ev.type === 'handOver' && ev.reason === 'blocked') {
@@ -1003,6 +1175,7 @@ function tickHandBreak() {
   el.textContent = `היד הבאה תתחיל אוטומטית בעוד ${secs} שניות`;
 }
 setInterval(() => {
+  tickPick();
   if (S.game?.state === 'handOver') tickHandBreak();
   else $('#break-left')?.remove();
 }, 1000);
@@ -1018,6 +1191,8 @@ function addChat(m, live) {
     el.innerHTML = `<div class="av">${esc(m.avatar)}</div><div class="txt">${mine ? '' : `<div class="who">${esc(m.name)}</div>`}${esc(m.text)}<span class="time">${time}</span></div>`;
     if (live) {
       showBubble(m.pid, m.text);
+      const qi = QUICK.indexOf(m.text);
+      if (qi >= 0) Sound.voice(memberOf(m.pid).voice || 'm', `q${qi}`);
       S.typing.delete(m.pid);
       renderTyping();
       if (!mine) {
@@ -1116,6 +1291,7 @@ REACTIONS.forEach((r) => {
 function renderMenu() {
   $('#m-sound').textContent = Sound.muted ? '🔇 צלילים כבויים' : '🔊 צלילים פעילים';
   $('#m-hints').textContent = hints ? '💡 עזרה בספירה: פעיל' : '💡 עזרה בספירה: כבוי';
+  $('#m-amb').textContent = Sound.ambience ? '🎧 אווירת בית קפה: פעילה' : '🎧 אווירת בית קפה: כבויה';
   $('#m-colors').textContent = classic ? '⚫ אבנים: קלאסיות (שחור)' : '🎨 אבנים: צבעוניות';
   const g = S.game;
   $('#m-lobby').hidden = !(S.room && S.room.hostPid === S.room.me && g && g.state !== 'playing');
@@ -1126,6 +1302,10 @@ $('#game-menu').onclick = () => {
 };
 $('#m-sound').onclick = () => {
   Sound.toggle();
+  renderMenu();
+};
+$('#m-amb').onclick = () => {
+  Sound.toggleAmbience();
   renderMenu();
 };
 $('#m-colors').onclick = () => {
@@ -1148,6 +1328,7 @@ $('#m-leave').onclick = () => {
   if (confirm(S.game?.state === 'playing' ? 'לעזוב באמצע? המחשב ימשיך לשחק במקומך.' : 'לצאת מהשולחן?')) leaveRoom();
 };
 document.addEventListener('click', (e) => {
+  if ($('#screen-game').classList.contains('active')) Sound.startAmbience();
   const open = e.target.closest('[data-open]');
   if (open) {
     $('#menu-modal').hidden = true;
