@@ -35,6 +35,7 @@ if (!token) {
 let profile = store.get('dm_profile', null);
 let hints = store.get('dm_hints', true);
 let narrator = store.get('dm_nar', true);
+let jokes = store.get('dm_jokes', true);
 let classic = store.get('dm_classic', false);
 document.body.classList.toggle('classic', classic);
 
@@ -113,7 +114,11 @@ socket.on('room', (room) => {
     renderLobby();
   }
 });
-socket.on('fx', (events) => S.pendingFx.push(...events));
+socket.on('fx', (events) => {
+  S.pendingFx.push(...events);
+  // בדיחה בזמן שמישהו חושב מגיעה בלי עדכון מצב – מציגים מיד
+  if (events.every((e) => e.type === 'banter') && S.game) processFx(S.game);
+});
 socket.on('chat', (m) => addChat(m, true));
 socket.on('chatHistory', (list) => {
   $('#chat-log').innerHTML = '';
@@ -689,6 +694,16 @@ const VOICE_KEYS = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'domin
 const nar = (key, delay = 0) => narrator && Sound.voice('nar', key, delay);
 const myWin = (g, side) => g.mySeat >= 0 && side != null && sideOf(g, g.mySeat) === side;
 
+// בועת הבדרן – מופיעה למעלה על השולחן
+function joke(text) {
+  $('#floaters .joke')?.remove();
+  const el = document.createElement('div');
+  el.className = 'joke';
+  el.innerHTML = `<span class="mic">🎙</span>${esc(text)}`;
+  $('#floaters').appendChild(el);
+  setTimeout(() => el.remove(), 5200);
+}
+
 function stamp(text) {
   const el = document.createElement('div');
   el.className = 'stamp';
@@ -1011,6 +1026,11 @@ function processFx(g) {
       if (ev.points) nar(`bonus${Math.min(25, ev.points)}`, 1.6);
       if (ev.tieAtTop) nar('tie', 2);
       if (ev.reason === 'blocked') floatMsg('המשחק נחסם 🔒');
+    } else if (ev.type === 'banter') {
+      if (jokes) {
+        Sound.voice('fun', ev.id, 0.9);
+        joke(ev.text);
+      }
     } else if (ev.type === 'reachedTarget') {
       nar('reached', 1.2);
       setTimeout(() => floatMsg(`🏁 ${sideName(g, ev.side)} עבר ${g.target} – מסיימים את הסיבוב`), 700);
@@ -1238,7 +1258,7 @@ function addChat(m, live) {
       }
     }
   } else {
-    el.className = `msg sys${m.kind === 'score' ? ' score' : ''}`;
+    el.className = `msg sys${m.kind === 'score' ? ' score' : ''}${m.kind === 'banter' ? ' banter' : ''}`;
     el.textContent = m.text;
   }
   const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
@@ -1325,6 +1345,7 @@ REACTIONS.forEach((r) => {
 function renderMenu() {
   $('#m-sound').textContent = Sound.muted ? '🔇 צלילים כבויים' : '🔊 צלילים פעילים';
   $('#m-hints').textContent = hints ? '💡 עזרה בספירה: פעיל' : '💡 עזרה בספירה: כבוי';
+  $('#m-jokes').textContent = jokes ? '😂 משפטים מצחיקים: פעיל' : '😂 משפטים מצחיקים: כבוי';
   $('#m-nar').textContent = narrator ? '🎙 קריין: פעיל' : '🎙 קריין: כבוי';
   $('#m-amb').textContent = Sound.ambience ? '🎧 אווירת בית קפה: פעילה' : '🎧 אווירת בית קפה: כבויה';
   $('#m-colors').textContent = classic ? '⚫ אבנים: קלאסיות (שחור)' : '🎨 אבנים: צבעוניות';
@@ -1338,6 +1359,12 @@ $('#game-menu').onclick = () => {
 $('#m-sound').onclick = () => {
   Sound.toggle();
   renderMenu();
+};
+$('#m-jokes').onclick = () => {
+  jokes = !jokes;
+  store.set('dm_jokes', jokes);
+  renderMenu();
+  if (jokes) Sound.voice('fun', 'start1');
 };
 $('#m-nar').onclick = () => {
   narrator = !narrator;

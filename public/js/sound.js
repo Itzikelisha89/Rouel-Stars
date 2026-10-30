@@ -161,7 +161,7 @@ const Sound = (() => {
   let lastVoiceAt = 0;
   async function voice(v, key, delay = 0) {
     if (muted || !ac()) return;
-    const buf = await loadVoice(v === 'nar' ? 'nar' : v === 'f' ? 'f' : 'm', key);
+    const buf = await loadVoice(['nar', 'fun', 'f'].includes(v) ? v : 'm', key);
     if (!buf) return;
     const c = ac();
     // שני אנשים לא מדברים בדיוק באותה שנייה

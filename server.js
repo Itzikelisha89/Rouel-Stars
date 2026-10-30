@@ -14,6 +14,9 @@ const HAND_BREAK_MS = 45000;
 const BOT_MS = 3500; // המחשב מחכה רגע – כדי שלשחקן הקודם יהיה זמן להכריז
 const CLOSE_OPEN_MS = 6000; // אחרי האבן האחרונה: זמן להכריז לפני שסוגרים את היד
 const CLOSE_DONE_MS = 1600;
+const BANTER = require('./banter.json');
+const BANTER_GAP_MS = 15000; // לא יותר מבדיחה אחת כל 15 שניות
+const THINK_MS = 17000; // מישהו חושב יותר מדי זמן? הבדרן יגיד משהו
 const PICK_MS = 30000; // זמן לבחור 7 אבנים מהשולחן
 const FREISH_MS = 20000; // זמן להצביע על פרייש
 
@@ -117,7 +120,46 @@ function broadcast(room) {
   }
 }
 
+// "הבדרן של השולחן": לפעמים זורק משפט מצחיק. השרת בוחר כדי שכולם ישמעו אותו דבר באותו רגע.
+function banter(room, key, chance) {
+  const now = Date.now();
+  const lines = BANTER[key];
+  if (!lines || Math.random() > chance || now - (room.lastBanter || 0) < BANTER_GAP_MS) return null;
+  room.lastBanter = now;
+  room.recentBanter = room.recentBanter || [];
+  const fresh = lines.map((_, i) => i).filter((i) => !room.recentBanter.includes(`${key}${i}`));
+  const i = (fresh.length ? fresh : lines.map((_, j) => j))[Math.floor(Math.random() * (fresh.length || lines.length))];
+  const id = `${key}${i}`;
+  room.recentBanter = [id, ...room.recentBanter].slice(0, 12);
+  pushChat(room, { kind: 'banter', text: `🎙 ${lines[i]}` });
+  return { type: 'banter', id, text: lines[i] };
+}
+
+function banterFor(room, events) {
+  const g = room.game;
+  for (const ev of events) {
+    let b = null;
+    if (ev.type === 'call' && ev.ok && ev.points >= 4) b = banter(room, 'big', 0.5);
+    else if (ev.type === 'call' && !ev.ok) b = banter(room, 'wrong', 0.7);
+    else if (ev.type === 'missed') b = banter(room, 'missed', 0.75);
+    else if (ev.type === 'pass') b = banter(room, g.boneyard.length ? 'drawfail' : 'pass', g.boneyard.length ? 0.55 : 0.35);
+    else if (ev.type === 'play' && ev.last) b = banter(room, 'domino', 0.6);
+    else if ((ev.type === 'handOver' || ev.type === 'gameOver') && ev.reason === 'blocked') b = banter(room, 'blocked', 0.8);
+    else if (ev.type === 'freishAsk') b = banter(room, 'freish', 0.6);
+    else if (ev.type === 'freishResult' && !ev.ok) b = banter(room, 'freishno', 0.6);
+    else if (ev.type === 'reachedTarget') b = banter(room, 'reached', 0.7);
+    else if (ev.type === 'newHand' && !ev.redeal) b = banter(room, 'start', 0.3);
+    if (ev.type === 'gameOver') {
+      room.lastBanter = 0;
+      b = banter(room, 'champ', 0.85) || b;
+    }
+    if (b) return b;
+  }
+  return null;
+}
+
 function scheduleTurn(room) {
+  clearTimeout(room.thinkTimer);
   clearTimeout(room.turnTimer);
   room.turnTimer = null;
   const g = room.game;
@@ -135,6 +177,16 @@ function scheduleTurn(room) {
     g.turnDeadline = Date.now() + TURN_MS;
   }
   if (!bot) g.deadline = g.turnDeadline;
+  if (!bot) {
+    const key = g.turnKey;
+    room.thinkTimer = setTimeout(() => {
+      // פעם אחת לכל תור, גם אם הטיימר מתוזמן מחדש
+      if (room.game !== g || g.state !== 'playing' || g.turnKey !== key || g.freish || g.thinkSaid === key) return;
+      g.thinkSaid = key;
+      const b = banter(room, 'think', 0.6);
+      if (b) io.to(room.code).emit('fx', [b]);
+    }, Math.max(0, g.turnDeadline - TURN_MS + THINK_MS - Date.now()));
+  }
   const ms = bot ? BOT_MS : Math.max(0, g.turnDeadline - Date.now()) + TURN_GRACE_MS;
   room.turnTimer = setTimeout(() => {
     if (room.game !== g || g.state !== 'playing' || g.turn !== seat) return;
@@ -255,6 +307,8 @@ function afterAction(room) {
     }
     if (ev.type === 'gameOver') sys(room, `🏆 ${sideLabel(room, ev.winSide)} ניצח${g.teams ? 'ו' : ''} את המשחק!`, 'score');
   }
+  const joke = banterFor(room, events);
+  if (joke) events.push(joke);
   if (events.length) io.to(room.code).emit('fx', events);
   scheduleTurn(room);
   schedulePick(room);
@@ -282,6 +336,7 @@ function backToLobby(room) {
   clearTimeout(room.closeTimer);
   clearTimeout(room.pickTimer);
   clearTimeout(room.freishTimer);
+  clearTimeout(room.thinkTimer);
   room.game = null;
   room.seatPids = [];
   room.players = room.players.filter((p) => !p.left);
@@ -614,6 +669,7 @@ setInterval(() => {
       clearTimeout(room.closeTimer);
       clearTimeout(room.pickTimer);
       clearTimeout(room.freishTimer);
+      clearTimeout(room.thinkTimer);
       rooms.delete(room.code);
       continue;
     }

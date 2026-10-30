@@ -445,3 +445,7 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 #pad td { white-space: nowrap; }
 #pad table { font-size: 1.4em; }
 @media (max-width: 420px) { #pad table { font-size: 1.2em; } #pad th, #pad td { padding: 2px 3px; } }
+.joke { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); max-width: 88%; width: max-content; background: #fffaf0; color: #2a2a2a; padding: 8px 14px 8px 12px; border-radius: 16px; font-weight: 500; font-size: 0.95em; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); display: flex; gap: 8px; align-items: center; animation: joke 5.2s forwards; z-index: 8; }
+.joke .mic { font-size: 1.3em; }
+@keyframes joke { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.9) rotate(-2deg); } 6% { opacity: 1; transform: translate(-50%, 0) scale(1.04) rotate(1deg); } 10% { transform: translate(-50%, 0) scale(1) rotate(0); } 88% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+.msg.sys.banter { color: #ffe2a8; font-style: italic; }

@@ -149,6 +149,10 @@ const OUT = process.argv[2] || '.';
             await p.click(`#call-chips button[data-v="${m.score}"]`, { force: true });
           }
           await p.waitForTimeout(300);
+          if ((await p.$('#floaters .joke')) && !(await p.evaluate(() => window.__shotJoke))) {
+            await p.evaluate(() => (window.__shotJoke = 1));
+            await p.screenshot({ path: `${OUT}/16-joke.png` });
+          }
         }
       }
       await p.waitForTimeout(250);
@@ -163,6 +167,7 @@ const OUT = process.argv[2] || '.';
   await p3.screenshot({ path: `${OUT}/09-chat-mobile.png` });
 
   const log = await host.evaluate(() => [...document.querySelectorAll('.msg.sys')].map((e) => e.textContent));
+  console.log('jokes:', log.filter((t) => t.startsWith('🎙')).length, log.filter((t) => t.startsWith('🎙')).slice(0, 3));
   console.log('freish happened:', log.some((t) => t.includes('כולם הסכימו')));
   console.log('calls ok:', log.filter((t) => t.includes('✓')).length, '| forgot:', log.filter((t) => t.includes('🤐')).length);
   await host.evaluate(() => { renderPad(); document.getElementById('pad-modal').hidden = false; });
