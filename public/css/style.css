@@ -37,16 +37,16 @@ input { user-select: text; }
 .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* ---------- tiles ---------- */
-.tile .body { fill: url(#g-ivory); stroke: #a8987a; stroke-width: 0.035; }
-.tile .bevel { fill: none; stroke: rgba(255, 255, 255, 0.75); stroke-width: 0.025; }
-.tile .divider { stroke: #5d5442; stroke-width: 0.04; stroke-linecap: round; }
+.tile .body { fill: url(#g-ivory); stroke: #bdbdb8; stroke-width: 0.03; }
+.tile .bevel { fill: none; stroke: rgba(255, 255, 255, 0.9); stroke-width: 0.03; }
+.tile .divider { stroke: #151515; stroke-width: 0.065; stroke-linecap: butt; }
 .tile .pip { fill: url(#g-pip); }
-.tile .pip.p1 { fill: url(#g-p1); stroke: #0b5e8c; stroke-width: 0.018; }
-.tile .pip.p2 { fill: url(#g-p2); stroke: #155f28; stroke-width: 0.018; }
-.tile .pip.p3 { fill: url(#g-p3); stroke: #7d1414; stroke-width: 0.018; }
-.tile .pip.p4 { fill: url(#g-p4); stroke: #3e1f75; stroke-width: 0.018; }
-.tile .pip.p5 { fill: url(#g-p5); stroke: #0f2160; stroke-width: 0.018; }
-.tile .pip.p6 { fill: url(#g-p6); stroke: #9a7400; stroke-width: 0.018; }
+.tile .pip.p1 { fill: url(#g-p1); stroke: #1b6aa6; stroke-width: 0.018; }
+.tile .pip.p2 { fill: url(#g-p2); stroke: #17531f; stroke-width: 0.018; }
+.tile .pip.p3 { fill: url(#g-p3); stroke: #7e0f13; stroke-width: 0.018; }
+.tile .pip.p4 { fill: url(#g-p4); stroke: #97500a; stroke-width: 0.018; }
+.tile .pip.p5 { fill: url(#g-p5); stroke: #3b4f7f; stroke-width: 0.018; }
+.tile .pip.p6 { fill: url(#g-p6); stroke: #9c7a00; stroke-width: 0.018; }
 body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 .tile .pin { fill: url(#g-brass); stroke: #6a4a10; stroke-width: 0.012; }
 .back-body { fill: url(#g-back); stroke: #250509; stroke-width: 0.035; }

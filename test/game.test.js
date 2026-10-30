@@ -36,6 +36,18 @@ assert.strictEqual(round5(13), 15);
 assert.strictEqual(toPoints(15), 3, '15 על הלוח = 3 נקודות');
 assert.strictEqual(toPoints(14), 0);
 assert.strictEqual(TARGET, 51);
+// סוף יד: נשאר ליריבים 20 → 4 נקודות, 23 → 25 → 5 נקודות
+for (const [left, pts] of [[20, 4], [23, 5], [22, 4], [3, 1], [2, 0]]) {
+  const game = new Game({ players: 2 });
+  const winner = game.turn;
+  const loser = 1 - winner;
+  game.hands[winner] = [];
+  game.hands[loser] = [{ id: 'x', a: Math.min(6, left), b: left - Math.min(6, left) }];
+  if (left > 12) game.hands[loser] = [{ id: 'x', a: 6, b: 6 }, { id: 'y', a: left - 12, b: 0 }];
+  const before = game.scores[winner];
+  game.endHand(winner);
+  assert.strictEqual(game.scores[winner] - before, pts, `נשאר ${left} → ${pts} נקודות`);
+}
 
 // --- סימולציה: אלפי משחקים אקראיים, בדיקת שמירת אבנים וחוקיות ---
 for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {

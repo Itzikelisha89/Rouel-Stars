@@ -20,7 +20,7 @@ const Tiles = (() => {
         // באבן אופקית מסובבים את התבנית כך ששורות ה-6 יהיו לאורך האבן
         const px = horiz ? ox + y : ox + x;
         const py = horiz ? oy + (1 - x) : oy + y;
-        return `<circle class="pip p${v}" cx="${px.toFixed(3)}" cy="${py.toFixed(3)}" r="0.088"/>`;
+        return `<circle class="pip p${v}" cx="${px.toFixed(3)}" cy="${py.toFixed(3)}" r="0.092"/>`;
       })
       .join('');
   }
@@ -32,14 +32,14 @@ const Tiles = (() => {
     const x = cx - w / 2;
     const y = cy - h / 2;
     const div = horiz
-      ? `<line class="divider" x1="${cx}" y1="${y + 0.14}" x2="${cx}" y2="${y + h - 0.14}"/>`
-      : `<line class="divider" x1="${x + 0.14}" y1="${cy}" x2="${x + w - 0.14}" y2="${cy}"/>`;
+      ? `<line class="divider" x1="${cx}" y1="${y + 0.1}" x2="${cx}" y2="${y + h - 0.1}"/>`
+      : `<line class="divider" x1="${x + 0.1}" y1="${cy}" x2="${x + w - 0.1}" y2="${cy}"/>`;
     const p1 = horiz ? halfPips(first, x, y, true) : halfPips(first, x, y, false);
     const p2 = horiz ? halfPips(second, x + 1, y, true) : halfPips(second, x, y + 1, false);
     return `<g class="tile ${extraClass}">
       <rect class="body" x="${x + 0.02}" y="${y + 0.02}" width="${w - 0.04}" height="${h - 0.04}" rx="0.13"/>
       <rect class="bevel" x="${x + 0.07}" y="${y + 0.07}" width="${w - 0.14}" height="${h - 0.14}" rx="0.09"/>
-      ${div}${p1}${p2}<circle class="pin" cx="${cx}" cy="${cy}" r="0.065"/></g>`;
+      ${div}${p1}${p2}</g>`;
   }
 
   // אבן עומדת (ביד) כ-SVG עצמאי
