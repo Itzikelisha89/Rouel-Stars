@@ -292,7 +292,7 @@ function renderLobby() {
   const isHost = r.hostPid === r.me;
   $('#lobby-code').textContent = r.code;
   $('#share-link').value = roomLink(r.code);
-  $('#btn-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(`בוא לשחק איתי דומינו חמישיות 🀄\n${roomLink(r.code)}`)}`;
+  $('#btn-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(`בוא לשחק איתי חמישיות – הדומינו של יוסי פרג 🀄\n${roomLink(r.code)}`)}`;
   $('#btn-share-native').hidden = !navigator.share;
 
   const seats = $('#lobby-seats');
@@ -963,14 +963,14 @@ function processFx(g) {
       if (ev.value >= 1 && ev.value <= 9) speak(ev.seat, `p${ev.value}`);
       if (!ev.ok) ev.seat === g.mySeat ? nar('wrong', 0.8) : speak((ev.seat + 1) % g.n, 'wrong', 0.9);
       if (ev.ok) {
-        showBubble(pid, `${ev.value}! 📣`);
+        showBubble(pid, `📣 ${ev.value}`);
         setTimeout(() => {
           Sound.play('score', ev.count);
           floatAtTile(ev.tileId, `+${ev.points}`);
         }, 350);
         navigator.vibrate?.(30);
       } else {
-        showBubble(pid, `${ev.value}?`);
+        showBubble(pid, `📣 ${ev.value}?`);
         setTimeout(() => floatMsg(`❌ על הלוח ${ev.count}`), 400);
       }
     } else if (ev.type === 'missed') {
@@ -1077,7 +1077,7 @@ function notifyTurn(g) {
   if (document.hidden && !titleTimer) {
     let on = false;
     titleTimer = setInterval(() => {
-      document.title = (on = !on) ? '🔔 תורך!' : 'דומינו חמישיות';
+      document.title = (on = !on) ? '🔔 תורך!' : 'חמישיות · הדומינו של יוסי פרג';
     }, 900);
   }
 }
@@ -1085,7 +1085,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     clearInterval(titleTimer);
     titleTimer = null;
-    document.title = 'דומינו חמישיות';
+    document.title = 'חמישיות · הדומינו של יוסי פרג';
     if (S.room?.game) requestWakeLock();
   }
 });

@@ -124,6 +124,8 @@ function broadcast(room) {
 function banter(room, key, chance) {
   const now = Date.now();
   const lines = BANTER[key];
+  if (hooks.banter === false) return null;
+  if (hooks.banter === true) chance = 1;
   if (!lines || Math.random() > chance || now - (room.lastBanter || 0) < BANTER_GAP_MS) return null;
   room.lastBanter = now;
   room.recentBanter = room.recentBanter || [];
@@ -165,7 +167,7 @@ function scheduleTurn(room) {
   const g = room.game;
   if (!g) return;
   g.deadline = null;
-  if (g.state !== 'playing' || g.freish) return;
+  if (g.state !== 'playing' || g.freish || hooks.freeze) return;
   const seat = g.turn;
   const p = room.players.find((x) => x.pid === room.seatPids[seat]);
   const bot = !p || p.left;
@@ -207,7 +209,7 @@ const isBot = (room, seat) => {
 function schedulePick(room) {
   clearTimeout(room.pickTimer);
   const g = room.game;
-  if (!g || g.state !== 'picking') return;
+  if (!g || g.state !== 'picking' || hooks.freeze) return;
   if (!g.pickDeadline) g.pickDeadline = Date.now() + PICK_MS;
   const bots = room.seatPids.map((_, s) => s).filter((s) => isBot(room, s) && g.hands[s].length < g.view(s).handSize);
   const ms = bots.length ? 1500 : Math.max(0, g.pickDeadline - Date.now()) + TURN_GRACE_MS;
@@ -250,7 +252,7 @@ function scheduleHandBreak(room) {
   clearTimeout(room.handTimer);
   room.handTimer = null;
   const g = room.game;
-  if (!g || g.state !== 'handOver') return;
+  if (!g || g.state !== 'handOver' || hooks.freeze) return;
   room.handTimer = setTimeout(() => {
     if (room.game === g && g.state === 'handOver') nextHand(room);
   }, HAND_BREAK_MS);
@@ -277,7 +279,7 @@ function afterAction(room) {
   const events = g.drainEvents();
   for (const ev of events) {
     const pts = (n) => `${n} ${n === 1 ? 'נקודה' : 'נקודות'}`;
-    if (ev.type === 'call' && ev.ok) sys(room, `📣 ${nameAtSeat(room, ev.seat)}: "${ev.value}!" ✓ +${pts(ev.points)} (${ev.count} על הלוח)`, 'score');
+    if (ev.type === 'call' && ev.ok) sys(room, `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} ✓ +${pts(ev.points)} (${ev.count} על הלוח)`, 'score');
     if (ev.type === 'call' && !ev.ok)
       sys(room, ev.points ? `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל זה ${ev.points} (${ev.count} על הלוח) 😬 אין נקודות` : `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count}, לא היה כלום 😅`);
     if (ev.type === 'missed') sys(room, `🤐 ${nameAtSeat(room, ev.seat)} שכח להגיד ${ev.points} – ${pts(ev.points)} הלכו!`, 'score');
@@ -309,6 +311,7 @@ function afterAction(room) {
   }
   const joke = banterFor(room, events);
   if (joke) events.push(joke);
+  hooks.onFx?.(room, events);
   if (events.length) io.to(room.code).emit('fx', events);
   scheduleTurn(room);
   schedulePick(room);
@@ -691,5 +694,9 @@ setInterval(() => {
     }
   }
 }, 5000).unref();
+
+// לסקריפט הסרטון: גישה לשולחנות כדי לביים מצבים במשחק
+const hooks = {};
+module.exports = { rooms, broadcast, afterAction, hooks, banter, io };
 
 server.listen(PORT, () => console.log(`🀄 דומינו חמישיות רץ על http://localhost:${PORT}`));

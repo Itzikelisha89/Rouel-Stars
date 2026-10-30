@@ -449,3 +449,5 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 .joke .mic { font-size: 1.3em; }
 @keyframes joke { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.9) rotate(-2deg); } 6% { opacity: 1; transform: translate(-50%, 0) scale(1.04) rotate(1deg); } 10% { transform: translate(-50%, 0) scale(1) rotate(0); } 88% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
 .msg.sys.banter { color: #ffe2a8; font-style: italic; }
+.dedication { display: inline-block; margin: 2px 0 8px; padding: 4px 16px; border-radius: 999px; background: linear-gradient(90deg, rgba(232, 184, 74, 0.08), rgba(232, 184, 74, 0.25), rgba(232, 184, 74, 0.08)); border: 1px solid rgba(232, 184, 74, 0.55); color: #ffe2a0; font-weight: 700; letter-spacing: 0.5px; animation: glow 3s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 18px rgba(232, 184, 74, 0.45); } }
