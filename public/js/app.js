@@ -303,18 +303,24 @@ function renderLobby() {
     if (!p) {
       el.className = 'seat-card';
       el.innerHTML = `<div class="av muted">🪑</div><div class="muted small">מקום פנוי…</div>`;
+      // המארח יכול להשלים את הכיסא עם שחקן מחשב
+      if (isHost) {
+        const add = mkBtn('🤖 הוסף מחשב', 'הוסף שחקן מחשב לכיסא הזה', () => emit('room:addBot'));
+        add.className = 'btn add-bot';
+        el.appendChild(add);
+      }
     } else {
       const team = r.settings.teams && r.players.length === 4 ? `<span class="team-tag" style="--team:${TEAM_COLORS[i % 2]}">${TEAM_NAMES[i % 2]}</span>` : '';
       el.className = `seat-card filled${p.pid === r.me ? ' me' : ''}`;
       el.innerHTML = `<div class="av">${esc(p.avatar)}</div>
         <div style="min-width:0"><div class="nm">${esc(p.name)}${p.pid === r.me ? ' (אתה)' : ''}</div>
-        <div class="sub"><span class="dot${p.connected ? '' : ' off'}"></span>${p.connected ? 'מחובר' : 'מנותק'}${p.pid === r.hostPid ? ' · 👑 מארח' : ''}${team}</div></div>`;
+        <div class="sub">${p.bot ? '🤖 שחקן מחשב' : `<span class="dot${p.connected ? '' : ' off'}"></span>${p.connected ? 'מחובר' : 'מנותק'}`}${p.pid === r.hostPid ? ' · 👑 מארח' : ''}${team}</div></div>`;
       if (isHost) {
         const tools = document.createElement('div');
         tools.className = 'host-tools';
         if (i > 0) tools.append(mkBtn('▲', 'הזז קדימה', () => emit('room:move', { pid: p.pid, dir: -1 })));
         if (i < r.players.length - 1) tools.append(mkBtn('▼', 'הזז אחורה', () => emit('room:move', { pid: p.pid, dir: 1 })));
-        if (p.pid !== r.me) tools.append(mkBtn('✕', 'העבר לצפייה', () => emit('room:kick', { pid: p.pid })));
+        if (p.pid !== r.me) tools.append(mkBtn('✕', p.bot ? 'הוצא את שחקן המחשב' : 'העבר לצפייה', () => emit('room:kick', { pid: p.pid })));
         el.appendChild(tools);
       }
     }
@@ -331,7 +337,7 @@ function renderLobby() {
   const start = $('#btn-start');
   start.hidden = !isHost;
   let hint = '';
-  if (n < 2) hint = 'מחכים לעוד שחקן לפחות… שלח את הקישור 👆';
+  if (n < 2) hint = isHost ? 'שלח את הקישור לחברים 👆 – או הוסף שחקן מחשב ושחק מיד' : 'מחכים לעוד שחקן לפחות…';
   else if (s.teams && n !== 4) hint = 'משחק בזוגות דורש 4 שחקנים';
   else if (!isHost) hint = `ממתינים ש${r.players.find((p) => p.pid === r.hostPid)?.name || 'המארח'} יתחיל את המשחק…`;
   else hint = `${n} שחקנים · 7 אבנים לכל אחד${n === 4 ? ' · בלי קופה' : ''}`;
@@ -462,7 +468,7 @@ function renderSeats(g) {
     const backs = Array.from({ length: Math.min(count, 12) }, (_, i) => Tiles.backSVG(false).replace('class="tile-svg back"', `class="tile-svg back${i === upIdx ? ' up' : ''}"`)).join('');
     const team = g.teams ? `<span class="team-chip" style="background:${TEAM_COLORS[seat % 2]}">${sideOf(g, seat) === sideOf(g, viewSeat(g)) && g.mySeat >= 0 ? 'שותף' : 'יריב'}</span>` : '';
     const thinking = g.state === 'playing' && g.turn === seat && p.connected && !p.left ? '<span class="think"><i></i><i></i><i></i></span>' : '';
-    const sub = p.left ? '🤖 מחשב' : !p.connected ? '📴 מנותק' : `${count} אבנים${thinking}`;
+    const sub = p.left ? '🤖 מחשב' : !p.connected ? '📴 מנותק' : `${p.bot ? '🤖 ' : ''}${count} אבנים${thinking}`;
     el.innerHTML = `<div class="avatar-ring">${esc(p.avatar)}<div class="timer" hidden></div></div>
       <div class="info"><div class="nm">${esc(p.name)}</div><div class="sub">${sub} ${team}</div></div>
       <div class="backs">${backs}</div>`;

@@ -451,3 +451,5 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 .msg.sys.banter { color: #ffe2a8; font-style: italic; }
 .dedication { display: inline-block; margin: 2px 0 8px; padding: 4px 16px; border-radius: 999px; background: linear-gradient(90deg, rgba(232, 184, 74, 0.08), rgba(232, 184, 74, 0.25), rgba(232, 184, 74, 0.08)); border: 1px solid rgba(232, 184, 74, 0.55); color: #ffe2a0; font-weight: 700; letter-spacing: 0.5px; animation: glow 3s ease-in-out infinite; }
 @keyframes glow { 50% { box-shadow: 0 0 18px rgba(232, 184, 74, 0.45); } }
+.seat-card .add-bot { margin-inline-start: auto; padding: 6px 10px; font-size: 0.85em; border-style: dashed; }
+@media (max-width: 420px) { .score-pill .team-chip ~ .pts { margin-inline-start: 2px; } .score-pill:has(.team-chip) .av { display: none; } }

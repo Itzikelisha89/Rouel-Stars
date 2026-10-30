@@ -11,7 +11,14 @@ const AVATARS = ['😎', '🦁', '🐯', '🦊', '🐻', '🐼', '🐸', '🦉',
 const TURN_MS = 30000; // גג של 30 שניות לכל תור
 const TURN_GRACE_MS = 700; // מרווח קטן לעיכובי רשת
 const HAND_BREAK_MS = 45000;
-const BOT_MS = 3500; // המחשב מחכה רגע – כדי שלשחקן הקודם יהיה זמן להכריז
+const BOT_MS = 3500;
+// שחקני מחשב שהמארח מוסיף כדי להשלים שולחן
+const BOTS = [
+  { name: 'דוד', voice: 'm' },
+  { name: 'רחל', voice: 'f' },
+  { name: 'שלמה', voice: 'm' },
+  { name: 'מרים', voice: 'f' },
+]; // המחשב מחכה רגע – כדי שלשחקן הקודם יהיה זמן להכריז
 const CLOSE_OPEN_MS = 6000; // אחרי האבן האחרונה: זמן להכריז לפני שסוגרים את היד
 const CLOSE_DONE_MS = 1600;
 const BANTER = require('./banter.json');
@@ -95,7 +102,7 @@ function publicRoom(room, pid) {
     hostPid: room.hostPid,
     me: pid,
     role: room.players.some((p) => p.pid === pid) ? 'player' : 'spectator',
-    players: room.players.map(({ pid, name, avatar, voice, connected, left, media }) => ({ pid, name, avatar, voice, connected, left, media: media || null })),
+    players: room.players.map(({ pid, name, avatar, voice, connected, left, media, bot }) => ({ pid, name, avatar, voice, connected, left, bot: !!bot, media: media || null })),
     spectators: room.spectators.map(({ pid, name, avatar, voice, media }) => ({ pid, name, avatar, voice, media: media || null })),
     settings: room.settings,
     game: g
@@ -170,7 +177,7 @@ function scheduleTurn(room) {
   if (g.state !== 'playing' || g.freish || hooks.freeze) return;
   const seat = g.turn;
   const p = room.players.find((x) => x.pid === room.seatPids[seat]);
-  const bot = !p || p.left;
+  const bot = !p || p.left || p.bot;
   // אותו תור (גם אחרי שליפה, רענון או ניתוק) = אותו שעון. לא מתאפס.
   const placed = g.board.center ? 1 + Object.values(g.board.arms).reduce((n, a) => n + a.length, 0) : 0;
   const key = `${g.handNo}:${seat}:${placed}:${g.passes}`;
@@ -189,10 +196,11 @@ function scheduleTurn(room) {
       if (b) io.to(room.code).emit('fx', [b]);
     }, Math.max(0, g.turnDeadline - TURN_MS + THINK_MS - Date.now()));
   }
-  const ms = bot ? BOT_MS : Math.max(0, g.turnDeadline - Date.now()) + TURN_GRACE_MS;
+  // המחשב "חושב" קצת – כמו שחקן אמיתי (וגם כדי שלשחקן הקודם יהיה זמן להכריז)
+  const ms = bot ? BOT_MS - 1200 + Math.random() * 1600 : Math.max(0, g.turnDeadline - Date.now()) + TURN_GRACE_MS;
   room.turnTimer = setTimeout(() => {
     if (room.game !== g || g.state !== 'playing' || g.turn !== seat) return;
-    if (p && !p.left) sys(room, `⏰ נגמר הזמן ל${p.name} – מהלך אוטומטי`);
+    if (!bot) sys(room, `⏰ נגמר הזמן ל${p.name} – מהלך אוטומטי`);
     g.autoMove(seat);
     // המחשב (במקום שחקן שעזב) לא שוכח להכריז. מי שנגמר לו הזמן – עדיין יכול להכריז בעצמו.
     if (bot && g.call?.seat === seat && g.call.points) g.callPoints(seat, g.call.points);
@@ -202,7 +210,7 @@ function scheduleTurn(room) {
 
 const isBot = (room, seat) => {
   const p = room.players.find((x) => x.pid === room.seatPids[seat]);
-  return !p || p.left;
+  return !p || p.left || !!p.bot;
 };
 
 // בחירת אבנים מהשולחן: 30 שניות, ואז מי שלא סיים – המחשב בוחר לו. שחקן שעזב בוחר מיד.
@@ -270,7 +278,7 @@ function maybeAllReady(room) {
   if (!g || g.state !== 'handOver') return;
   const needed = room.seatPids
     .map((pid, seat) => ({ p: room.players.find((x) => x.pid === pid), seat }))
-    .filter(({ p }) => p && p.connected && !p.left);
+    .filter(({ p }) => p && p.connected && !p.left && !p.bot);
   if (needed.every(({ seat }) => g.ready.has(seat))) nextHand(room);
 }
 
@@ -383,7 +391,7 @@ function removeMember(room, pid) {
     room.spectators = room.spectators.filter((x) => x.pid !== pid);
   }
   if (room.hostPid === pid) {
-    const next = room.players.find((x) => !x.left && x.connected) || room.players.find((x) => !x.left);
+    const next = room.players.find((x) => !x.left && !x.bot && x.connected) || room.players.find((x) => !x.left && !x.bot);
     if (next) {
       room.hostPid = next.pid;
       sys(room, `👑 ${next.name} מארח עכשיו את השולחן`);
@@ -499,9 +507,25 @@ io.on('connection', (socket) => {
     const target = room.players.find((p) => p.pid === data.pid);
     if (!target || target.pid === pid) return;
     room.players = room.players.filter((p) => p !== target);
+    if (target.bot) {
+      sys(room, `🤖 ${target.name} (מחשב) קם מהשולחן`);
+      return broadcast(room);
+    }
     room.spectators.push({ ...target });
     for (const sid of target.sockets) io.to(sid).emit('toast', 'המארח העביר אותך לצפייה');
     sys(room, `${target.name} הועבר לצפייה`);
+    broadcast(room);
+  });
+
+  // השלמת שחקנים: המארח מוסיף שחקן מחשב לכיסא פנוי
+  on('room:addBot', () => {
+    const room = hostCtx();
+    if (room.game) throw new Error('מוסיפים שחקן מחשב רק בלובי');
+    if (room.players.length >= 4) throw new Error('השולחן מלא');
+    const taken = new Set(room.players.map((p) => p.name));
+    const b = BOTS.find((x) => !taken.has(x.name)) || BOTS[0];
+    room.players.push({ pid: `bot-${crypto.randomUUID().slice(0, 8)}`, name: b.name, avatar: '🤖', voice: b.voice, sockets: new Set(), connected: true, left: false, bot: true });
+    sys(room, `🤖 ${b.name} (מחשב) התיישב לשולחן`);
     broadcast(room);
   });
 
@@ -666,7 +690,7 @@ setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
     const everyone = [...room.players, ...room.spectators];
-    if (!everyone.some((m) => m.connected) && now - room.lastActive > 2 * 3600 * 1000) {
+    if (!everyone.some((m) => m.connected && !m.bot) && now - room.lastActive > 2 * 3600 * 1000) {
       clearTimeout(room.turnTimer);
       clearTimeout(room.handTimer);
       clearTimeout(room.closeTimer);
@@ -678,7 +702,7 @@ setInterval(() => {
     }
     const host = room.players.find((p) => p.pid === room.hostPid);
     if ((!host || !host.connected) && now - (host?.disconnectedAt || 0) > 30000) {
-      const next = room.players.find((p) => p.connected && !p.left);
+      const next = room.players.find((p) => p.connected && !p.left && !p.bot);
       if (next && next.pid !== room.hostPid) {
         room.hostPid = next.pid;
         sys(room, `👑 ${next.name} מארח עכשיו את השולחן`);
