@@ -293,7 +293,6 @@ function renderLobby() {
 
   const s = r.settings;
   setSeg('#set-target', s.target, isHost, (v) => emit('room:settings', { target: v }));
-  setSeg('#set-time', s.turnTime, isHost, (v) => emit('room:settings', { turnTime: v }));
   setSeg('#set-teams', s.teams ? 1 : 0, isHost, (v) => emit('room:settings', { teams: v === 1 }));
   $('#settings-note').textContent = isHost ? '' : '(רק המארח משנה)';
 
@@ -737,15 +736,25 @@ document.addEventListener('visibilitychange', () => {
 setInterval(() => {
   const g = S.game;
   $$('.avatar-ring .timer').forEach((t) => (t.hidden = true));
+  $$('.avatar-ring .secs').forEach((t) => t.remove());
   if (!g || g.state !== 'playing' || !g.deadline) return;
   const left = g.deadline - (Date.now() + S.clockSkew);
-  const total = S.room.settings.turnTime ? S.room.settings.turnTime * 1000 : 45000;
+  const total = (S.room.settings.turnTime || 30) * 1000;
   const frac = Math.max(0, Math.min(1, left / total));
   const host = g.turn === g.mySeat ? $('#me-badge .timer') : $(`#seat-${g.turn} .timer`);
   if (!host) return;
   host.hidden = false;
   host.style.setProperty('--t', `${frac * 100}%`);
   host.classList.toggle('low', left < 6000);
+  const secs = document.createElement('span');
+  secs.className = `secs${left < 10000 ? ' low' : ''}`;
+  secs.textContent = Math.max(0, Math.ceil(left / 1000));
+  host.parentElement.appendChild(secs);
+  if (g.turn === g.mySeat && left < 10000 && left > 0 && !S.warned10) {
+    S.warned10 = true;
+    toast('⏱ נשארו 10 שניות!');
+  }
+  if (g.turn !== g.mySeat) S.warned10 = false;
   if (g.turn === g.mySeat && left < 6000 && left > 0 && Math.floor(left / 1000) !== S.lastTick) {
     S.lastTick = Math.floor(left / 1000);
     Sound.play('pop');

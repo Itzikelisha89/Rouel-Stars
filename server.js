@@ -9,8 +9,8 @@ const { Game } = require('./game');
 const PORT = process.env.PORT || 3000;
 const AVATARS = ['😎', '🦁', '🐯', '🦊', '🐻', '🐼', '🐸', '🦉', '🐙', '🦄', '🐲', '👑', '🎩', '🧔', '👵', '👴', '🧕', '🕵️', '🤠', '🥷'];
 const TARGETS = [100, 150, 200, 250];
-const TURN_TIMES = [0, 20, 30, 60];
-const DISCONNECTED_TURN_MS = 45000;
+const TURN_MS = 30000; // גג של 30 שניות לכל תור
+const TURN_GRACE_MS = 700; // מרווח קטן לעיכובי רשת
 const HAND_BREAK_MS = 45000;
 
 const app = express();
@@ -47,7 +47,7 @@ function createRoom(hostPid) {
     hostPid,
     players: [],
     spectators: [],
-    settings: { target: 150, teams: false, turnTime: 0 },
+    settings: { target: 150, teams: false, turnTime: TURN_MS / 1000 },
     game: null,
     seatPids: [],
     chat: [],
@@ -119,12 +119,16 @@ function scheduleTurn(room) {
   if (g.state !== 'playing') return;
   const seat = g.turn;
   const p = room.players.find((x) => x.pid === room.seatPids[seat]);
-  let ms = null;
-  if (!p || p.left) ms = 1400;
-  else if (!p.connected) ms = DISCONNECTED_TURN_MS;
-  if (room.settings.turnTime && p && !p.left) ms = Math.min(ms ?? Infinity, room.settings.turnTime * 1000);
-  if (ms == null) return;
-  if (p && !p.left) g.deadline = Date.now() + ms;
+  const bot = !p || p.left;
+  // אותו תור (גם אחרי שליפה, רענון או ניתוק) = אותו שעון. לא מתאפס.
+  const placed = g.board.center ? 1 + Object.values(g.board.arms).reduce((n, a) => n + a.length, 0) : 0;
+  const key = `${g.handNo}:${seat}:${placed}:${g.passes}`;
+  if (g.turnKey !== key || !g.turnDeadline) {
+    g.turnKey = key;
+    g.turnDeadline = Date.now() + TURN_MS;
+  }
+  if (!bot) g.deadline = g.turnDeadline;
+  const ms = bot ? 1400 : Math.max(0, g.turnDeadline - Date.now()) + TURN_GRACE_MS;
   room.turnTimer = setTimeout(() => {
     if (room.game !== g || g.state !== 'playing' || g.turn !== seat) return;
     if (p && !p.left) sys(room, `⏰ נגמר הזמן ל${p.name} – מהלך אוטומטי`);
@@ -344,7 +348,6 @@ io.on('connection', (socket) => {
     const s = room.settings;
     if (TARGETS.includes(data.target)) s.target = data.target;
     if (typeof data.teams === 'boolean') s.teams = data.teams;
-    if (TURN_TIMES.includes(data.turnTime)) s.turnTime = data.turnTime;
     broadcast(room);
   });
 
