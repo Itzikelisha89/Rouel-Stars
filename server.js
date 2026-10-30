@@ -166,7 +166,7 @@ function afterAction(room) {
   const g = room.game;
   const events = g.drainEvents();
   for (const ev of events) {
-    if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.count} → +${ev.scored} ${ev.scored === 1 ? 'נקודה' : 'נקודות'}`, 'score');
+    if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.count} = ${ev.scored} ${ev.scored === 1 ? 'נקודה' : 'נקודות'}`, 'score');
     if (ev.type === 'newHand') {
       const opener = ev.required ? ` – ${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : ` – ${nameAtSeat(room, ev.starter)} פותח`;
       sys(room, `🀄 יד ${ev.handNo} חולקה${opener}`);

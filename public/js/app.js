@@ -34,6 +34,8 @@ if (!token) {
 }
 let profile = store.get('dm_profile', null);
 let hints = store.get('dm_hints', true);
+let classic = store.get('dm_classic', false);
+document.body.classList.toggle('classic', classic);
 
 // ---------- מצב ----------
 const S = {
@@ -656,7 +658,7 @@ function processFx(g) {
       if (ev.scored) {
         setTimeout(() => {
           Sound.play('score', ev.count);
-          floatAtTile(ev.tileId, `${ev.count} → +${ev.scored}`);
+          floatAtTile(ev.tileId, `+${ev.scored}`);
         }, 260);
         navigator.vibrate?.(30);
       }
@@ -976,6 +978,7 @@ REACTIONS.forEach((r) => {
 function renderMenu() {
   $('#m-sound').textContent = Sound.muted ? '🔇 צלילים כבויים' : '🔊 צלילים פעילים';
   $('#m-hints').textContent = hints ? '💡 עזרה בספירה: פעיל' : '💡 עזרה בספירה: כבוי';
+  $('#m-colors').textContent = classic ? '⚫ אבנים: קלאסיות (שחור)' : '🎨 אבנים: צבעוניות';
   const g = S.game;
   $('#m-lobby').hidden = !(S.room && S.room.hostPid === S.room.me && g && g.state !== 'playing');
 }
@@ -985,6 +988,12 @@ $('#game-menu').onclick = () => {
 };
 $('#m-sound').onclick = () => {
   Sound.toggle();
+  renderMenu();
+};
+$('#m-colors').onclick = () => {
+  classic = !classic;
+  store.set('dm_classic', classic);
+  document.body.classList.toggle('classic', classic);
   renderMenu();
 };
 $('#m-hints').onclick = () => {

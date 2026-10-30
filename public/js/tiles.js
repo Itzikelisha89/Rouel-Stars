@@ -20,7 +20,7 @@ const Tiles = (() => {
         // באבן אופקית מסובבים את התבנית כך ששורות ה-6 יהיו לאורך האבן
         const px = horiz ? ox + y : ox + x;
         const py = horiz ? oy + (1 - x) : oy + y;
-        return `<circle class="pip" cx="${px.toFixed(3)}" cy="${py.toFixed(3)}" r="0.088"/>`;
+        return `<circle class="pip p${v}" cx="${px.toFixed(3)}" cy="${py.toFixed(3)}" r="0.088"/>`;
       })
       .join('');
   }
