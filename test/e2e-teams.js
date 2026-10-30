@@ -53,7 +53,7 @@ const OUT = process.argv[2] || '.';
       else {
         const m = [...g.moves].sort((a, b) => b.score - a.score)[0];
         await emit('game:play', { tileId: m.tileId, end: m.end });
-        if (m.score) await emit('game:call', { value: m.count });
+        if (m.score) await emit('game:call', { value: m.score });
       }
       return 'acted';
     });

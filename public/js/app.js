@@ -34,6 +34,7 @@ if (!token) {
 }
 let profile = store.get('dm_profile', null);
 let hints = store.get('dm_hints', true);
+let narrator = store.get('dm_nar', true);
 let classic = store.get('dm_classic', false);
 document.body.classList.toggle('classic', classic);
 
@@ -657,8 +658,13 @@ $('#btn-sort').onclick = () => {
 };
 
 // ---------- הכרזה ----------
-const CALLS = [5, 10, 15, 20, 25, 30, 35, 40, 45];
+// מכריזים את מספר הנקודות: 20 על הלוח = 4
+const CALLS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 function renderCallBar(g) {
+  if (g.canPass && g.boneyard && g.draws >= g.maxDraws && S.drawLimitSaid !== `${g.handNo}:${g.lastMove?.tileId}`) {
+    S.drawLimitSaid = `${g.handNo}:${g.lastMove?.tileId}`;
+    nar('draw_limit', 0.5);
+  }
   const bar = $('#call-bar');
   const open = !!g.canCall;
   if (open && bar.hidden) {
@@ -677,7 +683,11 @@ async function doCall(value) {
 // כל שחקן "מדבר" בקול שבחר (הקלטות בעברית)
 const voiceOf = (seat) => (S.game ? playerAt(seat).voice : 'm') || 'm';
 const speak = (seat, key, delay = 0) => Sound.voice(voiceOf(seat), key, delay);
-const VOICE_KEYS = ['n5', 'n10', 'n15', 'n20', 'n25', 'n30', 'n35', 'n40', 'n45', 'domino', 'pass', 'freish', 'freish_yes', 'freish_no', 'missed', 'wrong', 'draw'];
+const VOICE_KEYS = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'domino', 'pass', 'freish', 'freish_yes', 'freish_no', 'missed', 'wrong', 'draw',
+  'nar/shuffle', 'nar/yourturn', 'nar/round_won', 'nar/round_lost', 'nar/missed', 'nar/wrong', 'nar/ten', 'nar/draw_limit'];
+// קריין: מספר מה קורה ליד השולחן
+const nar = (key, delay = 0) => narrator && Sound.voice('nar', key, delay);
+const myWin = (g, side) => g.mySeat >= 0 && side != null && sideOf(g, g.mySeat) === side;
 
 function stamp(text) {
   const el = document.createElement('div');
@@ -741,7 +751,7 @@ function renderPool(g) {
   } else if (g.canDraw && g.boneSlots?.length) {
     slots = g.boneSlots;
     canTake = true;
-    head = 'אין לך מה לשים – בחר אבן מהקופה';
+    head = `אין לך מה לשים – בחר אבן מהקופה (${(g.draws || 0) + 1} מתוך ${g.maxDraws})`;
     action = (idx) => emit('game:draw', { slot: idx });
   }
   if (!slots) {
@@ -860,22 +870,30 @@ function renderPad() {
   const g = S.game;
   if (!g) return;
   const sides = g.scores.length;
+  const sideTitle = (s) => (g.teams ? (g.mySeat >= 0 && s === sideOf(g, g.mySeat) ? 'אנחנו' : 'הם') : playerAt(s).name);
   const hands = [...new Set(g.history.map((h) => h.hand))];
-  if (!hands.includes(g.handNo)) hands.push(g.handNo);
-  const head = Array.from({ length: sides }, (_, s) => `<th>${esc(g.teams ? (s === sideOf(g, viewSeat(g)) && g.mySeat >= 0 ? 'אנחנו' : 'הם') : playerAt(s).name)}</th>`).join('');
+  if (g.state !== 'gameOver' && !hands.includes(g.handNo)) hands.push(g.handNo);
+  const head = Array.from({ length: sides }, (_, s) => `<th>${esc(sideTitle(s))}</th>`).join('');
   const rows = hands
     .map((h) => {
+      const items = g.history.filter((x) => x.hand === h);
+      const result = items.find((x) => x.kind === 'result');
       const cells = Array.from({ length: sides }, (_, s) => {
-        const items = g.history.filter((x) => x.hand === h && x.side === s);
-        const marks = items.map((x) => (x.kind === 'call' ? `<span>${x.pts}</span>` : `<span class="bonus">${x.pts}★</span>`)).join(' ');
-        return `<td>${marks || '<span class="dash">–</span>'}</td>`;
+        const play = items.filter((x) => x.side === s && x.kind === 'call').reduce((n, x) => n + x.pts, 0);
+        const bonus = items.filter((x) => x.side === s && x.kind === 'bonus').reduce((n, x) => n + x.pts, 0);
+        const won = result && result.side === s;
+        // נקודות במהלך הסיבוב + נקודות הניצחון: "5 + 2"
+        const parts = bonus ? `${play} <span class="plus">+</span> <span class="bonus">${bonus}</span>` : play ? `${play}` : '<span class="dash">–</span>';
+        return `<td class="${won ? 'won' : ''}">${won ? '<span class="crown">🏆</span>' : ''}${parts}${play && bonus ? `<span class="eq">= ${play + bonus}</span>` : ''}</td>`;
       }).join('');
-      return `<tr><th class="hn">${h}</th>${cells}</tr>`;
+      const label = !result ? `<span class="live">משחקים…</span>` : result.side == null ? '🔒 תיקו' : `${result.reason === 'blocked' ? '🔒' : ''}${esc(g.teams ? sideTitle(result.side) : playerAt(result.side).name)}`;
+      return `<tr><th class="hn">${h}</th>${cells}<td class="who">${label}</td></tr>`;
     })
     .join('');
   const totals = g.scores.map((s) => `<td class="tot">${s}</td>`).join('');
-  $('#pad').innerHTML = `<table><thead><tr><th class="hn">יד</th>${head}</tr></thead><tbody>${rows}</tbody><tfoot><tr><th class="hn">סה״כ</th>${totals}</tr></tfoot></table>
-    <div class="pad-note">★ = בונוס סוף יד · עד ${g.target}</div>`;
+  $('#pad').innerHTML = `<table><thead><tr><th class="hn">סיבוב</th>${head}<th class="who">ניצח</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><th class="hn">סה״כ</th>${totals}<td></td></tr></tfoot></table>
+    <div class="pad-note">מספר ראשון = נקודות במהלך הסיבוב · <span class="bonus">אדום</span> = נקודות הניצחון (מה שנשאר ליריבים) · 🏆 = ניצח בסיבוב · עד ${g.target}</div>`;
 }
 $('#scoreboard').onclick = () => {
   renderPad();
@@ -901,7 +919,7 @@ function renderStatus(g) {
     if (g.required) text = `תורך לפתוח! הנח את <b>${g.required[0]}|${g.required[1]}</b>`;
     else if (!g.board.center) text = 'תורך לפתוח – הנח איזו אבן שתרצה';
     else if (g.canDraw) text = 'אין לך מה לשים – <b>בחר אבן מהקופה</b> שעל השולחן';
-    else if (g.canPass) text = 'אין מהלך והקופה ריקה – פאס';
+    else if (g.canPass) text = g.boneyard ? `משכת ${g.maxDraws} פעמים ואין מה לשים – <b>פאס</b>` : 'אין מהלך והקופה ריקה – <b>פאס</b>';
     else if (S.selected) text = 'בחר איפה להניח (המקומות המסומנים)';
     else {
       const best = Math.max(...g.moves.map((m) => m.score));
@@ -927,8 +945,8 @@ function processFx(g) {
         speak(ev.seat, 'domino');
       }
     } else if (ev.type === 'call') {
-      if (ev.value % 5 === 0 && ev.value >= 5 && ev.value <= 45) speak(ev.seat, `n${ev.value}`);
-      if (!ev.ok) speak((ev.seat + 1) % g.n, 'wrong', 0.9);
+      if (ev.value >= 1 && ev.value <= 9) speak(ev.seat, `p${ev.value}`);
+      if (!ev.ok) ev.seat === g.mySeat ? nar('wrong', 0.8) : speak((ev.seat + 1) % g.n, 'wrong', 0.9);
       if (ev.ok) {
         showBubble(pid, `${ev.value}! 📣`);
         setTimeout(() => {
@@ -942,7 +960,7 @@ function processFx(g) {
       }
     } else if (ev.type === 'missed') {
       Sound.play('lose');
-      speak((ev.seat + 1) % g.n, 'missed', 0.2);
+      ev.seat === g.mySeat ? nar('missed', 0.2) : speak((ev.seat + 1) % g.n, 'missed', 0.2);
       showBubble(pid, '😶');
       floatMsg(ev.seat === g.mySeat ? `🤐 שכחת להגיד ${ev.count}! ${ev.points} נק׳ הלכו` : `🤐 ${playerAt(ev.seat).name} שכח להגיד ${ev.count}!`);
     } else if (ev.type === 'draw') {
@@ -966,6 +984,7 @@ function processFx(g) {
     } else if (ev.type === 'freishResult') {
       if (ev.ok) stamp('פרייש!');
       else floatMsg(ev.timeout ? 'לא כולם ענו – ממשיכים' : 'אין פרייש – ממשיכים לשחק');
+      nar(ev.ok ? 'freish' : 'freish_no', 1);
     } else if (ev.type === 'pass') {
       Sound.play('knock');
       speak(ev.seat, 'pass', 0.25);
@@ -977,6 +996,7 @@ function processFx(g) {
       S.lastDrawSeat = null;
       Sound.preload(VOICE_KEYS);
       setTimeout(() => floatMsg(ev.redeal ? 'מערבבים מחדש…' : `יד ${ev.handNo} – בחרו אבנים`), 900);
+      if (!ev.redeal) nar('shuffle', 0.6);
     } else if (ev.type === 'gameOver') {
       const won = g.mySeat >= 0 && sideOf(g, g.mySeat) === ev.winSide;
       setTimeout(() => {
@@ -984,10 +1004,16 @@ function processFx(g) {
         if (won) confetti();
       }, 900);
       speak(ev.winSide, g.teams ? 'win_team' : 'win', 1.6);
+      if (g.mySeat >= 0) nar(myWin(g, ev.winSide) ? (g.teams ? 'game_won_team' : 'game_won') : 'game_lost', 2.6);
+    } else if (ev.type === 'handOver') {
+      if (ev.reason === 'blocked') nar('blocked', 0.8);
+      if (g.mySeat >= 0 && ev.winSide != null) nar(myWin(g, ev.winSide) ? (g.teams ? 'round_won_team' : 'round_won') : 'round_lost', 1.4);
+      if (ev.points) nar(`bonus${Math.min(25, ev.points)}`, 1.6);
+      if (ev.tieAtTop) nar('tie', 2);
+      if (ev.reason === 'blocked') floatMsg('המשחק נחסם 🔒');
     } else if (ev.type === 'reachedTarget') {
+      nar('reached', 1.2);
       setTimeout(() => floatMsg(`🏁 ${sideName(g, ev.side)} עבר ${g.target} – מסיימים את הסיבוב`), 700);
-    } else if (ev.type === 'handOver' && ev.reason === 'blocked') {
-      floatMsg('המשחק נחסם 🔒');
     }
   }
 }
@@ -1026,6 +1052,7 @@ function notifyTurn(g) {
   S.wasMyTurn = myTurn;
   if (!myTurn || was) return;
   setTimeout(() => Sound.play('turn'), 450);
+  nar('yourturn', 0.9);
   navigator.vibrate?.([40, 60, 40]);
   if (document.hidden && !titleTimer) {
     let on = false;
@@ -1064,6 +1091,7 @@ setInterval(() => {
   if (g.turn === g.mySeat && left < 10000 && left > 0 && !S.warned10) {
     S.warned10 = true;
     toast('⏱ נשארו 10 שניות!');
+    nar('ten');
   }
   if (g.turn !== g.mySeat) S.warned10 = false;
   if (g.turn === g.mySeat && left < 6000 && left > 0 && Math.floor(left / 1000) !== S.lastTick) {
@@ -1107,9 +1135,15 @@ function renderHandModal(g) {
         return `<div class="reveal-row${win ? ' win' : ''}"><div class="who">${esc(p.avatar)} ${esc(p.name)}</div><div class="tiles">${tiles}</div><div class="p">${r.handPips[seat]}</div></div>`;
       })
       .join('');
+    const items = g.history.filter((x) => x.hand === g.handNo);
     $('#hand-totals').innerHTML = g.scores
-      .map((s, side) => `<div class="total-row"><div class="nm">${esc(sideName(g, side))}</div><div class="track"><i style="--p:${Math.min(100, (s / g.target) * 100)}%"></i></div><div class="pts">${s}</div></div>`)
-      .join('');
+      .map((s, side) => {
+        const play = items.filter((x) => x.side === side && x.kind === 'call').reduce((n, x) => n + x.pts, 0);
+        const bonus = items.filter((x) => x.side === side && x.kind === 'bonus').reduce((n, x) => n + x.pts, 0);
+        const split = play || bonus ? `<span class="split">${play}${bonus ? ` + <b>${bonus}</b>` : ''}</span>` : '';
+        return `<div class="total-row"><div class="nm">${esc(sideName(g, side))}</div>${split}<div class="track"><i style="--p:${Math.min(100, (s / g.target) * 100)}%"></i></div><div class="pts">${s}</div></div>`;
+      })
+      .join('') + '<div class="muted small center" style="margin-top:4px">בסיבוב: נקודות במשחק + <b>נקודות הניצחון</b></div>';
   };
   if (S.handModalFor !== key) {
     S.handModalFor = key;
@@ -1291,6 +1325,7 @@ REACTIONS.forEach((r) => {
 function renderMenu() {
   $('#m-sound').textContent = Sound.muted ? '🔇 צלילים כבויים' : '🔊 צלילים פעילים';
   $('#m-hints').textContent = hints ? '💡 עזרה בספירה: פעיל' : '💡 עזרה בספירה: כבוי';
+  $('#m-nar').textContent = narrator ? '🎙 קריין: פעיל' : '🎙 קריין: כבוי';
   $('#m-amb').textContent = Sound.ambience ? '🎧 אווירת בית קפה: פעילה' : '🎧 אווירת בית קפה: כבויה';
   $('#m-colors').textContent = classic ? '⚫ אבנים: קלאסיות (שחור)' : '🎨 אבנים: צבעוניות';
   const g = S.game;
@@ -1303,6 +1338,12 @@ $('#game-menu').onclick = () => {
 $('#m-sound').onclick = () => {
   Sound.toggle();
   renderMenu();
+};
+$('#m-nar').onclick = () => {
+  narrator = !narrator;
+  store.set('dm_nar', narrator);
+  renderMenu();
+  nar('yourturn');
 };
 $('#m-amb').onclick = () => {
   Sound.toggleAmbience();

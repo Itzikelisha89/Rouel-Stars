@@ -104,14 +104,14 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
         // שחקן מכריז נכון / טועה / שוכח
         const r = Math.random();
         if (r < 0.6) {
-          game.callPoints(seat, m.count);
+          game.callPoints(seat, m.score);
           assert.strictEqual(game.scores[side] - before, m.score);
         } else if (r < 0.7) {
-          game.callPoints(seat, m.count + 5);
+          game.callPoints(seat, m.score + 1);
           assert.strictEqual(game.scores[side], before, 'הכרזה שגויה – אין נקודות');
         }
         if (game.state === 'closing') game.closeHand();
-      } else if (game.boneyard.length) {
+      } else if (game.boneyard.length && game.draws < 2) {
         assert.throws(() => game.pass(seat));
         game.draw(seat);
       } else {
@@ -141,21 +141,39 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
     const { game, me, other } = setup();
     game.play(me, '55', 'center');
     game.play(other, '56', 'right');
-    assert.throws(() => game.callPoints(me, 10), 'מאוחר מדי');
+    assert.throws(() => game.callPoints(me, 2), 'מאוחר מדי');
     assert.strictEqual(game.scores[me], 0);
     assert.ok(game.drainEvents().some((e) => e.type === 'missed' && e.seat === me && e.points === 2));
   }
   { // אמרתי בזמן → 10 = 2 נקודות
     const { game, me } = setup();
     game.play(me, '55', 'center');
-    assert.strictEqual(game.callPoints(me, 10), 2);
+    assert.strictEqual(game.callPoints(me, 10), 0, 'אומרים נקודות, לא את הסכום: 10 על הלוח = 2');
+    assert.strictEqual(game.scores[me], 0);
+  }
+  { // אמרתי "2" (10 על הלוח) → 2 נקודות
+    const { game, me } = setup();
+    game.play(me, '55', 'center');
+    assert.strictEqual(game.callPoints(me, 2), 2);
     assert.strictEqual(game.scores[me], 2);
-    assert.throws(() => game.callPoints(me, 10), 'אי אפשר להכריז פעמיים');
+    assert.throws(() => game.callPoints(me, 2), 'אי אפשר להכריז פעמיים');
+  }
+  { // מושכים עד פעמיים בתור, ואז פאס
+    const { game, me, other } = setup();
+    game.hands[other] = [{ id: '33', a: 3, b: 3 }];
+    game.boneyard = [0, 1, 2].map((idx) => ({ idx, tile: { id: '1' + idx, a: 1, b: idx } }));
+    game.play(me, '55', 'center');
+    game.draw(other);
+    game.draw(other);
+    assert.throws(() => game.draw(other), /פעמים/);
+    assert.ok(game.view(other).canPass && !game.view(other).canDraw);
+    game.pass(other);
+    assert.strictEqual(game.turn, me);
   }
   { // היריב לא יכול להכריז במקומי
     const { game, me, other } = setup();
     game.play(me, '55', 'center');
-    assert.throws(() => game.callPoints(other, 10));
+    assert.throws(() => game.callPoints(other, 2));
   }
   { // גם שליפה של היריב סוגרת את ההכרזה
     const { game, me, other } = setup();
@@ -163,7 +181,7 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
     game.boneyard = [{ idx: 0, tile: { id: '44', a: 4, b: 4 } }];
     game.play(me, '55', 'center');
     game.draw(other);
-    assert.throws(() => game.callPoints(me, 10));
+    assert.throws(() => game.callPoints(me, 2));
   }
 }
 

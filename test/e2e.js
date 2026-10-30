@@ -143,10 +143,10 @@ const OUT = process.argv[2] || '.';
           }
           const mode = turns % 5;
           if (mode === 1) {
-            await p.fill('#chat-input', `${m.count}!`);
+            await p.fill("#chat-input", `${m.score}!`);
             await p.press('#chat-input', 'Enter');
           } else if (mode !== 4) {
-            await p.click(`#call-chips button[data-v="${m.count}"]`, { force: true });
+            await p.click(`#call-chips button[data-v="${m.score}"]`, { force: true });
           }
           await p.waitForTimeout(300);
         }

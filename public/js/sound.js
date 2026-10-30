@@ -161,7 +161,7 @@ const Sound = (() => {
   let lastVoiceAt = 0;
   async function voice(v, key, delay = 0) {
     if (muted || !ac()) return;
-    const buf = await loadVoice(v === 'f' ? 'f' : 'm', key);
+    const buf = await loadVoice(v === 'nar' ? 'nar' : v === 'f' ? 'f' : 'm', key);
     if (!buf) return;
     const c = ac();
     // שני אנשים לא מדברים בדיוק באותה שנייה
@@ -175,7 +175,10 @@ const Sound = (() => {
     src.start(at);
   }
   function preload(keys) {
-    for (const v of ['m', 'f']) for (const k of keys) loadVoice(v, k);
+    for (const k of keys) {
+      if (k.startsWith('nar/')) loadVoice('nar', k.slice(4));
+      else for (const v of ['m', 'f']) loadVoice(v, k);
+    }
   }
 
   // ---- אווירה: רעש חדר של בית קפה + צלצולי כוסות ונקישות רחוקות ----

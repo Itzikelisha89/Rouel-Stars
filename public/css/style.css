@@ -433,3 +433,15 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 .avatar-ring .timer, .avatar-ring .secs { z-index: 2; }
 .mic-off { position: absolute; z-index: 3; top: -4px; right: -4px; font-size: 13px; background: #0b2a1d; border-radius: 50%; width: 20px; height: 20px; display: grid; place-items: center; }
 .floaters { z-index: 6; }
+#pad .crown { font-size: 0.75em; margin-inline-end: 3px; }
+#pad td.won { background: rgba(232, 184, 74, 0.18); }
+#pad .plus { color: #8a96ad; margin: 0 1px; }
+#pad .eq { display: block; font-size: 0.7em; color: #8a96ad; line-height: 1; }
+#pad .who { font-size: 0.85em; white-space: nowrap; border-inline-start: 2px solid rgba(36, 50, 77, 0.35); }
+#pad .live { color: #8a96ad; }
+#pad .bonus, .pad-note .bonus { color: #b5341f; }
+.total-row .split { font-size: 0.8em; color: var(--muted); white-space: nowrap; }
+.total-row .split b { color: var(--gold); }
+#pad td { white-space: nowrap; }
+#pad table { font-size: 1.4em; }
+@media (max-width: 420px) { #pad table { font-size: 1.2em; } #pad th, #pad td { padding: 2px 3px; } }

@@ -141,7 +141,7 @@ function scheduleTurn(room) {
     if (p && !p.left) sys(room, `⏰ נגמר הזמן ל${p.name} – מהלך אוטומטי`);
     g.autoMove(seat);
     // המחשב (במקום שחקן שעזב) לא שוכח להכריז. מי שנגמר לו הזמן – עדיין יכול להכריז בעצמו.
-    if (bot && g.call?.seat === seat && g.call.points) g.callPoints(seat, g.call.count);
+    if (bot && g.call?.seat === seat && g.call.points) g.callPoints(seat, g.call.points);
     afterAction(room);
   }, ms);
 }
@@ -225,10 +225,10 @@ function afterAction(room) {
   const events = g.drainEvents();
   for (const ev of events) {
     const pts = (n) => `${n} ${n === 1 ? 'נקודה' : 'נקודות'}`;
-    if (ev.type === 'call' && ev.ok) sys(room, `📣 ${nameAtSeat(room, ev.seat)}: "${ev.value}!" ✓ +${pts(ev.points)}`, 'score');
+    if (ev.type === 'call' && ev.ok) sys(room, `📣 ${nameAtSeat(room, ev.seat)}: "${ev.value}!" ✓ +${pts(ev.points)} (${ev.count} על הלוח)`, 'score');
     if (ev.type === 'call' && !ev.ok)
-      sys(room, toPoint(ev.count) ? `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count} 😬 אין נקודות` : `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count}, לא היה כלום 😅`);
-    if (ev.type === 'missed') sys(room, `🤐 ${nameAtSeat(room, ev.seat)} שכח להגיד ${ev.count} – ${pts(ev.points)} הלכו!`, 'score');
+      sys(room, ev.points ? `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל זה ${ev.points} (${ev.count} על הלוח) 😬 אין נקודות` : `📣 ${nameAtSeat(room, ev.seat)} אמר ${ev.value} – אבל על הלוח ${ev.count}, לא היה כלום 😅`);
+    if (ev.type === 'missed') sys(room, `🤐 ${nameAtSeat(room, ev.seat)} שכח להגיד ${ev.points} – ${pts(ev.points)} הלכו!`, 'score');
     if (ev.type === 'play' && ev.last) sys(room, `${nameAtSeat(room, ev.seat)} הניח את האבן האחרונה – דומינו!`);
     if (ev.type === 'reachedTarget') sys(room, `🏁 ${sideLabel(room, ev.side)} הגיע${g.teams ? 'ו' : ''} ל-${g.target}! מסיימים את הסיבוב…`, 'score');
     if (ev.type === 'newHand') {
