@@ -453,3 +453,7 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 @keyframes glow { 50% { box-shadow: 0 0 18px rgba(232, 184, 74, 0.45); } }
 .seat-card .add-bot { margin-inline-start: auto; padding: 6px 10px; font-size: 0.85em; border-style: dashed; }
 @media (max-width: 420px) { .score-pill .team-chip ~ .pts { margin-inline-start: 2px; } .score-pill:has(.team-chip) .av { display: none; } }
+.btn.vs-bot { margin-top: 8px; border-style: dashed; }
+.fill-row { display: flex; gap: 8px; margin-top: 10px; }
+.fill-row .btn { flex: 1; border-style: dashed; }
+#bots-modal .menu-list .btn { justify-content: flex-start; font-size: 1em; }

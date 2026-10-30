@@ -87,6 +87,7 @@
           </div>
         </div>
         <button type="submit" class="btn primary big" id="btn-main">צור שולחן חדש</button>
+        <button type="button" class="btn big vs-bot" id="btn-vs-bot">🤖 שחק מול המחשב</button>
         <div class="join-row" id="join-row">
           <span class="or">או הצטרף עם קוד</span>
           <div class="join-inline">
@@ -129,6 +130,7 @@
         <div class="card">
           <div class="section-title">ליד השולחן <span class="muted" id="seat-count"></span></div>
           <div class="seats" id="lobby-seats"></div>
+          <div class="fill-row" id="fill-row"></div>
           <div class="spectators muted small" id="lobby-spectators"></div>
         </div>
 
@@ -230,6 +232,19 @@
       <div class="totals" id="hand-totals"></div>
       <div class="ready-row" id="ready-row"></div>
       <div class="modal-actions" id="hand-actions"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="bots-modal" hidden>
+    <div class="modal-card">
+      <h2>🤖 שחק מול המחשב</h2>
+      <p class="muted">אין עם מי לשחק? המחשב משלים לך את השולחן</p>
+      <div class="menu-list">
+        <button class="btn big" data-bots="1" data-teams="0">👤 🤖 &nbsp;אחד על אחד <small class="muted">· 2 שחקנים</small></button>
+        <button class="btn big" data-bots="3" data-teams="0">👤 🤖 🤖 🤖 &nbsp;4 שחקנים <small class="muted">· כל אחד לעצמו</small></button>
+        <button class="btn big" data-bots="3" data-teams="1">👤🤖 נגד 🤖🤖 &nbsp;4 בזוגות <small class="muted">· עם שותף מחשב</small></button>
+      </div>
+      <div class="modal-actions"><button class="btn" data-close>ביטול</button></div>
     </div>
   </div>
 

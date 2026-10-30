@@ -246,6 +246,23 @@ function initHome() {
     const res = await emit('room:create', profile);
     if (res.ok) onEntered(res.code);
   };
+  // שחק מול המחשב: פותחים שולחן, משלימים במחשבים ומתחילים מיד
+  $('#btn-vs-bot').onclick = () => {
+    if (saveProfile()) $('#bots-modal').hidden = false;
+  };
+  $$('#bots-modal [data-bots]').forEach(
+    (b) =>
+      (b.onclick = async () => {
+        $('#bots-modal').hidden = true;
+        const res = await emit('room:create', profile);
+        if (!res.ok) return;
+        onEntered(res.code);
+        await fillWithBots(1 + Number(b.dataset.bots));
+        await emit('room:settings', { teams: b.dataset.teams === '1' });
+        await emit('game:start');
+      })
+  );
+
   $('#btn-join-code').onclick = () => {
     const code = $('#code-input').value.trim().toUpperCase();
     if (code.length < 4) return toast('הקוד בן 5 תווים');
@@ -343,6 +360,25 @@ function renderLobby() {
   else hint = `${n} שחקנים · 7 אבנים לכל אחד${n === 4 ? ' · בלי קופה' : ''}`;
   start.disabled = n < 2 || (s.teams && n !== 4);
   $('#start-hint').textContent = hint;
+
+  // השלמה מהירה במחשבים
+  const fill = $('#fill-row');
+  fill.innerHTML = '';
+  if (isHost && n < 4) {
+    for (const target of n < 2 ? [2, 4] : [4]) {
+      const b = mkBtn(`🤖 השלם ל-${target}`, `הוסף ${target - n} שחקני מחשב`, () => fillWithBots(target));
+      b.className = 'btn';
+      fill.appendChild(b);
+    }
+  }
+}
+
+async function fillWithBots(target) {
+  const have = () => S.room?.players.length || 1;
+  for (let i = have(); i < target; i++) {
+    const res = await emit('room:addBot');
+    if (!res.ok) break;
+  }
 }
 
 function mkBtn(label, title, fn) {
