@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#0f3d2a">
+  <title>דומינו חמישיות</title>
+  <meta name="description" content="דומינו חמישיות אונליין – 2 עד 4 שחקנים, צ'אט, ניקוד בכפולות של 5">
+  <meta property="og:title" content="בוא לשחק איתי דומינו חמישיות 🀄">
+  <meta property="og:description" content="הצטרף לשולחן בקישור, בחר שם ושחק">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 2'><rect width='1' height='2' rx='.15' fill='%23f6efdf'/><line x1='.12' y1='1' x2='.88' y2='1' stroke='%23555' stroke-width='.05'/><g fill='%23111'><circle cx='.26' cy='.26' r='.09'/><circle cx='.74' cy='.26' r='.09'/><circle cx='.5' cy='.5' r='.09'/><circle cx='.26' cy='.74' r='.09'/><circle cx='.74' cy='.74' r='.09'/><circle cx='.5' cy='1.5' r='.09'/></g></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- הגדרות גרפיות משותפות לכל האבנים -->
+  <svg class="defs" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-ivory" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fffdf6"/><stop offset=".55" stop-color="#f3ead6"/><stop offset="1" stop-color="#e2d5b8"/>
+      </linearGradient>
+      <radialGradient id="g-pip" cx=".4" cy=".35" r=".7">
+        <stop offset="0" stop-color="#3b3b3b"/><stop offset=".6" stop-color="#121212"/><stop offset="1" stop-color="#000"/>
+      </radialGradient>
+      <radialGradient id="g-brass" cx=".35" cy=".3" r=".8">
+        <stop offset="0" stop-color="#fff2b8"/><stop offset=".45" stop-color="#d4a73a"/><stop offset="1" stop-color="#7a5612"/>
+      </radialGradient>
+      <linearGradient id="g-back" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#7a1f2b"/><stop offset="1" stop-color="#3d0b13"/>
+      </linearGradient>
+      <filter id="f-shadow" x="-30%" y="-30%" width="160%" height="170%">
+        <feDropShadow dx="0.05" dy="0.09" stdDeviation="0.06" flood-color="#000" flood-opacity=".5"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <div id="conn-banner" class="conn-banner" hidden>מתחבר מחדש לשרת…</div>
+
+  <!-- ===== מסך פתיחה / הרשמה ===== -->
+  <section id="screen-home" class="screen active">
+    <div class="home-wrap">
+      <div class="logo">
+        <div class="logo-tiles" id="logo-tiles"></div>
+        <h1>חמישיות</h1>
+        <p class="tagline">דומינו All Fives · 2–4 שחקנים · כל כפולה של 5 שווה נקודות</p>
+      </div>
+
+      <div class="card" id="invite-card" hidden>
+        <div class="invite">הוזמנת לשולחן <b id="invite-code"></b> 🎲</div>
+      </div>
+
+      <form class="card" id="profile-form" autocomplete="off">
+        <label class="field">
+          <span>איך יקראו לך ליד השולחן?</span>
+          <input id="name-input" maxlength="16" placeholder="השם שלך" required>
+        </label>
+        <div class="field">
+          <span>בחר דמות</span>
+          <div class="avatars" id="avatar-grid"></div>
+        </div>
+        <button type="submit" class="btn primary big" id="btn-main">צור שולחן חדש</button>
+        <div class="join-row" id="join-row">
+          <span class="or">או הצטרף עם קוד</span>
+          <div class="join-inline">
+            <input id="code-input" maxlength="5" placeholder="ABCDE" dir="ltr" autocapitalize="characters">
+            <button type="button" class="btn" id="btn-join-code">הצטרף</button>
+          </div>
+        </div>
+        <button type="button" class="btn link" id="btn-new-instead" hidden>לא, אני רוצה לפתוח שולחן משלי</button>
+      </form>
+
+      <button class="btn link" data-open="rules-modal">📖 איך משחקים חמישיות?</button>
+    </div>
+  </section>
+
+  <!-- ===== לובי ===== -->
+  <section id="screen-lobby" class="screen">
+    <div class="lobby-layout">
+      <div class="lobby-main">
+        <header class="lobby-head">
+          <button class="icon-btn" id="lobby-leave" title="יציאה">✕</button>
+          <div>
+            <div class="muted small">שולחן</div>
+            <div class="room-code" id="lobby-code"></div>
+          </div>
+          <button class="icon-btn" data-open="rules-modal" title="חוקים">📖</button>
+        </header>
+
+        <div class="card share">
+          <div class="share-title">הזמן חברים – שלח להם את הקישור:</div>
+          <div class="share-row">
+            <input id="share-link" readonly dir="ltr">
+            <button class="btn" id="btn-copy">העתק</button>
+          </div>
+          <div class="share-buttons">
+            <a class="btn whatsapp" id="btn-whatsapp" target="_blank" rel="noopener">שלח בוואטסאפ</a>
+            <button class="btn" id="btn-share-native" hidden>שתף…</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">ליד השולחן <span class="muted" id="seat-count"></span></div>
+          <div class="seats" id="lobby-seats"></div>
+          <div class="spectators muted small" id="lobby-spectators"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">הגדרות <span class="muted small" id="settings-note"></span></div>
+          <div class="setting">
+            <span>משחקים עד</span>
+            <div class="seg" id="set-target">
+              <button data-v="100">100</button><button data-v="150">150</button><button data-v="200">200</button><button data-v="250">250</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span>זמן לתור</span>
+            <div class="seg" id="set-time">
+              <button data-v="0">ללא</button><button data-v="20">20 ש׳</button><button data-v="30">30 ש׳</button><button data-v="60">דקה</button>
+            </div>
+          </div>
+          <div class="setting">
+            <span>4 שחקנים בזוגות <small class="muted">(שותפים יושבים זה מול זה)</small></span>
+            <div class="seg" id="set-teams"><button data-v="0">כל אחד לעצמו</button><button data-v="1">זוגות</button></div>
+          </div>
+        </div>
+
+        <button class="btn primary big" id="btn-start">התחל משחק</button>
+        <div class="muted center small" id="start-hint"></div>
+      </div>
+      <div class="chat-dock" id="lobby-chat-dock"></div>
+    </div>
+  </section>
+
+  <!-- ===== משחק ===== -->
+  <section id="screen-game" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" id="game-menu" title="תפריט">☰</button>
+      <div class="scoreboard" id="scoreboard"></div>
+      <button class="icon-btn chat-btn" id="btn-chat" title="צ'אט">💬<span class="badge" id="chat-badge" hidden>0</span></button>
+    </header>
+
+    <div class="table-wrap">
+      <div class="table" id="table">
+        <div class="seat-slot top" id="slot-top"></div>
+        <div class="seat-slot left" id="slot-left"></div>
+        <div class="seat-slot right" id="slot-right"></div>
+        <div class="felt" id="felt">
+          <svg id="board" class="board" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="felt-info">
+            <div class="count" id="count-pill" title="סכום הקצוות"></div>
+          </div>
+          <div class="boneyard" id="boneyard" title="הקופה"></div>
+          <div class="hand-no" id="hand-no"></div>
+          <div class="floaters" id="floaters"></div>
+        </div>
+      </div>
+      <div class="chat-dock" id="game-chat-dock"></div>
+    </div>
+
+    <div class="me-area" id="me-area">
+      <div class="status-row">
+        <div class="me-badge" id="me-badge"></div>
+        <div class="status" id="status"></div>
+        <div class="actions">
+          <button class="btn" id="btn-sort" title="סדר את האבנים">⇅</button>
+          <button class="btn gold" id="btn-draw" hidden>שלוף מהקופה</button>
+          <button class="btn" id="btn-pass" hidden>פאס</button>
+        </div>
+      </div>
+      <div class="hand" id="hand"></div>
+      <div class="reactions" id="reactions"></div>
+    </div>
+  </section>
+
+  <!-- ===== צ'אט (מוזז בין הלובי למשחק) ===== -->
+  <aside class="chat" id="chat">
+    <div class="chat-head">
+      <b>צ'אט השולחן</b>
+      <button class="icon-btn chat-close" id="chat-close">✕</button>
+    </div>
+    <div class="chat-log" id="chat-log"></div>
+    <div class="typing" id="typing"></div>
+    <div class="quick" id="quick-phrases"></div>
+    <form class="chat-form" id="chat-form" autocomplete="off">
+      <input id="chat-input" maxlength="300" placeholder="כתוב משהו לשולחן…">
+      <button class="btn primary" type="submit">שלח</button>
+    </form>
+  </aside>
+  <div class="chat-scrim" id="chat-scrim"></div>
+
+  <!-- ===== חלונות ===== -->
+  <div class="modal" id="hand-modal" hidden>
+    <div class="modal-card wide">
+      <h2 id="hand-title"></h2>
+      <p class="muted" id="hand-sub"></p>
+      <div class="reveal" id="hand-reveal"></div>
+      <div class="totals" id="hand-totals"></div>
+      <div class="ready-row" id="ready-row"></div>
+      <div class="modal-actions" id="hand-actions"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="menu-modal" hidden>
+    <div class="modal-card">
+      <h2>תפריט</h2>
+      <div class="menu-list">
+        <button class="btn" id="m-sound"></button>
+        <button class="btn" id="m-hints"></button>
+        <button class="btn" id="m-copy">🔗 העתק קישור לשולחן</button>
+        <button class="btn" data-open="rules-modal">📖 חוקי המשחק</button>
+        <button class="btn" id="m-lobby" hidden>↩ חזרה ללובי (מארח)</button>
+        <button class="btn danger" id="m-leave">🚪 עזוב את השולחן</button>
+      </div>
+      <div class="modal-actions"><button class="btn primary" data-close>סגור</button></div>
+    </div>
+  </div>
+
+  <div class="modal" id="rules-modal" hidden>
+    <div class="modal-card wide rules">
+      <h2>חוקי חמישיות (All Fives)</h2>
+      <ol>
+        <li><b>חלוקה:</b> בשניים או שלושה שחקנים כל אחד מקבל 7 אבנים, בארבעה – 5. השאר נשארות בקופה.</li>
+        <li><b>פתיחה:</b> ביד הראשונה פותח מי שמחזיק את הכפולה הגבוהה ביותר, ומניח אותה. בידיים הבאות פותח מי שניצח ביד הקודמת – עם איזו אבן שירצה.</li>
+        <li><b>מהלך:</b> מניחים אבן שאחד מצדדיה תואם לקצה פתוח. כפולות מונחות לרוחב.</li>
+        <li><b>ספינר:</b> הכפולה הראשונה שעל השולחן היא "ספינר" – אחרי שתפסו את שני צדדיה, אפשר להמשיך גם למעלה ולמטה. עד ארבעה קצוות פתוחים!</li>
+        <li><b>ניקוד:</b> אחרי כל הנחה סוכמים את כל הקצוות הפתוחים (כפולה בקצה נספרת פעמיים). אם הסכום מתחלק ב-5 – 5, 10, 15, 20… – מקבלים אותו כנקודות.</li>
+        <li><b>אין מה לשים?</b> שולפים מהקופה אבן אחרי אבן עד שאפשר לשחק. אם הקופה ריקה – פאס.</li>
+        <li><b>סוף יד:</b> מי שגמר את האבנים מקבל את סכום הנקודות שנשארו ליריבים, מעוגל ל-5 הקרוב. אם המשחק נחסם – מי שנשאר לו הכי מעט מקבל את ההפרש.</li>
+        <li><b>ניצחון:</b> הראשון שמגיע ליעד (100/150/200/250) – גם באמצע יד.</li>
+        <li><b>זוגות:</b> בארבעה אפשר לשחק בזוגות – שותפים יושבים זה מול זה והניקוד משותף.</li>
+      </ol>
+      <div class="modal-actions"><button class="btn primary" data-close>הבנתי, יאללה</button></div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <canvas id="confetti" class="confetti"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/sound.js"></script>
+  <script src="/js/tiles.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

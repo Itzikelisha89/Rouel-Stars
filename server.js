@@ -1,0 +1,492 @@
+'use strict';
+const path = require('path');
+const http = require('http');
+const crypto = require('crypto');
+const express = require('express');
+const { Server } = require('socket.io');
+const { Game } = require('./game');
+
+const PORT = process.env.PORT || 3000;
+const AVATARS = ['😎', '🦁', '🐯', '🦊', '🐻', '🐼', '🐸', '🦉', '🐙', '🦄', '🐲', '👑', '🎩', '🧔', '👵', '👴', '🧕', '🕵️', '🤠', '🥷'];
+const TARGETS = [100, 150, 200, 250];
+const TURN_TIMES = [0, 20, 30, 60];
+const DISCONNECTED_TURN_MS = 45000;
+const HAND_BREAK_MS = 45000;
+
+const app = express();
+const PUBLIC = path.join(__dirname, 'public');
+app.use(express.static(PUBLIC, { maxAge: '1h' }));
+app.get('/r/:code', (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
+app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
+
+const server = http.createServer(app);
+const io = new Server(server, { pingInterval: 10000, pingTimeout: 20000 });
+
+const rooms = new Map();
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+const newCode = () => {
+  let c;
+  do c = Array.from({ length: 5 }, () => CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]).join('');
+  while (rooms.has(c));
+  return c;
+};
+const pidOf = (token) => crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 16);
+const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+
+function profileFrom(data) {
+  const name = clean(data?.name, 16);
+  if (!name) throw new Error('צריך שם כדי לשבת לשולחן');
+  const avatar = AVATARS.includes(data?.avatar) ? data.avatar : AVATARS[0];
+  return { name, avatar };
+}
+
+function createRoom(hostPid) {
+  const room = {
+    code: newCode(),
+    hostPid,
+    players: [],
+    spectators: [],
+    settings: { target: 150, teams: false, turnTime: 0 },
+    game: null,
+    seatPids: [],
+    chat: [],
+    turnTimer: null,
+    handTimer: null,
+    lastActive: Date.now(),
+  };
+  rooms.set(room.code, room);
+  return room;
+}
+
+const findMember = (room, pid) => room.players.find((p) => p.pid === pid) || room.spectators.find((p) => p.pid === pid);
+const seatOf = (room, pid) => (room.game ? room.seatPids.indexOf(pid) : -1);
+const nameOf = (room, pid) => findMember(room, pid)?.name || 'שחקן';
+const nameAtSeat = (room, seat) => nameOf(room, room.seatPids[seat]);
+
+function sideLabel(room, side) {
+  const g = room.game;
+  if (!g.teams) return nameAtSeat(room, side);
+  return `${nameAtSeat(room, side)} ו${nameAtSeat(room, side + 2)}`;
+}
+
+function pushChat(room, msg) {
+  const full = { id: crypto.randomUUID(), ts: Date.now(), ...msg };
+  room.chat.push(full);
+  if (room.chat.length > 150) room.chat.shift();
+  io.to(room.code).emit('chat', full);
+}
+const sys = (room, text, kind = 'system') => pushChat(room, { kind, text });
+
+function publicRoom(room, pid) {
+  const seat = seatOf(room, pid);
+  const g = room.game;
+  return {
+    code: room.code,
+    now: Date.now(),
+    hostPid: room.hostPid,
+    me: pid,
+    role: room.players.some((p) => p.pid === pid) ? 'player' : 'spectator',
+    players: room.players.map(({ pid, name, avatar, connected, left }) => ({ pid, name, avatar, connected, left })),
+    spectators: room.spectators.map(({ pid, name, avatar }) => ({ pid, name, avatar })),
+    settings: room.settings,
+    game: g
+      ? {
+          ...g.view(seat >= 0 ? seat : null),
+          seats: room.seatPids,
+          mySeat: seat,
+          deadline: g.deadline || null,
+          handBreakEnds: g.state === 'handOver' && g.handOverAt ? g.handOverAt + HAND_BREAK_MS : null,
+        }
+      : null,
+  };
+}
+
+function broadcast(room) {
+  room.lastActive = Date.now();
+  for (const m of [...room.players, ...room.spectators]) {
+    const payload = publicRoom(room, m.pid);
+    for (const sid of m.sockets) io.to(sid).emit('room', payload);
+  }
+}
+
+function scheduleTurn(room) {
+  clearTimeout(room.turnTimer);
+  room.turnTimer = null;
+  const g = room.game;
+  if (!g) return;
+  g.deadline = null;
+  if (g.state !== 'playing') return;
+  const seat = g.turn;
+  const p = room.players.find((x) => x.pid === room.seatPids[seat]);
+  let ms = null;
+  if (!p || p.left) ms = 1400;
+  else if (!p.connected) ms = DISCONNECTED_TURN_MS;
+  if (room.settings.turnTime && p && !p.left) ms = Math.min(ms ?? Infinity, room.settings.turnTime * 1000);
+  if (ms == null) return;
+  if (p && !p.left) g.deadline = Date.now() + ms;
+  room.turnTimer = setTimeout(() => {
+    if (room.game !== g || g.state !== 'playing' || g.turn !== seat) return;
+    if (p && !p.left) sys(room, `⏰ נגמר הזמן ל${p.name} – מהלך אוטומטי`);
+    g.autoMove(seat);
+    afterAction(room);
+  }, ms);
+}
+
+function scheduleHandBreak(room) {
+  clearTimeout(room.handTimer);
+  room.handTimer = null;
+  const g = room.game;
+  if (!g || g.state !== 'handOver') return;
+  room.handTimer = setTimeout(() => {
+    if (room.game === g && g.state === 'handOver') nextHand(room);
+  }, HAND_BREAK_MS);
+}
+
+function nextHand(room) {
+  const g = room.game;
+  clearTimeout(room.handTimer);
+  g.startHand();
+  afterAction(room);
+}
+
+function maybeAllReady(room) {
+  const g = room.game;
+  if (!g || g.state !== 'handOver') return;
+  const needed = room.seatPids
+    .map((pid, seat) => ({ p: room.players.find((x) => x.pid === pid), seat }))
+    .filter(({ p }) => p && p.connected && !p.left);
+  if (needed.every(({ seat }) => g.ready.has(seat))) nextHand(room);
+}
+
+function afterAction(room) {
+  const g = room.game;
+  const events = g.drainEvents();
+  for (const ev of events) {
+    if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.scored}!`, 'score');
+    if (ev.type === 'newHand') {
+      const opener = ev.required ? ` – ${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : ` – ${nameAtSeat(room, ev.starter)} פותח`;
+      sys(room, `🀄 יד ${ev.handNo} חולקה${opener}`);
+    }
+    if (ev.type === 'handOver' || ev.type === 'gameOver') {
+      if (ev.reason === 'domino') sys(room, `🙌 ${nameAtSeat(room, ev.winnerSeat)} גמר את האבנים! +${ev.points}`, 'score');
+      if (ev.reason === 'blocked')
+        sys(room, ev.winSide == null ? '🔒 המשחק נחסם – תיקו, אף אחד לא מקבל' : `🔒 המשחק נחסם – ${sideLabel(room, ev.winSide)} עם הכי מעט: +${ev.points}`, 'score');
+    }
+    if (ev.type === 'gameOver') sys(room, `🏆 ${sideLabel(room, ev.winSide)} ניצח${g.teams ? 'ו' : ''} את המשחק!`, 'score');
+  }
+  if (events.length) io.to(room.code).emit('fx', events);
+  scheduleTurn(room);
+  if (g.state === 'handOver') scheduleHandBreak(room);
+  broadcast(room);
+}
+
+function startGame(room) {
+  const active = room.players.filter((p) => !p.left);
+  if (active.length < 2) throw new Error('צריך לפחות 2 שחקנים');
+  if (active.length > 4) throw new Error('מקסימום 4 שחקנים');
+  if (room.settings.teams && active.length !== 4) throw new Error('משחק בזוגות דורש בדיוק 4 שחקנים');
+  room.players = active;
+  room.seatPids = active.map((p) => p.pid);
+  room.game = new Game({ players: active.length, target: room.settings.target, teams: room.settings.teams });
+  sys(room, `🎲 המשחק התחיל! עד ${room.settings.target} נקודות${room.game.teams ? ' · בזוגות' : ''}`);
+  afterAction(room);
+}
+
+function backToLobby(room) {
+  clearTimeout(room.turnTimer);
+  clearTimeout(room.handTimer);
+  room.game = null;
+  room.seatPids = [];
+  room.players = room.players.filter((p) => !p.left);
+  while (room.players.length < 4 && room.spectators.length) {
+    const s = room.spectators.shift();
+    room.players.push({ ...s, left: false });
+  }
+  if (!room.players.some((p) => p.pid === room.hostPid) && room.players.length) room.hostPid = room.players[0].pid;
+  broadcast(room);
+}
+
+function detach(socket) {
+  const code = socket.data.code;
+  const room = code && rooms.get(code);
+  socket.data.code = null;
+  if (!room) return null;
+  socket.leave(code);
+  const m = findMember(room, socket.data.pid);
+  if (m) {
+    m.sockets.delete(socket.id);
+    m.connected = m.sockets.size > 0;
+    if (!m.connected) m.disconnectedAt = Date.now();
+  }
+  return { room, member: m };
+}
+
+function removeMember(room, pid) {
+  const inGame = room.game && room.seatPids.includes(pid) && room.game.state !== 'gameOver';
+  const p = room.players.find((x) => x.pid === pid);
+  if (p && inGame) {
+    p.left = true;
+    p.connected = false;
+    sys(room, `🚪 ${p.name} עזב – המחשב ישחק במקומו`);
+  } else if (p) {
+    room.players = room.players.filter((x) => x.pid !== pid);
+    sys(room, `🚪 ${p.name} עזב את השולחן`);
+  } else {
+    room.spectators = room.spectators.filter((x) => x.pid !== pid);
+  }
+  if (room.hostPid === pid) {
+    const next = room.players.find((x) => !x.left && x.connected) || room.players.find((x) => !x.left);
+    if (next) {
+      room.hostPid = next.pid;
+      sys(room, `👑 ${next.name} מארח עכשיו את השולחן`);
+    }
+  }
+  if (room.game) {
+    if (room.game.state === 'playing') scheduleTurn(room);
+    maybeAllReady(room);
+  }
+  broadcast(room);
+}
+
+function joinRoom(socket, room, profile) {
+  detach(socket);
+  const pid = socket.data.pid;
+  let m = findMember(room, pid);
+  if (m && m.left) {
+    // חזר אחרי שעזב: חוזר לכיסא שלו
+    m.left = false;
+    sys(room, `👋 ${m.name} חזר לשולחן`);
+  }
+  if (m) {
+    if (!room.game) Object.assign(m, profile);
+    if (!m.connected && Date.now() - (m.disconnectedAt || 0) > 8000) sys(room, `🔌 ${m.name} התחבר מחדש`);
+  } else {
+    m = { pid, ...profile, sockets: new Set(), connected: false, left: false };
+    if (!room.game && room.players.length < 4) {
+      room.players.push(m);
+      sys(room, `${m.avatar} ${m.name} התיישב לשולחן`);
+    } else {
+      room.spectators.push(m);
+      sys(room, `👀 ${m.name} צופה במשחק`);
+    }
+  }
+  m.sockets.add(socket.id);
+  m.connected = true;
+  socket.join(room.code);
+  socket.data.code = room.code;
+  socket.emit('chatHistory', room.chat);
+  if (room.game && room.seatPids[room.game.turn] === pid) scheduleTurn(room);
+  broadcast(room);
+  return m;
+}
+
+const lastChat = new Map();
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (typeof token !== 'string' || token.length < 16 || token.length > 100) return next(new Error('bad token'));
+  socket.data.pid = pidOf(token);
+  next();
+});
+
+io.on('connection', (socket) => {
+  const pid = socket.data.pid;
+  const roomOf = () => rooms.get(socket.data.code);
+
+  const on = (event, fn) =>
+    socket.on(event, (data, ack) => {
+      try {
+        const res = fn(data || {});
+        if (typeof ack === 'function') ack({ ok: true, ...(res || {}) });
+      } catch (err) {
+        if (typeof ack === 'function') ack({ ok: false, error: err.message });
+      }
+    });
+
+  const gameCtx = () => {
+    const room = roomOf();
+    if (!room?.game) throw new Error('אין משחק פעיל');
+    const seat = seatOf(room, pid);
+    if (seat < 0) throw new Error('אתה צופה במשחק הזה');
+    return { room, g: room.game, seat };
+  };
+
+  const hostCtx = () => {
+    const room = roomOf();
+    if (!room) throw new Error('לא נמצא שולחן');
+    if (room.hostPid !== pid) throw new Error('רק המארח יכול לעשות את זה');
+    return room;
+  };
+
+  on('room:create', (data) => {
+    const profile = profileFrom(data);
+    const room = createRoom(pid);
+    joinRoom(socket, room, profile);
+    return { code: room.code };
+  });
+
+  on('room:join', (data) => {
+    const room = rooms.get(clean(data.code, 8).toUpperCase());
+    if (!room) throw new Error('השולחן לא נמצא – אולי הקישור ישן?');
+    const m = joinRoom(socket, room, profileFrom(data));
+    return { code: room.code, role: room.players.includes(m) ? 'player' : 'spectator' };
+  });
+
+  on('room:leave', () => {
+    const r = detach(socket);
+    if (r) removeMember(r.room, pid);
+  });
+
+  on('room:settings', (data) => {
+    const room = hostCtx();
+    if (room.game) throw new Error('אי אפשר לשנות הגדרות באמצע משחק');
+    const s = room.settings;
+    if (TARGETS.includes(data.target)) s.target = data.target;
+    if (typeof data.teams === 'boolean') s.teams = data.teams;
+    if (TURN_TIMES.includes(data.turnTime)) s.turnTime = data.turnTime;
+    broadcast(room);
+  });
+
+  on('room:kick', (data) => {
+    const room = hostCtx();
+    if (room.game) throw new Error('אפשר להוציא שחקנים רק בלובי');
+    const target = room.players.find((p) => p.pid === data.pid);
+    if (!target || target.pid === pid) return;
+    room.players = room.players.filter((p) => p !== target);
+    room.spectators.push({ ...target });
+    for (const sid of target.sockets) io.to(sid).emit('toast', 'המארח העביר אותך לצפייה');
+    sys(room, `${target.name} הועבר לצפייה`);
+    broadcast(room);
+  });
+
+  on('room:move', (data) => {
+    const room = hostCtx();
+    if (room.game) return;
+    const i = room.players.findIndex((p) => p.pid === data.pid);
+    const j = i + (data.dir > 0 ? 1 : -1);
+    if (i < 0 || j < 0 || j >= room.players.length) return;
+    [room.players[i], room.players[j]] = [room.players[j], room.players[i]];
+    broadcast(room);
+  });
+
+  on('game:start', () => {
+    const room = hostCtx();
+    if (room.game && room.game.state !== 'gameOver') throw new Error('המשחק כבר רץ');
+    startGame(room);
+  });
+
+  on('game:rematch', () => {
+    const room = hostCtx();
+    if (!room.game || room.game.state !== 'gameOver') throw new Error('המשחק עוד לא נגמר');
+    if (room.players.some((p) => p.left)) {
+      backToLobby(room);
+      return;
+    }
+    startGame(room);
+  });
+
+  on('room:lobby', () => {
+    const room = hostCtx();
+    if (room.game && room.game.state === 'playing') throw new Error('המשחק עוד באמצע');
+    backToLobby(room);
+  });
+
+  on('game:play', (data) => {
+    const { room, g, seat } = gameCtx();
+    g.play(seat, String(data.tileId), String(data.end));
+    afterAction(room);
+  });
+
+  on('game:draw', () => {
+    const { room, g, seat } = gameCtx();
+    const tile = g.draw(seat);
+    afterAction(room);
+    return { tileId: tile.id };
+  });
+
+  on('game:pass', () => {
+    const { room, g, seat } = gameCtx();
+    g.pass(seat);
+    afterAction(room);
+  });
+
+  on('game:ready', () => {
+    const { room, g, seat } = gameCtx();
+    g.markReady(seat);
+    broadcast(room);
+    maybeAllReady(room);
+  });
+
+  on('chat:send', (data) => {
+    const room = roomOf();
+    if (!room) throw new Error('לא בשולחן');
+    const now = Date.now();
+    if (now - (lastChat.get(pid) || 0) < 500) throw new Error('לאט לאט 🙂');
+    lastChat.set(pid, now);
+    const text = clean(data.text, 300);
+    if (!text) return;
+    const m = findMember(room, pid);
+    pushChat(room, { kind: 'user', pid, name: m.name, avatar: m.avatar, text });
+  });
+
+  on('chat:typing', () => {
+    const room = roomOf();
+    if (room) socket.to(room.code).emit('typing', { pid });
+  });
+
+  on('react', (data) => {
+    const room = roomOf();
+    const emoji = clean(data.emoji, 4);
+    if (room && ['👍', '😂', '😮', '😡', '🔥', '👏', '😭', '🙏'].includes(emoji)) io.to(room.code).emit('react', { pid, emoji });
+  });
+
+  socket.on('disconnect', () => {
+    const r = detach(socket);
+    if (!r || !r.member) return;
+    const { room, member } = r;
+    if (!member.connected) {
+      setTimeout(() => {
+        if (!member.connected && !member.left && findMember(room, member.pid) === member) {
+          sys(room, `📴 ${member.name} התנתק`);
+          if (room.game) maybeAllReady(room);
+          broadcast(room);
+        }
+      }, 8000);
+      if (room.game && room.seatPids[room.game.turn] === member.pid) scheduleTurn(room);
+    }
+    broadcast(room);
+  });
+});
+
+// תחזוקה: העברת אירוח משחקן מנותק, ניקוי שולחנות נטושים
+setInterval(() => {
+  const now = Date.now();
+  for (const room of rooms.values()) {
+    const everyone = [...room.players, ...room.spectators];
+    if (!everyone.some((m) => m.connected) && now - room.lastActive > 2 * 3600 * 1000) {
+      clearTimeout(room.turnTimer);
+      clearTimeout(room.handTimer);
+      rooms.delete(room.code);
+      continue;
+    }
+    const host = room.players.find((p) => p.pid === room.hostPid);
+    if ((!host || !host.connected) && now - (host?.disconnectedAt || 0) > 30000) {
+      const next = room.players.find((p) => p.connected && !p.left);
+      if (next && next.pid !== room.hostPid) {
+        room.hostPid = next.pid;
+        sys(room, `👑 ${next.name} מארח עכשיו את השולחן`);
+        broadcast(room);
+      }
+    }
+    if (!room.game) {
+      const stale = room.players.filter((p) => !p.connected && now - (p.disconnectedAt || now) > 10 * 60 * 1000);
+      if (stale.length) {
+        room.players = room.players.filter((p) => !stale.includes(p));
+        broadcast(room);
+      }
+    }
+  }
+}, 5000).unref();
+
+server.listen(PORT, () => console.log(`🀄 דומינו חמישיות רץ על http://localhost:${PORT}`));
