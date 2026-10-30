@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('assert');
-const { Game, boardCount, openEnds, placeOn, emptyBoard, round5 } = require('../game');
+const { Game, boardCount, openEnds, placeOn, emptyBoard, round5, toPoints, TARGET } = require('../game');
 
 const T = (a, b) => ({ id: `${Math.min(a, b)}${Math.max(a, b)}`, a, b });
 
@@ -33,11 +33,17 @@ const T = (a, b) => ({ id: `${Math.min(a, b)}${Math.max(a, b)}`, a, b });
 }
 assert.strictEqual(round5(12), 10);
 assert.strictEqual(round5(13), 15);
+assert.strictEqual(toPoints(15), 3, '15 על הלוח = 3 נקודות');
+assert.strictEqual(toPoints(14), 0);
+assert.strictEqual(TARGET, 51);
 
 // --- סימולציה: אלפי משחקים אקראיים, בדיקת שמירת אבנים וחוקיות ---
 for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
   for (let g = 0; g < 400; g++) {
-    const game = new Game({ players: n, target: 150, teams });
+    const game = new Game({ players: n, teams });
+    if (game.handNo === 1 && n === 4) assert.ok(game.hands[game.starter].some((t) => t.id === '66') && game.required === '66', 'בארבעה תמיד 6:6 פותח');
+    if (n === 4) assert.strictEqual(game.boneyard.length, 0);
+    if (n < 4 && !game.hands.some((h) => h.some((t) => t.id === '66'))) assert.ok(game.required === '55' || !game.hands.some((h) => h.some((t) => t.id === '55')), 'בלי 6:6 – פותח 5:5');
     let guard = 0;
     while (game.state !== 'gameOver') {
       if (++guard > 5000) throw new Error('לולאה אינסופית');
@@ -63,8 +69,7 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
       }
       game.drainEvents();
     }
-    assert.ok(game.scores[game.winnerSide] >= 150);
-    assert.ok(game.scores.every((s) => s % 5 === 0), 'כל הניקוד בכפולות של 5');
+    assert.ok(game.scores[game.winnerSide] >= 51);
   }
 }
 

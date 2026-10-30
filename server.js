@@ -4,11 +4,10 @@ const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
 const { Server } = require('socket.io');
-const { Game } = require('./game');
+const { Game, TARGET } = require('./game');
 
 const PORT = process.env.PORT || 3000;
 const AVATARS = ['😎', '🦁', '🐯', '🦊', '🐻', '🐼', '🐸', '🦉', '🐙', '🦄', '🐲', '👑', '🎩', '🧔', '👵', '👴', '🧕', '🕵️', '🤠', '🥷'];
-const TARGETS = [100, 150, 200, 250];
 const TURN_MS = 30000; // גג של 30 שניות לכל תור
 const TURN_GRACE_MS = 700; // מרווח קטן לעיכובי רשת
 const HAND_BREAK_MS = 45000;
@@ -47,7 +46,7 @@ function createRoom(hostPid) {
     hostPid,
     players: [],
     spectators: [],
-    settings: { target: 150, teams: false, turnTime: TURN_MS / 1000 },
+    settings: { target: TARGET, teams: false, turnTime: TURN_MS / 1000 },
     game: null,
     seatPids: [],
     chat: [],
@@ -167,7 +166,7 @@ function afterAction(room) {
   const g = room.game;
   const events = g.drainEvents();
   for (const ev of events) {
-    if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.scored}!`, 'score');
+    if (ev.type === 'play' && ev.scored) sys(room, `🎯 ${nameAtSeat(room, ev.seat)} עשה ${ev.count} → +${ev.scored} ${ev.scored === 1 ? 'נקודה' : 'נקודות'}`, 'score');
     if (ev.type === 'newHand') {
       const opener = ev.required ? ` – ${nameAtSeat(room, ev.starter)} פותח עם ${ev.required[0]}|${ev.required[1]}` : ` – ${nameAtSeat(room, ev.starter)} פותח`;
       sys(room, `🀄 יד ${ev.handNo} חולקה${opener}`);
@@ -346,7 +345,6 @@ io.on('connection', (socket) => {
     const room = hostCtx();
     if (room.game) throw new Error('אי אפשר לשנות הגדרות באמצע משחק');
     const s = room.settings;
-    if (TARGETS.includes(data.target)) s.target = data.target;
     if (typeof data.teams === 'boolean') s.teams = data.teams;
     broadcast(room);
   });

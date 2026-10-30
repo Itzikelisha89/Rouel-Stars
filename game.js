@@ -4,7 +4,11 @@
 
 const crypto = require('crypto');
 
-const HAND_SIZE = { 2: 7, 3: 7, 4: 5 };
+// כל שחקן מקבל 7. בארבעה מחלקים את כל 28 האבנים, ולכן 6:6 תמיד אצל מישהו.
+const HAND_SIZE = { 2: 7, 3: 7, 4: 7 };
+const TARGET = 51;
+// כל 5 בסכום הקצוות = נקודה אחת (15 על הלוח = 3 נקודות)
+const toPoints = (sum) => (sum > 0 && sum % 5 === 0 ? sum / 5 : 0);
 const ENDS = ['left', 'right', 'up', 'down'];
 
 function fullSet() {
@@ -86,7 +90,7 @@ function placeOn(board, tile, end) {
 }
 
 class Game {
-  constructor({ players, target = 150, teams = false }) {
+  constructor({ players, target = TARGET, teams = false }) {
     this.n = players;
     this.target = target;
     this.teams = !!teams && players === 4;
@@ -119,7 +123,7 @@ class Game {
         starter = this.nextStarter;
         break;
       }
-      // יד ראשונה: מי שמחזיק את הכפולה הגבוהה ביותר פותח איתה
+      // יד ראשונה: 6:6 פותח. אם היא בקופה (פחות מ-4 שחקנים) – 5:5, וכן הלאה
       let best = -1;
       hands.forEach((h, seat) =>
         h.forEach((t) => {
@@ -169,7 +173,7 @@ class Game {
       placeOn(copy, hand.find((t) => t.id === m.tileId), m.end);
       const c = boardCount(copy);
       m.count = c;
-      m.score = c > 0 && c % 5 === 0 ? c : 0;
+      m.score = toPoints(c);
     }
     return moves;
   }
@@ -190,7 +194,7 @@ class Game {
     this.required = null;
     this.passes = 0;
     const count = boardCount(this.board);
-    const scored = count > 0 && count % 5 === 0 ? count : 0;
+    const scored = toPoints(count);
     const side = this.sideOf(seat);
     if (scored) this.scores[side] += scored;
     this.lastMove = { seat, tileId, end, scored, count };
@@ -250,7 +254,7 @@ class Game {
     if (winnerSeat != null) {
       reason = 'domino';
       winSide = this.sideOf(winnerSeat);
-      points = round5(sidePips.reduce((s, p, i) => (i === winSide ? s : s + p), 0));
+      points = round5(sidePips.reduce((s, p, i) => (i === winSide ? s : s + p), 0)) / 5;
       this.nextStarter = winnerSeat;
     } else {
       reason = 'blocked';
@@ -259,7 +263,7 @@ class Game {
       if (lows.length === 1) {
         winSide = lows[0];
         const others = sidePips.reduce((s, p, i) => (i === winSide ? s : s + p), 0);
-        points = round5(others - min);
+        points = round5(others - min) / 5;
         let best = null;
         handPips.forEach((p, seat) => {
           if (this.sideOf(seat) === winSide && (best == null || p < handPips[best])) best = seat;
@@ -334,4 +338,4 @@ class Game {
   }
 }
 
-module.exports = { Game, boardCount, openEnds, placeOn, emptyBoard, round5, fullSet, HAND_SIZE };
+module.exports = { Game, TARGET, toPoints, boardCount, openEnds, placeOn, emptyBoard, round5, fullSet, HAND_SIZE };

@@ -27,7 +27,6 @@ const OUT = process.argv[2] || '.';
     await pages[i].waitForSelector('#screen-lobby.active');
   }
   await pages[0].click('#set-teams button[data-v="1"]');
-  await pages[0].click('#set-target button[data-v="100"]');
   await pages[0].waitForTimeout(300);
   await pages[0].screenshot({ path: `${OUT}/t1-lobby-teams.png` });
   await pages[0].click('#btn-start');

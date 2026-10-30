@@ -292,7 +292,6 @@ function renderLobby() {
   $('#lobby-spectators').textContent = r.spectators.length ? `👀 צופים: ${r.spectators.map((s) => s.name).join(', ')}` : '';
 
   const s = r.settings;
-  setSeg('#set-target', s.target, isHost, (v) => emit('room:settings', { target: v }));
   setSeg('#set-teams', s.teams ? 1 : 0, isHost, (v) => emit('room:settings', { teams: v === 1 }));
   $('#settings-note').textContent = isHost ? '' : '(רק המארח משנה)';
 
@@ -303,7 +302,7 @@ function renderLobby() {
   if (n < 2) hint = 'מחכים לעוד שחקן לפחות… שלח את הקישור 👆';
   else if (s.teams && n !== 4) hint = 'משחק בזוגות דורש 4 שחקנים';
   else if (!isHost) hint = `ממתינים ש${r.players.find((p) => p.pid === r.hostPid)?.name || 'המארח'} יתחיל את המשחק…`;
-  else hint = `${n} שחקנים · ${n === 4 ? 5 : 7} אבנים לכל אחד`;
+  else hint = `${n} שחקנים · 7 אבנים לכל אחד${n === 4 ? ' · בלי קופה' : ''}`;
   start.disabled = n < 2 || (s.teams && n !== 4);
   $('#start-hint').textContent = hint;
 }
@@ -492,7 +491,8 @@ function renderBoard(g) {
   // סכום הקצוות
   const pill = $('#count-pill');
   if (g.board.center) {
-    pill.textContent = `סכום הקצוות: ${g.count}`;
+    const pts = g.count > 0 && g.count % 5 === 0 ? g.count / 5 : 0;
+    pill.textContent = pts ? `סכום הקצוות: ${g.count} = ${pts} נק׳` : `סכום הקצוות: ${g.count}`;
     pill.classList.toggle('five', g.count > 0 && g.count % 5 === 0);
   } else pill.textContent = g.state === 'playing' ? 'השולחן ריק' : '';
 
@@ -637,7 +637,7 @@ function renderStatus(g) {
     else if (S.selected) text = 'בחר איפה להניח (המקומות המסומנים)';
     else {
       const best = Math.max(...g.moves.map((m) => m.score));
-      text = hints && best ? `תורך! יש לך מהלך ששווה <b>${best}</b> 👀` : 'תורך! בחר אבן';
+      text = hints && best ? `תורך! יש לך מהלך ששווה <b>${best === 1 ? 'נקודה' : `${best} נקודות`}</b> 👀` : 'תורך! בחר אבן';
     }
   } else {
     const p = playerAt(g.turn);
@@ -655,8 +655,8 @@ function processFx(g) {
       Sound.play('clack');
       if (ev.scored) {
         setTimeout(() => {
-          Sound.play('score', ev.scored);
-          floatAtTile(ev.tileId, `+${ev.scored}`);
+          Sound.play('score', ev.count);
+          floatAtTile(ev.tileId, `${ev.count} → +${ev.scored}`);
         }, 260);
         navigator.vibrate?.(30);
       }
@@ -778,7 +778,7 @@ function renderHandModal(g) {
     else if (r.reason === 'blocked') title = 'המשחק נחסם 🔒';
     else title = `${esc(winnerName)} הגיע ל-${g.target}! 🎯`;
     let sub = '';
-    if (r.winSide != null && r.points) sub = `+${r.points} נקודות ל${esc(sideName(g, r.winSide))} (מה שנשאר ליריבים, מעוגל ל-5)`;
+    if (r.winSide != null && r.points) sub = `+${r.points} ${r.points === 1 ? 'נקודה' : 'נקודות'} ל${esc(sideName(g, r.winSide))} (מה שנשאר ליריבים, מעוגל ל-5 ומחולק ב-5)`;
     else if (r.reason === 'blocked' && r.winSide == null) sub = 'תיקו בספירה – אף אחד לא מקבל נקודות';
     if (g.state === 'gameOver') {
       const won = g.mySeat >= 0 && sideOf(g, g.mySeat) === g.winnerSide;

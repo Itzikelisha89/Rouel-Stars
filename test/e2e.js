@@ -36,7 +36,6 @@ const OUT = process.argv[2] || '.';
     await p.click('#btn-main');
     await p.waitForSelector('#screen-lobby.active');
   }
-  await host.click('#set-target button[data-v="100"]');
   await host.waitForTimeout(300);
   await host.screenshot({ path: `${OUT}/02-lobby.png` });
 
