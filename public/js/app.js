@@ -75,7 +75,21 @@ function codeFromUrl() {
 const roomLink = (code) => `${location.origin}/r/${code}`;
 
 // ---------- חיבור ----------
-const socket = io({ auth: { token }, transports: ['websocket', 'polling'] });
+const socket = io({ auth: { token }, transports: ['websocket', 'polling'], reconnectionDelay: 500, reconnectionDelayMax: 3000 });
+
+// אייפון "מקפיא" את הדף כשעוברים לאפליקציה אחרת / נועלים מסך, והחיבור נופל.
+// ברגע שחוזרים – מתחברים מחדש מיד ומסתנכרנים עם השולחן.
+let lastWake = 0;
+function wake() {
+  if (!S.code || !profile || Date.now() - lastWake < 2500) return;
+  lastWake = Date.now();
+  if (!socket.connected) socket.connect();
+  else emit('room:join', { code: S.code, ...profile });
+}
+document.addEventListener('visibilitychange', () => !document.hidden && wake());
+addEventListener('pageshow', wake);
+addEventListener('focus', wake);
+addEventListener('online', wake);
 
 function emit(ev, data = {}) {
   return new Promise((resolve) => {
@@ -504,7 +518,10 @@ function renderSeats(g) {
     const backs = Array.from({ length: Math.min(count, 12) }, (_, i) => Tiles.backSVG(false).replace('class="tile-svg back"', `class="tile-svg back${i === upIdx ? ' up' : ''}"`)).join('');
     const team = g.teams ? `<span class="team-chip" style="background:${TEAM_COLORS[seat % 2]}">${sideOf(g, seat) === sideOf(g, viewSeat(g)) && g.mySeat >= 0 ? 'שותף' : 'יריב'}</span>` : '';
     const thinking = g.state === 'playing' && g.turn === seat && p.connected && !p.left ? '<span class="think"><i></i><i></i><i></i></span>' : '';
-    const sub = p.left ? '🤖 מחשב' : !p.connected ? '📴 מנותק' : `${p.bot ? '🤖 ' : ''}${count} אבנים${thinking}`;
+    // בשניות הראשונות אחרי ניתוק זה כמעט תמיד מעבר אפליקציה/רשת – "מתחבר מחדש" ולא "מנותק"
+    const awayMs = p.awaySince ? Date.now() + S.clockSkew - p.awaySince : 0;
+    const off = awayMs < 20000 ? '🔄 מתחבר מחדש…' : '📴 מנותק';
+    const sub = p.left ? '🤖 מחשב' : !p.connected ? off : `${p.bot ? '🤖 ' : ''}${count} אבנים${thinking}`;
     el.innerHTML = `<div class="avatar-ring">${esc(p.avatar)}<div class="timer" hidden></div></div>
       <div class="info"><div class="nm">${esc(p.name)}</div><div class="sub">${sub} ${team}</div></div>
       <div class="backs">${backs}</div>`;
@@ -1512,3 +1529,8 @@ addEventListener('resize', () => {
 });
 
 initHome();
+
+// מעדכן את התווית "מתחבר מחדש…" ← "מנותק" גם בלי עדכון מהשרת
+setInterval(() => {
+  if (S.game && S.room?.players.some((p) => !p.connected && !p.left && !p.bot)) renderSeats(S.game);
+}, 5000);
