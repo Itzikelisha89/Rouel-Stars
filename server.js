@@ -97,6 +97,8 @@ function pushChat(room, msg) {
   io.to(room.code).emit('chat', full);
 }
 const sys = (room, text, kind = 'system') => pushChat(room, { kind, text });
+// הודעה בולטת לכל השולחן כשמישהו יוצא / מתנתק / חוזר
+const presence = (room, kind, m, extra) => io.to(room.code).emit('fx', [{ type: 'presence', kind, pid: m.pid, name: m.name, ...extra }]);
 
 function publicRoom(room, pid) {
   const seat = seatOf(room, pid);
@@ -390,9 +392,11 @@ function removeMember(room, pid) {
     p.left = true;
     p.connected = false;
     sys(room, `🚪 ${p.name} עזב – המחשב ישחק במקומו`);
+    presence(room, 'left', p, { bot: true });
   } else if (p) {
     room.players = room.players.filter((x) => x.pid !== pid);
     sys(room, `🚪 ${p.name} עזב את השולחן`);
+    presence(room, 'left', p, { bot: false });
   } else {
     room.spectators = room.spectators.filter((x) => x.pid !== pid);
   }
@@ -418,10 +422,14 @@ function joinRoom(socket, room, profile) {
     // חזר אחרי שעזב: חוזר לכיסא שלו
     m.left = false;
     sys(room, `👋 ${m.name} חזר לשולחן`);
+    presence(room, 'back', m);
   }
   if (m) {
     if (!room.game) Object.assign(m, profile);
-    if (!m.connected && Date.now() - (m.disconnectedAt || 0) > 8000) sys(room, `🔌 ${m.name} התחבר מחדש`);
+    if (!m.connected && Date.now() - (m.disconnectedAt || 0) > 8000) {
+      sys(room, `🔌 ${m.name} התחבר מחדש`);
+      presence(room, 'back', m);
+    }
   } else {
     m = { pid, ...profile, sockets: new Set(), connected: false, left: false };
     if (!room.game && room.players.length < 4) {
@@ -681,6 +689,7 @@ io.on('connection', (socket) => {
       setTimeout(() => {
         if (!member.connected && !member.left && findMember(room, member.pid) === member) {
           sys(room, `📴 ${member.name} התנתק`);
+          presence(room, 'gone', member, { inGame: !!room.game && room.seatPids.includes(member.pid) });
           if (room.game) maybeAllReady(room);
           broadcast(room);
         }
