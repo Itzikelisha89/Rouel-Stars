@@ -497,3 +497,5 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
   .table { padding: 4px; gap: 4px; }
   .felt { border-width: 6px; }
 }
+.score-pill .sb-name { font-size: 0.75em; font-weight: 700; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 480px) { .score-pill .sb-name { max-width: 44px; font-size: 0.68em; } }
