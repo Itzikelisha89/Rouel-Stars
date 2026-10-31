@@ -37,6 +37,8 @@ const Tiles = (() => {
     const p1 = horiz ? halfPips(first, x, y, true) : halfPips(first, x, y, false);
     const p2 = horiz ? halfPips(second, x + 1, y, true) : halfPips(second, x, y + 1, false);
     return `<g class="tile ${extraClass}">
+      <rect class="shade" x="${x + 0.07}" y="${y + 0.12}" width="${w - 0.04}" height="${h - 0.04}" rx="0.16"/>
+      <rect class="shade s2" x="${x + 0.04}" y="${y + 0.07}" width="${w - 0.04}" height="${h - 0.04}" rx="0.14"/>
       <rect class="body" x="${x + 0.02}" y="${y + 0.02}" width="${w - 0.04}" height="${h - 0.04}" rx="0.13"/>
       <rect class="bevel" x="${x + 0.07}" y="${y + 0.07}" width="${w - 0.14}" height="${h - 0.14}" rx="0.09"/>
       ${div}${p1}${p2}</g>`;
