@@ -1,10 +1,11 @@
 // שחקן אחד + 3 שחקני מחשב (משלימים ל-4, בזוגות) – משחק שלם עד הסוף
 'use strict';
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
+const BT = process.env.BROWSER === 'webkit' ? webkit : chromium; // webkit = כמו באייפון
 const BASE = process.env.BASE || 'http://localhost:3123';
 const OUT = process.argv[2] || '.';
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await BT.launch();
   const p = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })).newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));

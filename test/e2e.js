@@ -1,12 +1,13 @@
 // בדיקת קצה-לקצה: 3 דפדפנים, יצירת שולחן, הצטרפות בקישור, צ'אט ומשחק אמיתי דרך הממשק.
 // הרצה: PORT=3123 node server.js & ; node test/e2e.js [screenshots-dir]
 'use strict';
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
+const BT = process.env.BROWSER === 'webkit' ? webkit : chromium; // webkit = כמו באייפון
 const BASE = process.env.BASE || 'http://localhost:3123';
 const OUT = process.argv[2] || '.';
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await BT.launch();
   const errors = [];
   const mk = async (w, h) => {
     const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: w < 600 });
@@ -87,7 +88,7 @@ const OUT = process.argv[2] || '.';
         continue;
       }
       // פרייש פעם אחת: המארח מבקש ביד הראשונה
-      if (p === host && state.canFreish && state.hand === 1 && !freishDone) {
+      if (state.canFreish && state.hand === 1 && !freishDone) {
         freishDone = true;
         await p.click('#btn-freish');
         acted = true;
@@ -168,7 +169,7 @@ const OUT = process.argv[2] || '.';
 
   const log = await host.evaluate(() => [...document.querySelectorAll('.msg.sys')].map((e) => e.textContent));
   console.log('jokes:', log.filter((t) => t.startsWith('🎙')).length, log.filter((t) => t.startsWith('🎙')).slice(0, 3));
-  console.log('freish happened:', log.some((t) => t.includes('כולם הסכימו')));
+  console.log('freish happened:', log.some((t) => t.includes('כולם אישרו')));
   console.log('calls ok:', log.filter((t) => t.includes('✓')).length, '| forgot:', log.filter((t) => t.includes('🤐')).length);
   await host.evaluate(() => { renderPad(); document.getElementById('pad-modal').hidden = false; });
   await host.waitForTimeout(300);

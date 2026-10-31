@@ -29,7 +29,12 @@ const FREISH_MS = 20000; // זמן להצביע על פרייש
 
 const app = express();
 const PUBLIC = path.join(__dirname, 'public');
-app.use(express.static(PUBLIC, { maxAge: '1h' }));
+// קוד המשחק (html/js/css) נבדק מחדש בכל טעינה – כדי שתיקונים יגיעו לטלפונים מיד. קולות נשמרים יום.
+app.use(
+  express.static(PUBLIC, {
+    setHeaders: (res, file) => res.setHeader('Cache-Control', /\.(mp3|wav|png|jpg|svg)$/.test(file) ? 'public, max-age=86400' : 'no-cache'),
+  })
+);
 app.get('/r/:code', (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
 app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
 
@@ -302,11 +307,12 @@ function afterAction(room) {
       sys(room, `▶ ${opener}`);
     }
     if (ev.type === 'redeal') sys(room, 'אף אחד לא קיבל כפולה – מערבבים מחדש');
-    if (ev.type === 'freishAsk') sys(room, `🔄 ${nameAtSeat(room, ev.seat)} מבקש פרייש! מסכימים?`, 'score');
+    if (ev.type === 'freishAsk') sys(room, `🔄 ${nameAtSeat(room, ev.seat)} (פותח הסיבוב) מבקש פרייש! כולם צריכים לאשר`, 'score');
     if (ev.type === 'freishVote' && !ev.yes) sys(room, `✋ ${nameAtSeat(room, ev.seat)} לא מסכים לפרייש`);
     if (ev.type === 'freishResult') {
       g.turnDeadline = null;
-      sys(room, ev.ok ? '🔄 כולם הסכימו – פרייש! מחלקים מחדש' : ev.timeout ? '⏱ לא כולם ענו – ממשיכים לשחק' : 'ממשיכים לשחק עם האבנים שיש');
+      const who = (ev.declined || []).map((s) => nameAtSeat(room, s)).join(', ');
+      sys(room, ev.ok ? '🔄 כולם אישרו – פרייש! מחלקים מחדש' : `❌ אין פרייש – ${who || 'לא כולם'} לא אישר${(ev.declined || []).length > 1 ? 'ו' : ''}${ev.timeout ? ' (נגמר הזמן)' : ''}`, 'score');
     }
     if (ev.type === 'handOver' && ev.tieAtTop) sys(room, '⚖️ תיקו בראש הטבלה – משחקים עוד יד!', 'score');
     if (ev.type === 'handOver' || ev.type === 'gameOver') {
