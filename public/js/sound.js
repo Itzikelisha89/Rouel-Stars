@@ -10,13 +10,36 @@ const Sound = (() => {
 
   function ac() {
     if (!ctx) {
+      // אייפון: בלי זה, כשהמתג בצד על "שקט" – דפי אינטרנט לא משמיעים כלום (iOS 17 ומעלה)
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
+      } catch {}
       const C = window.AudioContext || window.webkitAudioContext;
       if (!C) return null;
       ctx = new C();
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
     return ctx;
   }
+
+  // אייפון "פותח" את הצליל רק בתוך נגיעה של המשתמש, ולפעמים סוגר אותו שוב (מעבר אפליקציה / שיחה).
+  // בכל נגיעה: מעירים את הצליל ומשמיעים רגע של שקט – זה "הטריק" שמשחרר את הרמקול בספארי.
+  let unlocked = false;
+  function unlockOnGesture() {
+    const c = ac();
+    if (!c) return;
+    if (!unlocked || c.state !== 'running') {
+      try {
+        const b = c.createBuffer(1, 1, 22050);
+        const s = c.createBufferSource();
+        s.buffer = b;
+        s.connect(c.destination);
+        s.start(0);
+        unlocked = true;
+      } catch {}
+    }
+  }
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach((e) => document.addEventListener(e, unlockOnGesture, { capture: true, passive: true }));
 
   function noise(c, dur) {
     const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);

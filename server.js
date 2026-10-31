@@ -36,7 +36,9 @@ app.use(
   })
 );
 app.get('/r/:code', (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
-app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
+// מספר הגרסה (Render נותן את ה-commit) – מופיע בתפריט המשחק, כדי לדעת שהטלפון טען את הגרסה החדשה
+const VERSION = (process.env.RENDER_GIT_COMMIT || 'dev').slice(0, 7);
+app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size, version: VERSION }));
 
 const server = http.createServer(app);
 const io = new Server(server, { pingInterval: 10000, pingTimeout: 20000 });
@@ -106,6 +108,7 @@ function publicRoom(room, pid) {
   return {
     code: room.code,
     now: Date.now(),
+    version: VERSION,
     hostPid: room.hostPid,
     me: pid,
     role: room.players.some((p) => p.pid === pid) ? 'player' : 'spectator',

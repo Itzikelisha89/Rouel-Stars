@@ -1,6 +1,7 @@
 'use strict';
 
 const $ = (s, el = document) => el.querySelector(s);
+const IS_WEBKIT_MOBILE = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -120,6 +121,7 @@ socket.on('connect_error', () => ($('#conn-banner').hidden = false));
 
 socket.on('room', (room) => {
   S.clockSkew = room.now ? room.now - Date.now() : 0;
+  if (room.version) S.version = room.version;
   RTC.sync(room.me, [...room.players, ...room.spectators].filter((m) => m.connected !== false && !m.left).map((m) => m.pid));
   const prev = S.game;
   S.room = room;
@@ -502,7 +504,9 @@ function renderScoreboard(g, prev) {
     const mine = g.mySeat >= 0 && sideOf(g, g.mySeat) === side;
     el.className = `score-pill${turnSide ? ' turn' : ''}`;
     if (prev && prev.scores[side] !== g.scores[side]) el.classList.add('bump');
-    const label = g.teams ? `<span class="team-chip" style="background:${TEAM_COLORS[side]}">${mine ? 'אנחנו' : TEAM_NAMES[side]}</span>` : '';
+    const label = g.teams
+      ? `<span class="team-chip" style="background:${TEAM_COLORS[side]}">${mine ? 'אנחנו' : TEAM_NAMES[side]}</span>`
+      : `<span class="sb-name">${esc(mine ? 'אני' : playerAt(side).name)}</span>`;
     el.innerHTML = `<span class="av">${seats.map((s) => esc(playerAt(s).avatar)).join('')}</span>${label}
       <span class="pts">${g.scores[side]}</span><span class="tg">/${g.target}</span>
       <span class="bar"><i style="--p:${Math.min(100, (g.scores[side] / g.target) * 100)}%"></i></span>`;
@@ -563,7 +567,8 @@ function renderBoard(g) {
   const off = { bottom: [0, 9], top: [0, -9], left: [-9, 0], right: [9, 0] }[fromPos];
   let html = '';
   for (const p of lay.placed) {
-    const isNew = !S.boardIds.has(p.id) && p.id === last;
+    // באייפון (WebKit) אנימציית CSS על קבוצות SVG גרמה לאבנים לא להיות מצוירות – שם מוותרים עליה
+    const isNew = !IS_WEBKIT_MOBILE && !S.boardIds.has(p.id) && p.id === last;
     html += `<g class="placed${p.id === last ? ' last' : ''}" data-id="${p.id}"><g class="${isNew ? 'anim' : ''}" style="--fx:${off[0]}px;--fy:${off[1]}px">${Tiles.face(p.cx, p.cy, p.horiz, p.first, p.second)}</g></g>`;
   }
   S.boardIds = new Set(lay.placed.map((p) => p.id));
@@ -1431,6 +1436,7 @@ REACTIONS.forEach((r) => {
 
 // ---------- תפריט וחלונות ----------
 function renderMenu() {
+  $('#m-version').textContent = `גרסה ${S.version || '?'}${IS_WEBKIT_MOBILE ? ' · אייפון' : ''}`;
   $('#m-sound').textContent = Sound.muted ? '🔇 צלילים כבויים' : '🔊 צלילים פעילים';
   $('#m-hints').textContent = hints ? '💡 עזרה בספירה: פעיל' : '💡 עזרה בספירה: כבוי';
   $('#m-jokes').textContent = jokes ? '😂 משפטים מצחיקים: פעיל' : '😂 משפטים מצחיקים: כבוי';
@@ -1555,6 +1561,13 @@ addEventListener('resize', () => {
 });
 
 initHome();
+fetch('/health')
+  .then((r) => r.json())
+  .then((h) => {
+    S.version = S.version || h.version;
+    $('#home-version').textContent = `גרסה ${h.version}${IS_WEBKIT_MOBILE ? ' · אייפון' : ''}`;
+  })
+  .catch(() => {});
 
 // מעדכן את התווית "מתחבר מחדש…" ← "מנותק" גם בלי עדכון מהשרת
 setInterval(() => {
