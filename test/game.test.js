@@ -82,8 +82,8 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
       }
       // פרייש מדי פעם, לפני האבן הראשונה
       if (!game.board.center && Math.random() < 0.05 && game.freishUsed.size === 0) {
-        game.proposeFreish(game.turn);
-        const asker = game.turn;
+        const asker = game.starter;
+        game.proposeFreish(asker);
         for (let s = 0; s < n && game.freish; s++) if (s !== asker) game.voteFreish(s, Math.random() < 0.7);
         if (game.state === 'picking') pickAll(game);
         continue;
@@ -185,28 +185,39 @@ for (const [n, teams] of [[2, false], [3, false], [4, false], [4, true]]) {
   }
 }
 
-// --- פרייש ---
+// --- פרייש: רק הפותח מבקש, כולם מאשרים, ואם מישהו לא אישר – אומרים מי ---
 {
   const game = new Game({ players: 3 });
   pickAll(game);
-  const before = game.hands.map((h) => h.map((t) => t.id).join());
-  game.proposeFreish(0);
-  assert.throws(() => game.proposeFreish(1), 'הצבעה אחת בכל פעם');
-  assert.throws(() => game.play(game.turn, game.movesFor(game.turn)[0]?.tileId || '66', 'center'), /פרייש/);
-  game.voteFreish(1, true);
-  game.voteFreish(2, false);
-  assert.strictEqual(game.state, 'playing', 'מישהו סירב – ממשיכים');
-  assert.throws(() => game.proposeFreish(0), 'רק פעם אחת ביד');
-  game.proposeFreish(1);
-  game.voteFreish(0, true);
-  game.voteFreish(2, true);
-  assert.strictEqual(game.state, 'picking', 'כולם הסכימו – מחלקים מחדש');
-  assert.strictEqual(game.handNo, 1, 'אותה יד');
-  pickAll(game);
-  assert.notStrictEqual(game.hands.map((h) => h.map((t) => t.id).join()).join('|'), before.join('|'));
-  const m = game.movesFor(game.turn)[0];
-  game.play(game.turn, m.tileId, m.end);
-  assert.throws(() => game.proposeFreish(2), 'אחרי האבן הראשונה אין פרייש');
+  const st = game.starter;
+  const others = [0, 1, 2].filter((s) => s !== st);
+  assert.throws(() => game.proposeFreish(others[0]), /פותח/, 'רק מי שפותח יכול לבקש פרייש');
+  assert.ok(!game.view(others[0]).canFreish && game.view(st).canFreish);
+  const before = game.hands.map((h) => h.map((t) => t.id).join()).join('|');
+  game.proposeFreish(st);
+  assert.throws(() => game.play(st, game.hands[st][0].id, 'center'), /פרייש/, 'אי אפשר לשחק בזמן ההצבעה');
+  game.voteFreish(others[0], true);
+  game.voteFreish(others[1], false);
+  assert.strictEqual(game.state, 'playing', 'מישהו סירב – אין פרייש');
+  const res = game.drainEvents().find((e) => e.type === 'freishResult');
+  assert.deepStrictEqual(res.declined, [others[1]], 'יודעים מי לא אישר');
+  assert.throws(() => game.proposeFreish(st), 'רק פעם אחת ביד');
+  // יד חדשה: כולם מאשרים → מחלקים מחדש
+  const g2 = new Game({ players: 3 });
+  pickAll(g2);
+  g2.proposeFreish(g2.starter);
+  for (const s of [0, 1, 2]) if (s !== g2.starter) g2.voteFreish(s, true);
+  assert.strictEqual(g2.state, 'picking', 'כולם אישרו – מחלקים מחדש');
+  assert.strictEqual(g2.handNo, 1, 'אותה יד');
+  pickAll(g2);
+  assert.notStrictEqual(g2.hands.map((h) => h.map((t) => t.id).join()).join('|'), before);
+  // נגמר הזמן: מי שלא ענה נחשב כמי שלא אישר
+  const g3 = new Game({ players: 3 });
+  pickAll(g3);
+  g3.proposeFreish(g3.starter);
+  g3.drainEvents();
+  g3.endFreish(false, true);
+  assert.strictEqual(g3.drainEvents().find((e) => e.type === 'freishResult').declined.length, 2);
 }
 
 // --- אכיפת חוקים ---

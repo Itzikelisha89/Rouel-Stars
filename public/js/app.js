@@ -1040,7 +1040,10 @@ function processFx(g) {
       showBubble(pid, ev.yes ? '👍 פרייש' : '✋ לא');
     } else if (ev.type === 'freishResult') {
       if (ev.ok) stamp('פרייש!');
-      else floatMsg(ev.timeout ? 'לא כולם ענו – ממשיכים' : 'אין פרייש – ממשיכים לשחק');
+      else {
+        const who = (ev.declined || []).map((s) => playerAt(s).name).join(', ');
+        floatMsg(`❌ אין פרייש – ${who || 'לא כולם'} לא אישר${(ev.declined || []).length > 1 ? 'ו' : ''}`);
+      }
       nar(ev.ok ? 'freish' : 'freish_no', 1);
     } else if (ev.type === 'pass') {
       Sound.play('knock');

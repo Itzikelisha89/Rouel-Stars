@@ -1,11 +1,12 @@
 // 4 שחקנים בזוגות: שחקן עוזב באמצע (המחשב ממשיך), שחקן מרענן (חוזר לכיסא), משחקים עד הסוף.
 'use strict';
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
+const BT = process.env.BROWSER === 'webkit' ? webkit : chromium; // webkit = כמו באייפון
 const BASE = process.env.BASE || 'http://localhost:3123';
 const OUT = process.argv[2] || '.';
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await BT.launch();
   const errors = [];
   const pages = [];
   for (let i = 0; i < 4; i++) {

@@ -460,3 +460,16 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
 .fill-row { display: flex; gap: 8px; margin-top: 10px; }
 .fill-row .btn { flex: 1; border-style: dashed; }
 #bots-modal .menu-list .btn { justify-content: flex-start; font-size: 1em; }
+
+/* אייפון (WebKit): אבני הלוח (SVG עם אנימציה) צוירו מעל חלון הקופה ובלעו את הנגיעות.
+   שכבות מפורשות: הלוח למטה, הקופה/פרייש/הודעות מעליו, בשכבת קומפוזיציה משלהם. */
+.felt { isolation: isolate; }
+.board { z-index: 0; }
+.pool-layer { z-index: 10; transform: translateZ(0); -webkit-transform: translateZ(0); }
+.freish-bar { z-index: 12; }
+.floaters { z-index: 14; transform: translateZ(0); }
+.pool-layer.drawing { -webkit-backdrop-filter: blur(1px); }
+/* בטלפון אין "ריחוף" – אפקט הגדלה רק במחשב, כדי שנגיעה ראשונה תמיד תעבוד */
+@media (hover: none) { .pool-tile.can:hover { transform: rotate(var(--r)); } .board .ghost:hover .tile { opacity: 0.55; } }
+.board .ghost-badge, .board .ghost-label { pointer-events: none; }
+@media (max-width: 480px) { .score-pill .tg { display: none; } .score-pill { padding: 3px 9px 3px 6px; } }

@@ -201,9 +201,10 @@ class Game {
     this.events.push({ type: 'handReady', handNo: this.handNo, starter, required });
   }
 
-  // פרייש: מי שקיבל יד גרועה מבקש לחלק מחדש. רק לפני האבן הראשונה, וכולם צריכים להסכים.
+  // פרייש: רק השחקן שפותח את הסיבוב יכול לבקש, לפני האבן הראשונה. כולם צריכים לאשר.
   proposeFreish(seat) {
     if (this.state !== 'playing' || this.board.center) throw new Error('פרייש מבקשים רק לפני שמניחים את האבן הראשונה');
+    if (seat !== this.starter) throw new Error('רק מי שפותח את הסיבוב יכול לבקש פרייש');
     if (this.freish) throw new Error('כבר יש הצבעה על פרייש');
     if (this.freishUsed.has(seat)) throw new Error('כבר ביקשת פרייש ביד הזו');
     this.freishUsed.add(seat);
@@ -225,7 +226,10 @@ class Game {
     const f = this.freish;
     if (!f) return;
     this.freish = null;
-    this.events.push({ type: 'freishResult', ok, by: f.by, timeout });
+    // מי לא אישר: מי שסירב, או (כשנגמר הזמן) מי שלא ענה
+    const declined = [];
+    for (let s = 0; s < this.n; s++) if (f.votes[s] === false || (timeout && !(s in f.votes))) declined.push(s);
+    this.events.push({ type: 'freishResult', ok, by: f.by, timeout, declined });
     if (ok) this.startHand(true);
   }
 
@@ -462,7 +466,7 @@ class Game {
       boneSlots: this.state === 'playing' ? this.boneyard.map((s) => ({ idx: s.idx, x: this.pool[s.idx]?.x ?? 0.5, y: this.pool[s.idx]?.y ?? 0.5, r: this.pool[s.idx]?.r ?? 0 })) : [],
       handSize: HAND_SIZE[this.n],
       freish: this.freish ? { by: this.freish.by, votes: this.freish.votes } : null,
-      canFreish: mine && this.state === 'playing' && !this.board.center && !this.freish && !this.freishUsed.has(seat),
+      canFreish: mine && this.state === 'playing' && seat === this.starter && !this.board.center && !this.freish && !this.freishUsed.has(seat),
       closingSeat: this.state === 'closing' ? this.closingSeat : null,
       history: this.history,
       moves,
