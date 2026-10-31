@@ -133,6 +133,11 @@ socket.on('room', (room) => {
   }
 });
 socket.on('fx', (events) => {
+  // יציאה / ניתוק / חזרה של שחקן – מציגים לכולם מיד, גם בלובי
+  const pres = events.filter((e) => e.type === 'presence');
+  pres.forEach(showPresence);
+  events = events.filter((e) => e.type !== 'presence');
+  if (!events.length) return;
   S.pendingFx.push(...events);
   // בדיחה בזמן שמישהו חושב מגיעה בלי עדכון מצב – מציגים מיד
   if (events.every((e) => e.type === 'banter') && S.game) processFx(S.game);
@@ -756,6 +761,23 @@ const VOICE_KEYS = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'domin
 // קריין: מספר מה קורה ליד השולחן
 const nar = (key, delay = 0) => narrator && Sound.voice('nar', key, delay);
 const myWin = (g, side) => g.mySeat >= 0 && side != null && sideOf(g, g.mySeat) === side;
+
+function showPresence(e) {
+  if (e.pid === S.room?.me) return;
+  const text =
+    e.kind === 'left'
+      ? `🚪 ${e.name} כבר לא ליד השולחן${e.bot ? ' – המחשב ממשיך במקומו 🤖' : ''}`
+      : e.kind === 'gone'
+        ? `📴 החיבור של ${e.name} נותק${e.inGame ? ' – אם לא תהיה חזרה, המחשב ימשיך במקום' : ''}`
+        : `👋 ${e.name} שוב ליד השולחן`;
+  const el = document.createElement('div');
+  el.className = `presence ${e.kind}`;
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5200);
+  Sound.play(e.kind === 'back' ? 'pop' : 'pass');
+  if (e.kind !== 'back') navigator.vibrate?.([80, 60, 80]);
+}
 
 // בועת הבדרן – מופיעה למעלה על השולחן
 function joke(text) {
