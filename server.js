@@ -107,7 +107,7 @@ function publicRoom(room, pid) {
     hostPid: room.hostPid,
     me: pid,
     role: room.players.some((p) => p.pid === pid) ? 'player' : 'spectator',
-    players: room.players.map(({ pid, name, avatar, voice, connected, left, media, bot }) => ({ pid, name, avatar, voice, connected, left, bot: !!bot, media: media || null })),
+    players: room.players.map(({ pid, name, avatar, voice, connected, left, media, bot, disconnectedAt }) => ({ pid, name, avatar, voice, connected, left, bot: !!bot, media: media || null, awaySince: connected ? null : disconnectedAt || null })),
     spectators: room.spectators.map(({ pid, name, avatar, voice, media }) => ({ pid, name, avatar, voice, media: media || null })),
     settings: room.settings,
     game: g
