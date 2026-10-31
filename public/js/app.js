@@ -90,6 +90,10 @@ document.addEventListener('visibilitychange', () => !document.hidden && wake());
 addEventListener('pageshow', wake);
 addEventListener('focus', wake);
 addEventListener('online', wake);
+// שומר: אם הדף פתוח מול העיניים והחיבור נפל – מנסים שוב כל 4 שניות עד שמתחברים
+setInterval(() => {
+  if (S.code && profile && !document.hidden && !socket.connected) socket.connect();
+}, 4000);
 
 function emit(ev, data = {}) {
   return new Promise((resolve) => {
