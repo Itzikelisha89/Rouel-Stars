@@ -165,7 +165,7 @@ const FAKE_CAM = fs.readFileSync(path.join(__dirname, 'fake-cam.js'), 'utf8');
     const k = await handIdx(i, id);
     await tap(i, `#hand .ht:nth-child(${k + 1})`);
     if (end) {
-      const sel = `.ghost[data-tile="${id}"][data-end="${end}"] .gbox`;
+      const sel = `.ghost[data-tile="${id}"][data-end="${end}"]`;
       if (await fr(i).locator(sel).count()) await tap(i, sel);
     }
     await sleep(500);

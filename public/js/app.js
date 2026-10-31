@@ -559,17 +559,31 @@ function boardOpts() {
   return { lr: 4, ud: 6 };
 }
 
+// הלוח בנוי מאבנים נפרדות (כמו האבנים שביד), ולא מציור SVG אחד גדול:
+// באייפון אמיתי הציור הגדול לא התעדכן כמו שצריך – רואים אבן אחת או חצי אבן.
+const UNIT = 60; // פיקסלים לחצי אבן, לפני ההקטנה לגודל השולחן
+const tileSVG = (p) => (p.horiz ? Tiles.flatTileSVG(p.first, p.second) : Tiles.handTileSVG(p.first, p.second));
+function tileBox(p, cls, inner, attrs = '', extraStyle = '') {
+  const w = p.horiz ? 2 : 1, h = p.horiz ? 1 : 2;
+  return `<div class="btile ${cls}" ${attrs} style="left:${(p.cx - w / 2) * UNIT}px;top:${(p.cy - h / 2) * UNIT}px;width:${w * UNIT}px;height:${h * UNIT}px;${extraStyle}">${inner}</div>`;
+}
+
 function renderBoard(g) {
-  const svg = $('#board');
+  const board = $('#board');
+  let inner = board.querySelector('.board-inner');
+  if (!inner) {
+    inner = document.createElement('div');
+    inner.className = 'board-inner';
+    board.appendChild(inner);
+  }
   const lay = Tiles.layout(g.board, boardOpts());
   const last = g.lastMove?.tileId;
   const fromPos = g.lastMove ? seatPosition(g, g.lastMove.seat) : 'bottom';
   const off = { bottom: [0, 9], top: [0, -9], left: [-9, 0], right: [9, 0] }[fromPos];
   let html = '';
   for (const p of lay.placed) {
-    // באייפון (WebKit) אנימציית CSS על קבוצות SVG גרמה לאבנים לא להיות מצוירות – שם מוותרים עליה
-    const isNew = !IS_WEBKIT_MOBILE && !S.boardIds.has(p.id) && p.id === last;
-    html += `<g class="placed${p.id === last ? ' last' : ''}" data-id="${p.id}"><g class="${isNew ? 'anim' : ''}" style="--fx:${off[0]}px;--fy:${off[1]}px">${Tiles.face(p.cx, p.cy, p.horiz, p.first, p.second)}</g></g>`;
+    const isNew = !S.boardIds.has(p.id) && p.id === last;
+    html += tileBox(p, `placed${p.id === last ? ' last' : ''}${isNew ? ' anim' : ''}`, tileSVG(p), `data-id="${p.id}"`, `--fx:${off[0] * UNIT}px;--fy:${off[1] * UNIT}px`);
   }
   S.boardIds = new Set(lay.placed.map((p) => p.id));
 
@@ -580,14 +594,11 @@ function renderBoard(g) {
   }
   for (const gh of ghosts) {
     if (gh.move.tileId !== S.selected) continue;
-    const w = gh.horiz ? 2 : 1, h = gh.horiz ? 1 : 2;
-    const badge = hints && gh.move.score ? `<g><circle class="ghost-badge" cx="${gh.cx}" cy="${gh.cy}" r="0.48"/><text class="ghost-label" x="${gh.cx}" y="${gh.cy + 0.22}" text-anchor="middle">${gh.move.score}</text></g>` : '';
-    html += `<g class="ghost" data-tile="${gh.move.tileId}" data-end="${gh.move.end}">
-      <rect class="gbox" x="${gh.cx - w / 2}" y="${gh.cy - h / 2}" width="${w}" height="${h}" rx="0.13"/>
-      ${Tiles.face(gh.cx, gh.cy, gh.horiz, gh.first, gh.second)}${badge}</g>`;
+    const badge = hints && gh.move.score ? `<span class="gbadge">${gh.move.score}</span>` : '';
+    html += tileBox(gh, 'ghost', tileSVG(gh) + badge, `data-tile="${gh.move.tileId}" data-end="${gh.move.end}"`);
   }
-  svg.innerHTML = html;
-  $$('.ghost', svg).forEach((el) => (el.onclick = () => playMove(el.dataset.tile, el.dataset.end)));
+  inner.innerHTML = html;
+  $$('.ghost', inner).forEach((el) => (el.onclick = () => playMove(el.dataset.tile, el.dataset.end)));
 
   // התאמת התצוגה לכל האבנים + מקומות אפשריים, באותו יחס כמו השולחן
   const b = Tiles.bounds([...lay.placed, ...ghosts]);
@@ -599,7 +610,8 @@ function renderBoard(g) {
   if (w < minW) { x -= (minW - w) / 2; w = minW; }
   if (w / h > aspect) { const nh = w / aspect; y -= (nh - h) / 2; h = nh; }
   else { const nw = h * aspect; x -= (nw - w) / 2; w = nw; }
-  tweenViewBox([x, y, w, h]);
+  const sc = f.clientWidth / (w * UNIT);
+  inner.style.transform = `translate(${-x * UNIT * sc}px, ${-y * UNIT * sc}px) scale(${sc})`;
 
   // סכום הקצוות
   const pill = $('#count-pill');
@@ -619,21 +631,6 @@ function renderBoard(g) {
   $('#hand-no').textContent = `יד ${g.handNo}`;
 }
 
-function tweenViewBox(target) {
-  const svg = $('#board');
-  const from = S.vb;
-  S.vb = target;
-  cancelAnimationFrame(S.vbAnim);
-  if (!from) return svg.setAttribute('viewBox', target.join(' '));
-  const t0 = performance.now();
-  const step = (t) => {
-    const k = Math.min(1, (t - t0) / 380);
-    const e = 1 - Math.pow(1 - k, 3);
-    svg.setAttribute('viewBox', from.map((v, i) => v + (target[i] - v) * e).join(' '));
-    if (k < 1) S.vbAnim = requestAnimationFrame(step);
-  };
-  S.vbAnim = requestAnimationFrame(step);
-}
 
 function sortedHand(g) {
   const hand = g.hand || [];
