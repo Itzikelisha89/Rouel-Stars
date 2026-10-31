@@ -189,7 +189,10 @@ body.classic .tile .pip { fill: url(#g-pip); stroke: none; }
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55), 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 .board { position: absolute; inset: 0; width: 100%; height: 100%; }
-.board .placed { filter: url(#f-shadow); }
+/* צל מתחת לאבנים על השולחן. בלי פילטר SVG – באייפון (WebKit) הוא גורם לאבנים להיעלם */
+.tile .shade { display: none; }
+.board .tile .shade { display: block; fill: rgba(0, 0, 0, 0.22); }
+.board .tile .shade.s2 { fill: rgba(0, 0, 0, 0.18); }
 .board .anim { animation: land 0.42s cubic-bezier(0.2, 0.8, 0.3, 1.15) both; transform-box: fill-box; transform-origin: center; }
 @keyframes land { from { transform: translate(var(--fx), var(--fy)) scale(1.25); opacity: 0.2; } 70% { opacity: 1; } }
 .board .last .body { stroke: var(--gold); stroke-width: 0.07; }
