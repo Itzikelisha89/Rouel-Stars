@@ -54,6 +54,7 @@ E['hud'] = E['where'] + 2.3
 t = say('n3', E['hud'] + 0.4)
 t = say('n4', t + 0.45)
 t = say('n5', t + 0.45)
+t = say('n6', t + 0.4)
 E['system'] = t + 0.1
 E['ai'] = E['system'] + 2.9
 t = say('ai1', E['ai'] + 0.5)
@@ -365,8 +366,9 @@ for j, b0 in enumerate(hb_bars):
         put(MUS, hat(), b0 + q * bar / 4 + bar / 8, 0.25)
 for k in range(10):
     put(SFX, blip(900 + 120 * k, 1600 + 120 * k), E['hud'] + 0.3 + k * 0.55, 0.3, (k % 3 - 1) * 0.6)
-for k in range(4):
-    put(SFX, whoosh(0.4, 1000, 7000, 0.6), E['n3'] + 0.5 + k * 2.4, 0.4)
+for k0 in ['n3', 'n4', 'n5']:
+    put(SFX, whoosh(0.4, 1000, 7000, 0.6), E[k0] + 0.1, 0.4)
+put(SFX, whoosh(0.4, 1000, 7000, 0.6), E['n6'] + 1.0, 0.4)
 put(SFX, glock(86, 2.0), E['system'], 0.4); put(SFX, glock(81, 2.0), E['system'] + 0.08, 0.35)
 put(SFX, sub_boom(2.0, 70), E['system'], 0.6)
 # MOR.AI

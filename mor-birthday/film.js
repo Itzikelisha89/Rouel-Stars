@@ -271,7 +271,7 @@ function bokeh(ctx, t, a, warm = true) {
 }
 
 // ------------------------------------------------------------ המחסן (פרספקטיבה אמיתית)
-const LABELS = ['LHV-117', 'MOR ✓', 'LHV-204', 'EQ-77', 'MOR ✓', 'LHV-310', 'EQ-12', 'LHV-58'];
+const LABELS = ['CISCO RTR', 'MOR ✓', 'CISCO SW', 'TABLES ×20', 'MOR ✓', 'UNIFORMS', 'SW-48P', 'RTR-04'];
 function warehouse(ctx, t, zc, mode = 'real', bright = 1, scan = -1) {
   const f = 950, cy = H / 2 + 40, camY = 1.7, camX = Math.sin(t * 0.4) * 0.15;
   const P = (x, y, z) => { const d = z - zc; return [W / 2 + f * (x - camX) / d, cy - f * (y - camY) / d, d]; };
@@ -543,7 +543,32 @@ function whereSlam(ctx, t, t0, t1) {
     text(ctx, '?', W * R(i, 11), H * R(i, 12), { fam: 'Secular One', size: 80 + 80 * R(i, 13), w: 400, alpha: a * 0.6, color: '#ffcf4a' });
   }
 }
-const ITEMS = [['🔦', 'פנסים', 120], ['🔋', 'סוללות', 400], ['⛺', 'אוהלים', 36], ['💧', 'מימיות', 650], ['🎒', 'תיקים', 210], ['🧤', 'כפפות', 300]];
+const ITEMS = [['router', 'ראוטרים סיסקו', 64], ['switch', 'מתגים סיסקו', 120], ['table', 'שולחנות פלסטיק', 80], ['uniform', 'מדים', 1450], ['switch', 'כבלי רשת', 900], ['router', 'ארונות תקשורת', 12]];
+// אייקונים הולוגרפיים של הציוד (ציור וקטורי)
+function itemIcon(ctx, kind, x, y, a, t) {
+  ctx.save(); ctx.translate(x, y); ctx.globalAlpha = a; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#bff8ff'; ctx.fillStyle = 'rgba(60,220,255,0.18)'; setShadow(ctx, 22, 'rgba(80,235,255,1)');
+  const led = (lx, ly, on) => { ctx.save(); ctx.fillStyle = on ? '#8dff9e' : '#2a6a55'; ctx.beginPath(); ctx.arc(lx, ly, 5, 0, 7); ctx.fill(); ctx.restore(); };
+  if (kind === 'router') {
+    rrect(ctx, -95, -20, 190, 56, 12); ctx.fill(); ctx.stroke();
+    for (const ax of [-60, 60]) { ctx.beginPath(); ctx.moveTo(ax, -20); ctx.lineTo(ax + (ax > 0 ? 18 : -18), -95); ctx.stroke(); ctx.beginPath(); ctx.arc(ax + (ax > 0 ? 18 : -18), -100, 6, 0, 7); ctx.stroke(); }
+    for (let i = 0; i < 5; i++) led(-60 + i * 22, 8, Math.sin(t * 6 + i * 1.7) > -0.2);
+    for (let k = 1; k <= 3; k++) { ctx.globalAlpha = a * (0.5 - k * 0.12) * (0.6 + 0.4 * Math.sin(t * 4)); ctx.beginPath(); ctx.arc(0, -40, 30 + k * 22, -2.4, -0.74); ctx.stroke(); }
+  } else if (kind === 'switch') {
+    rrect(ctx, -120, -30, 240, 60, 8); ctx.fill(); ctx.stroke();
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 8; i++) { ctx.strokeRect(-100 + i * 22, -20 + r * 22, 16, 14); }
+    for (let i = 0; i < 4; i++) led(85, -18 + i * 12 - 0, Math.sin(t * 8 + i * 2.1) > 0);
+  } else if (kind === 'table') {
+    ctx.beginPath(); ctx.moveTo(-120, -20); ctx.lineTo(120, -20); ctx.lineTo(95, -45); ctx.lineTo(-95, -45); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillRect(-120, -20, 240, 12); ctx.strokeRect(-120, -20, 240, 12);
+    for (const lx of [-95, 95]) { ctx.beginPath(); ctx.moveTo(lx, -8); ctx.lineTo(lx - 18, 60); ctx.moveTo(lx, -8); ctx.lineTo(lx + 18, 60); ctx.stroke(); }
+  } else if (kind === 'uniform') {
+    ctx.beginPath(); ctx.moveTo(-35, -70); ctx.lineTo(-95, -45); ctx.lineTo(-120, 5); ctx.lineTo(-85, 20); ctx.lineTo(-70, -10); ctx.lineTo(-70, 75); ctx.lineTo(70, 75); ctx.lineTo(70, -10); ctx.lineTo(85, 20); ctx.lineTo(120, 5); ctx.lineTo(95, -45); ctx.lineTo(35, -70); ctx.lineTo(0, -40); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(0, 75); ctx.stroke();
+    ctx.strokeRect(-55, -15, 38, 30); ctx.strokeRect(17, -15, 38, 30);
+  }
+  ctx.restore();
+}
 function holoScene(ctx, t, t0, t1) {
   const zc = 40 + (t - t0) * 2.2, scan = ((t - t0) * 9) % 40;
   warehouse(ctx, t, zc, 'holo', 1, scan);
@@ -551,8 +576,8 @@ function holoScene(ctx, t, t0, t1) {
   // ממשק
   hudFrame(ctx, 60, 60, 520, 240);
   text(ctx, 'MOR SYSTEM v9', 90, 105, { fam: 'Orbitron', size: 30, w: 800, align: 'left', color: '#7ff0ff' });
-  const cnt = Math.floor(lerp(9800, 12847, eOut(seg(t, t0, t0 + 6))));
-  text(ctx, `פריטים מנוהלים: ${cnt.toLocaleString('en-US')}`, 550, 165, { size: 34, w: 700, align: 'right', color: '#d9fbff' });
+  const cnt = Math.floor(lerp(120, 184, eOut(seg(t, t0, t0 + 6))));
+  text(ctx, `ראוטרים ומתגים סיסקו: ${cnt}`, 550, 165, { size: 34, w: 700, align: 'right', color: '#d9fbff' });
   text(ctx, 'חוסרים: 0', 550, 215, { size: 34, w: 700, align: 'right', color: '#8dff9e' });
   text(ctx, 'סטטוס: מור על זה ✓', 550, 265, { size: 34, w: 700, align: 'right', color: '#ffe08a' });
   // רדאר
@@ -561,12 +586,12 @@ function holoScene(ctx, t, t0, t1) {
   ctx.rotate(t * 2); const rg = ctx.createLinearGradient(0, 0, 140, 0); rg.addColorStop(0, 'rgba(80,235,255,0.6)'); rg.addColorStop(1, 'rgba(80,235,255,0)');
   ctx.fillStyle = rg; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 140, 0, 0.6); ctx.fill(); ctx.restore();
   // שלוש קופסאות שנפתחות (אחת לכל משפט)
-  const opens = [ev('n3'), ev('n4'), ev('n5')];
+  const opens = [ev('n3'), ev('n4'), ev('n5'), ev('n6') + 0.9];
   opens.forEach((to, k) => {
-    const bx = W / 2 + (k - 1) * 520, by = H * 0.70, d = t - to + 0.3;
+    const bx = W / 2 + (k - 1.5) * 445, by = H * 0.70, d = t - to + 0.3;
     if (d < 0) return;
     const app = eBack(d / 0.5), lid = eOut((d - 0.4) / 0.8);
-    ctx.save(); ctx.translate(bx, by); ctx.scale(app, app);
+    ctx.save(); ctx.translate(bx, by); ctx.scale(app * 0.78, app * 0.78);
     // אור מתוך הקופסה
     if (lid > 0) {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -585,14 +610,14 @@ function holoScene(ctx, t, t0, t1) {
     // הולוגרמה של הפריט
     const it = ITEMS[k], ha = ss((d - 0.8) / 0.5);
     if (ha > 0) {
-      text(ctx, it[0], bx, by - 290 - 10 * Math.sin(t * 2 + k), { size: 110, alpha: ha, dir: 'ltr', glow: 25, glowColor: 'rgba(120,240,255,1)' });
-      text(ctx, `${it[1]} ×${it[2]}  ✓`, bx, by - 170, { size: 44, w: 900, alpha: ha, color: '#e6fdff', glow: 10, glowColor: 'rgba(80,235,255,1)' });
+      itemIcon(ctx, it[0], bx, by - 290 - 10 * Math.sin(t * 2 + k), ha, t);
+      text(ctx, `${it[1]} ×${it[2].toLocaleString('en-US')}  ✓`, bx, by - 160, { size: 38, w: 900, alpha: ha, color: '#e6fdff', glow: 10, glowColor: 'rgba(80,235,255,1)' });
     }
   });
   // תגיות סריקה בצדדים
   for (let i = 0; i < 6; i++) {
     const tt = t - t0 - 0.6 - i * 0.9; if (tt < 0 || tt > 2.2) continue;
-    const a = win(tt, 0, 2.2, 0.2, 0.4), x = i % 2 ? W * 0.2 : W * 0.8, y = H * (0.40 + 0.06 * (i % 3));
+    const a = win(tt, 0, 2.2, 0.2, 0.4), x = W / 2 + (i % 2 ? -170 : 170), y = H * (0.10 + 0.05 * (i % 3));
     text(ctx, `✓ ${ITEMS[(i + 3) % 6][1]} – נמצא`, x, y, { size: 32, w: 700, alpha: a, color: '#9ff6ff', glow: 8, glowColor: 'rgba(80,235,255,1)' });
   }
 }
@@ -712,7 +737,7 @@ function scene2(ctx, t) {
   else if (t < ev('ai')) systemPanel(ctx, t, ev('system'), ev('ai'));
   else if (t < ev('caption')) morAI(ctx, t, ev('ai'), ev('caption'));
   else captionCard(ctx, t, ev('caption'), ev('s2end'));
-  if (t < ev('caption')) subtitle(ctx, t, ['n1', 'n2', 'n3', 'n4', 'n5']);
+  if (t < ev('caption')) subtitle(ctx, t, ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']);
   // מעבר הבזק
   for (const k of ['search', 'where', 'hud', 'system', 'ai', 'caption']) {
     const d = t - ev(k); if (d > -0.15 && d < 0.3) { ctx.save(); ctx.globalAlpha = d < 0 ? (d + 0.15) / 0.15 * 0.6 : 0.6 * (1 - d / 0.3); ctx.fillStyle = k === 'where' ? '#fff' : k === 'caption' ? '#ffe0a0' : '#bff'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
