@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOR SHABAT – תצוגה מקדימה</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+  :root { --bg:#0b0906; --panel:#16120c; --line:#3a2f1c; --gold:#f2c867; --text:#f5efe2; --mute:#a99f8c; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Heebo, sans-serif; }
+  body.render { background: #000; overflow: hidden; }
+  body.render #ui { display: none; }
+  body.render canvas { position: fixed; inset: 0; }
+  #ui { max-width: 1400px; margin: 0 auto; padding: 16px; }
+  h1 { font: 900 22px Heebo; color: var(--gold); margin: 4px 0 12px; letter-spacing: .5px; }
+  #stage { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  #stage canvas { width: 100%; height: 100%; display: block; }
+  #bigplay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.45); border: 0; color: #fff; font: 900 28px Heebo; cursor: pointer; }
+  .bar { display: flex; gap: 10px; align-items: center; margin: 10px 0; flex-wrap: wrap; direction: ltr; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font: 700 15px Heebo; cursor: pointer; }
+  button:hover { border-color: var(--gold); }
+  #seek { flex: 1; min-width: 200px; accent-color: var(--gold); }
+  #time { font: 500 14px Orbitron, monospace; color: var(--mute); min-width: 120px; text-align: center; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; direction: rtl; margin-bottom: 8px; }
+  .chips button { font-size: 13px; padding: 5px 10px; }
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
+  summary { cursor: pointer; font-weight: 700; color: var(--gold); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 16px; margin-top: 10px; }
+  label { font-size: 12px; color: var(--mute); display: block; }
+  input[type=text] { width: 100%; background: #0d0a06; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: 400 15px Heebo; }
+  p.note { color: var(--mute); font-size: 14px; line-height: 1.6; }
+  code { background: #0d0a06; padding: 1px 6px; border-radius: 4px; direction: ltr; display: inline-block; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h1>MOR SHABAT – THE LEGEND OF LAHAV · תצוגה מקדימה</h1>
+  <div id="stage"><canvas id="cv" width="1920" height="1080"></canvas><button id="bigplay">▶ לחצו לניגון (עם סאונד)</button></div>
+  <div class="bar">
+    <button id="play">▶ Play</button>
+    <button id="full">⛶ Fullscreen</button>
+    <input type="range" id="seek" min="0" max="1000" value="0" step="1">
+    <span id="time">0:00 / 0:00</span>
+  </div>
+  <div class="chips" id="chips"></div>
+  <details>
+    <summary>עריכת טקסטים על המסך (תצוגה חיה)</summary>
+    <p class="note">השינויים כאן מוצגים מיד בתצוגה. כדי שייכנסו לסרטון המרונדר: לחצו "הורדת config.json", החליפו את הקובץ בתיקיית הפרויקט והריצו <code>npm run build</code>. שינוי בקריינות (חלק vo בקובץ) דורש <code>npm run audio</code> לפני כן.</p>
+    <div class="grid" id="fields"></div>
+    <div class="bar" style="direction:rtl"><button id="dl">הורדת config.json</button><button id="reset">איפוס</button></div>
+  </details>
+</div>
+<audio id="au" src="build/soundtrack.wav" preload="auto"></audio>
+<script src="film.js"></script>
+<script>
+(async () => {
+  const qs = new URLSearchParams(location.search);
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  if (qs.get('render')) {
+    document.body.classList.add('render');
+    document.body.appendChild(cv);
+    const w = +qs.get('w') || 1920, h = +qs.get('h') || 1080;
+    cv.width = w; cv.height = h; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    FILM.setScale(w / 1920);
+    await FILM.load();
+    window.frameAt = (t) => { FILM.render(ctx, t); return true; };
+    window.FILM_READY = FILM.timeline.total;
+    return;
+  }
+  // תצוגה מקדימה: התאמת רזולוציה למסך
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  function fit() { const r = cv.getBoundingClientRect(); const w = Math.round(Math.min(1920, r.width * dpr)); cv.width = w; cv.height = Math.round(w * 9 / 16); FILM.setScale(w / 1920); }
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem('mor-titles') || '{}'); } catch (e) {}
+  const TL = await FILM.load('build/timeline.json', saved);
+  fit(); addEventListener('resize', fit); document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
+  const au = document.getElementById('au'), seek = document.getElementById('seek'), time = document.getElementById('time');
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  let cur = 0, playing = false, dragging = false;
+  function frame() {
+    if (playing && !au.paused) cur = au.currentTime;
+    if (cur >= TL.total) { playing = false; au.pause(); cur = TL.total; }
+    FILM.render(ctx, cur);
+    if (!dragging) seek.value = Math.round(cur / TL.total * 1000);
+    time.textContent = `${fmt(cur)} / ${fmt(TL.total)}`;
+    document.getElementById('play').textContent = playing ? '❚❚ Pause' : '▶ Play';
+    requestAnimationFrame(frame);
+  }
+  function play() { au.currentTime = cur; au.play(); playing = true; document.getElementById('bigplay').style.display = 'none'; }
+  function pause() { au.pause(); playing = false; }
+  document.getElementById('bigplay').onclick = play;
+  document.getElementById('play').onclick = () => (playing ? pause() : play());
+  document.getElementById('full').onclick = () => document.getElementById('stage').requestFullscreen();
+  seek.oninput = () => { dragging = true; cur = seek.value / 1000 * TL.total; if (playing) au.currentTime = cur; };
+  seek.onchange = () => { dragging = false; };
+  addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT') return; if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); } if (e.key === 'f') document.getElementById('stage').requestFullscreen(); });
+  const chips = [['פתיחה', 's1'], ['האגדה', 's2'], ['איפה מור?!', 'where'], ['MOR SYSTEM', 'hud'], ['MOR.AI', 'ai'], ['LEVEL UP', 's3'], ['הברכה', 's4'], ['הפינאלה', 's5'], ['ספירה 10–1', 'count'], ['מזל טוב', 'mazal'], ['סיום', 'end']];
+  const cc = document.getElementById('chips');
+  chips.forEach(([n, k]) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => { cur = TL.events[k]; if (playing) au.currentTime = cur; }; cc.appendChild(b); });
+  // עורך טקסטים
+  const fields = document.getElementById('fields'), vals = Object.assign({}, TL.titles, saved);
+  for (const k of Object.keys(TL.titles)) {
+    const d = document.createElement('div');
+    d.innerHTML = `<label>${k}</label><input type="text" dir="auto">`;
+    const inp = d.querySelector('input'); inp.value = vals[k];
+    inp.oninput = () => { vals[k] = inp.value; FILM.setTitles(vals); try { localStorage.setItem('mor-titles', JSON.stringify(vals)); } catch (e) {} };
+    fields.appendChild(d);
+  }
+  document.getElementById('reset').onclick = () => { try { localStorage.removeItem('mor-titles'); } catch (e) {} location.reload(); };
+  document.getElementById('dl').onclick = async () => {
+    const cfg = await (await fetch('config.json', { cache: 'no-store' })).json();
+    cfg.titles = vals;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = 'config.json'; a.click();
+  };
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "mor-shabat-legend-of-lahav",
+  "version": "1.0.0",
+  "private": true,
+  "description": "סרטון יום הולדת קולנועי למור שבת – MOR SHABAT: THE LEGEND OF LAHAV",
+  "scripts": {
+    "audio": "python3 tools/voice.py && python3 tools/soundtrack.py",
+    "soundtrack": "python3 tools/soundtrack.py",
+    "preview": "npx --yes http-server -p 8080 -c-1 .",
+    "render": "node tools/render.js",
+    "render:hd": "node tools/render.js --hd",
+    "build": "python3 tools/soundtrack.py && node tools/render.js",
+    "stills": "node tools/render.js --stills"
+  }
+}
