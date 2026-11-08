@@ -10,6 +10,7 @@
     "render": "node tools/render.js",
     "render:hd": "node tools/render.js --hd",
     "build": "python3 tools/soundtrack.py && node tools/render.js",
-    "stills": "node tools/render.js --stills"
+    "stills": "node tools/render.js --stills",
+    "check": "node tools/check.js"
   }
 }

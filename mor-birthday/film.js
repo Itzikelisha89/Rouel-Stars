@@ -710,7 +710,7 @@ function callScreen(ctx, t, t0) {
   drawPhoto(ctx, photo('10.jpg'), -130, -250, 260, 260, 0.6, 0.27, 2.4);
   ctx.restore();
   text(ctx, T.callingName, 0, 80, { fam: 'Secular One', size: 64, w: 400, color: '#fff' });
-  text(ctx, 'מתקשרת…' + '.'.repeat(Math.floor(d * 3) % 3), 0, 150, { size: 36, w: 300, color: '#9fb3c4' });
+  text(ctx, 'מתקשרת…' + '.'.repeat(Math.max(0, Math.floor(d * 3) % 3)), 0, 150, { size: 36, w: 300, color: '#9fb3c4' });
   ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.arc(0, 290, 55 + 4 * Math.sin(d * 12), 0, 7); ctx.fill();
   text(ctx, '📞', 0, 292, { size: 52, dir: 'ltr' });
   ctx.restore();
