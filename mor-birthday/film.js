@@ -409,6 +409,12 @@ function scene1(ctx, t) {
     sparksFall(ctx, t, 26, whA);
   }
   smoke(ctx, t, 0.25, null, 4, 10);
+  // אידנט אולפן
+  const ida = win(t, 0.5, 2.55, 0.6, 0.45);
+  if (ida > 0) {
+    text(ctx, 'LAHAV PICTURES', W / 2, H / 2 - 18, { fam: 'Cinzel', size: 46, w: 700, spacing: 22, alpha: ida, color: '#d8c49a', glow: 12, glowColor: 'rgba(255,200,120,0.5)' });
+    text(ctx, 'PRESENTS', W / 2, H / 2 + 42, { fam: 'Cinzel', size: 22, w: 700, spacing: 14, alpha: ida * 0.8, color: '#a99a7c' });
+  }
   // ברק והבזק
   const th = ev('thunder');
   if (t >= th - 0.05 && t < th + 0.6) {
@@ -468,35 +474,56 @@ function titleCard(ctx, t) {
 }
 
 // --- חלק 2
+// מור כגיבור הסרט: גזירה של מור עם תאורת קצה זהובה, דירוג צבע ודעיכה למטה
+function heroCut(ctx, x, y, h, t, o = {}) {
+  const im = IMG.cut; if (!im) return;
+  const w = h * im.width / im.height, pw = Math.ceil(w * S), ph = Math.ceil(h * S);
+  if (!CACHE.cutOff || CACHE.cutOff.width !== pw || CACHE.cutOff.height !== ph) CACHE.cutOff = off(pw, ph);
+  const c = CACHE.cutOff, g = c.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.clearRect(0, 0, pw, ph);
+  g.filter = 'contrast(1.12) saturate(0.85) brightness(0.92)'; g.drawImage(im, 0, 0, pw, ph); g.filter = 'none';
+  g.globalCompositeOperation = 'source-atop';
+  const tint = g.createLinearGradient(0, 0, pw, 0);   // צד שמאל קר, צד ימין חם (אור אחורי)
+  tint.addColorStop(0, 'rgba(20,70,100,0.35)'); tint.addColorStop(0.6, 'rgba(0,0,0,0)'); tint.addColorStop(1, 'rgba(255,170,70,0.35)');
+  g.fillStyle = tint; g.fillRect(0, 0, pw, ph);
+  g.globalCompositeOperation = 'destination-in';
+  const fade = g.createLinearGradient(0, 0, 0, ph); fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(o.fadeFrom || 0.62, 'rgba(0,0,0,1)'); fade.addColorStop(0.97, 'rgba(0,0,0,0)');
+  g.fillStyle = fade; g.fillRect(0, 0, pw, ph);
+  ctx.save(); ctx.globalAlpha *= o.alpha == null ? 1 : o.alpha;
+  setShadow(ctx, o.rim || 40, o.rimColor || 'rgba(255,185,90,0.95)');
+  ctx.drawImage(c, x - w / 2, y, w, h);
+  noShadow(ctx);
+  ctx.drawImage(c, x - w / 2, y, w, h);
+  ctx.restore();
+  return w;
+}
 function heroShot(ctx, t, t0, t1) {
-  const p = seg(t, t0, t1), h = PH.hero;
-  ctx.fillStyle = '#05080a'; ctx.fillRect(0, 0, W, H);
-  smoke(ctx, t, 0.35, null, 4, 20);
-  // התמונה בצד ימין, נעלמת לשמאל
-  const rx = 640, rw = W - rx;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(rx, 0, rw, H); ctx.clip();
-  ctx.filter = 'contrast(1.15) saturate(0.75) brightness(0.95)';
-  drawPhoto(ctx, photo(h.file), rx, 0, rw, H, h.fx, h.fy, (h.zoom || 2) * lerp(1, 1.12, p), 0.55, 0.42);
-  ctx.filter = 'none';
-  const m = ctx.createLinearGradient(rx, 0, rx + 520, 0);
-  m.addColorStop(0, 'rgba(5,8,10,1)'); m.addColorStop(1, 'rgba(5,8,10,0)');
-  ctx.fillStyle = m; ctx.fillRect(rx - 2, 0, 522, H);
-  // דירוג צבע טיל-כתום
-  ctx.globalCompositeOperation = 'soft-light'; ctx.fillStyle = 'rgba(20,90,110,0.55)'; ctx.fillRect(0, 0, W, H);
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.restore();
-  rays(ctx, W * 0.82, -80, 0.35, t, '255,200,140', 10, 1300);
-  sparksFall(ctx, t, 14, 0.7);
-  embers(ctx, t, 40, 0.6);
+  const p = seg(t, t0, t1), d = t - t0;
+  const bg = ctx.createRadialGradient(W * 0.68, H * 0.35, 50, W * 0.6, H * 0.5, 1300);
+  bg.addColorStop(0, '#3a2a14'); bg.addColorStop(0.45, '#12100c'); bg.addColorStop(1, '#030405');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  // אור אחורי עוצמתי ועשן מאחור
+  rays(ctx, W * 0.68, H * 0.18, 0.5, t, '255,205,140', 18, 1500);
+  sprite(ctx, glowSprite('rgba(255,200,130,1)', 256), W * 0.68, H * 0.3, 700, 0.5); ctx.globalAlpha = 1;
+  smoke(ctx, t, 0.5, null, 6, 18);
+  sparksFall(ctx, t, 20, 0.8);
+  // מור – כניסה בהילוך איטי: עולה מעט ומתקרב
+  const enter = eOut(d / 2.2), sc = lerp(1.0, 1.1, p);
+  const h = 1180 * sc, y = lerp(H * 0.32, H * 0.06, enter) - (sc - 1) * 300;
+  heroCut(ctx, W * 0.68, y, h, t, { alpha: ss(d / 1.2), rim: 45, fadeFrom: 0.52 });
+  // עשן מלפנים וגחלים
+  smoke(ctx, t + 40, 0.3, null, 4, 30);
+  embers(ctx, t, 50, 0.7);
+  flare(ctx, W * 0.68 + 260, 40, 0.3 + 0.12 * Math.sin(t * 1.5), 0.9, '255,190,120');
   // כרטיס שם
-  const a = ss((t - t0 - 1.6) / 0.8) * win(t, t0, t1, 0.3, 0.4);
-  const x = 560;
+  const a = ss((d - 1.6) / 0.8) * win(t, t0, t1, 0.3, 0.4);
+  const x = 700;
   ctx.save(); ctx.globalAlpha = a;
-  ctx.fillStyle = goldGrad(ctx, 470, 480); ctx.fillRect(x - 380 * eOut((t - t0 - 1.6) / 1.2), 552, 380 * eOut((t - t0 - 1.6) / 1.2), 4);
+  ctx.fillStyle = goldGrad(ctx, 470, 480); ctx.fillRect(x - 480 * eOut((d - 1.6) / 1.2), 552, 480 * eOut((d - 1.6) / 1.2), 4);
   ctx.restore();
-  text(ctx, T.heroName, x, 470, { fam: 'Secular One', size: 128, w: 400, align: 'right', alpha: a, color: goldGrad(ctx, 410, 530), glow: 20 });
-  text(ctx, T.heroRole, x, 610, { fam: 'Heebo', size: 46, w: 300, align: 'right', alpha: ss((t - t0 - 2.4) / 0.8) * win(t, t0, t1, 0.3, 0.4), color: '#e8eef5', spacing: 2 });
+  text(ctx, T.heroName, x, 470, { fam: 'Secular One', size: 140, w: 400, align: 'right', alpha: a, color: goldGrad(ctx, 400, 540), glow: 22 });
+  text(ctx, T.heroRole, x, 612, { fam: 'Heebo', size: 48, w: 300, align: 'right', alpha: ss((d - 2.4) / 0.8) * win(t, t0, t1, 0.3, 0.4), color: '#e8eef5', spacing: 2 });
+  text(ctx, 'GDUD LAHAV · EQUIPMENT COMMAND', x, 675, { fam: 'Orbitron', size: 22, w: 500, align: 'right', alpha: 0.7 * ss((d - 3.0) / 0.8) * win(t, t0, t1, 0.3, 0.4), color: '#c9b78f', spacing: 4 });
 }
 function searchGag(ctx, t, t0, t1) {
   const p = seg(t, t0, t1);
@@ -716,18 +743,21 @@ function callScreen(ctx, t, t0) {
   ctx.restore();
 }
 function captionCard(ctx, t, t0, t1) {
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.globalAlpha = 0.45; ctx.filter = 'brightness(0.6) saturate(0.6)';
-  drawPhoto(ctx, photo('10.jpg'), 0, 0, W, H, 0.5, 0.3, lerp(1.0, 1.08, seg(t, t0, t1)));
-  ctx.restore(); ctx.filter = 'none';
-  const v = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 1100); v.addColorStop(0, 'rgba(0,0,0,0.2)'); v.addColorStop(1, 'rgba(0,0,0,0.95)');
-  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
-  embers(ctx, t, 60, 0.8);
   const d = t - t0, a = win(t, t0, t1 + 0.4, 0.5, 0.5);
-  const parts = T.caption.split(' – ');
-  text(ctx, parts[0], W / 2, H / 2 - 70, { fam: 'Secular One', size: 130, w: 400, color: goldGrad(ctx, H / 2 - 140, H / 2), alpha: a * ss(d / 0.5), glow: 25 });
-  if (parts[1]) text(ctx, parts[1], W / 2, H / 2 + 70, { fam: 'Heebo', size: 56, w: 700, color: '#fff', alpha: a * ss((d - 0.5) / 0.5), spacing: 1 });
-  flare(ctx, W / 2, H / 2 - 70, 0.5 * clamp(1 - d / 1.2), 0.8, '255,200,120');
+  const bg = ctx.createRadialGradient(W * 0.25, H * 0.4, 50, W * 0.3, H * 0.5, 1300);
+  bg.addColorStop(0, '#3b2a12'); bg.addColorStop(0.5, '#110c07'); bg.addColorStop(1, '#020202');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  rays(ctx, W * 0.25, H * 0.15, 0.45, t, '255,205,140', 16, 1400);
+  smoke(ctx, t, 0.4, null, 5, 20);
+  heroCut(ctx, W * 0.24, lerp(H * 0.14, H * 0.08, eOut(d / 3)), 1150, t, { alpha: ss(d / 0.6), rim: 40, fadeFrom: 0.5 });
+  embers(ctx, t, 70, 0.8);
+  const parts = T.caption.split(' – '), x = W * 0.70;
+  text(ctx, parts[0], x, H / 2 - 80, { fam: 'Secular One', size: 150, w: 400, color: goldGrad(ctx, H / 2 - 160, H / 2), alpha: a * ss(d / 0.5), glow: 25 });
+  if (parts[1]) {
+    const lines = wrap(ctx, parts[1], 900, { size: 58, w: 700 });
+    lines.forEach((ln, i) => text(ctx, ln, x, H / 2 + 70 + i * 76, { fam: 'Heebo', size: 58, w: 700, color: '#fff', alpha: a * ss((d - 0.5 - i * 0.3) / 0.5), spacing: 1 }));
+  }
+  flare(ctx, x, H / 2 - 80, 0.5 * clamp(1 - d / 1.2), 0.8, '255,200,120');
 }
 function scene2(ctx, t) {
   if (t < ev('search')) heroShot(ctx, t, ev('s2'), ev('search'));
@@ -1058,6 +1088,13 @@ function scene5(ctx, t) {
   rays(ctx, W / 2, H * 0.42, 0.6 * ss((t - lg) / 1), t, '255,200,120', 16, 1400);
   embers(ctx, t, 80, 0.8, GOLD);
   logo(ctx, t, lg);
+  const ca = ss((t - lg - 1.8) / 0.8);
+  if (ca > 0) {
+    const L1 = 'LAHAV PICTURES PRESENTS · A FAMILY PRODUCTION · "THE LEGEND OF LAHAV"';
+    const L2 = 'STARRING MOR SHABAT · CO-STARRING THE WHOLE FAMILY · EQUIPMENT BY MOR SHABAT';
+    const L3 = 'ROUTERS & SWITCHES · PLASTIC TABLES · UNIFORMS · AI BY MOR.AI · WITH LOVE FROM EVERYONE';
+    [L1, L2, L3].forEach((l, i) => text(ctx, l, W / 2, H - 132 + i * 34, { fam: 'Orbitron', size: 19, w: 500, spacing: 3, color: '#b9aa86', alpha: ca * (i === 1 ? 1 : 0.75) }));
+  }
   burst(ctx, W / 2, H * 0.42, lg, t, 120, GOLD, 1400, 1.8, 5, 80);
 }
 
@@ -1113,6 +1150,7 @@ async function load(timelineUrl = 'build/timeline.json', overrides = null) {
   const names = new Set();
   for (const v of Object.values(PH)) { if (Array.isArray(v)) v.forEach((x) => names.add(typeof x === 'string' ? x : x.file)); else names.add(v.file); }
   names.add('10.jpg');
+  await new Promise((res) => { const im = new Image(); im.onload = () => { IMG.cut = im; res(); }; im.onerror = () => res(); im.src = 'assets/cutouts/mor_hero.png'; });
   await Promise.all([...names].map((n) => new Promise((res, rej) => { const im = new Image(); im.onload = () => { IMG[n] = im; res(); }; im.onerror = () => rej(new Error('missing photo ' + n)); im.src = 'assets/photos/' + n; })));
   const fams = [['Heebo', 900], ['Heebo', 700], ['Heebo', 300], ['Heebo', 400], ['Frank Ruhl Libre', 700], ['Frank Ruhl Libre', 900], ['Secular One', 400], ['Cinzel', 900], ['Cinzel', 700], ['Orbitron', 800], ['Orbitron', 500]];
   await Promise.all(fams.map(([f, w]) => document.fonts.load(`${w} 40px "${f}"`, 'אבגMOR0123')));
