@@ -23,3 +23,14 @@
   const toggle = () => bar.classList.toggle('show', scrollY > innerHeight * 0.7);
   addEventListener('scroll', () => requestAnimationFrame(toggle), { passive: true }); toggle();
 })();
+/* product films: play only while on screen; reduced motion keeps the still poster */
+(() => {
+  const vids = document.querySelectorAll('video[data-play]');
+  if (!vids.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    const v = e.target;
+    if (e.isIntersecting) { if (v.preload === 'none') { v.preload = 'auto'; } v.play().catch(() => {}); }
+    else v.pause();
+  }), { threshold: 0.25 });
+  vids.forEach(v => io.observe(v));
+})();

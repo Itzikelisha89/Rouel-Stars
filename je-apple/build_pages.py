@@ -351,128 +351,112 @@ NEEDS = [
     ('שינה', 'לילות של ערפול והתעוררויות.', 'shop.html#shop', 'רפלקסולוגיה, תמציות צמחים לערב'),
     ('עיכול', 'פרוביוטיקה, צמחי מרפא ותזונה.', 'shop.html#shop', '31 מוצרים בחנות'),
 ]
+def vid(name, label, w, h):
+    return (f'<video class="at__vid" data-play muted loop playsinline preload="none" width="{w}" height="{h}" '
+            f'poster="video/{name}-poster.jpg" aria-label="{label}"><source src="video/{name}.mp4" type="video/mp4"></video>')
+
+def at_links(primary, ghost):
+    return f'<p class="at__links"><a class="btn" href="{primary[1]}">{primary[0]}</a><a class="btn btn--ghost" href="{ghost[1]}">{ghost[0]}</a></p>'
+
 def index():
-    needs = '\n'.join(f'        <a class="need2" href="{h}" data-reveal style="--d:{(i%3)*60}ms"><h3>{t}</h3><p>{d}</p><span class="link">{x}</span></a>' for i, (t, d, h, x) in enumerate(NEEDS))
-    tpreview = '\n'.join(tcard(t, i) for i, t in enumerate([T[0], T[1], T[2]]))
     s = head('יהושע אלישע | קליניקה לרפואה טבעית בפתח תקווה, קרמים בעבודת יד וחנות',
              'הקליניקה לרפואה טבעית של יהושע אלישע בפתח תקווה: 11 שיטות טיפול, ליין קרמים בעבודת יד וחנות של 96 מוצרים טבעיים. ייעוץ בוואטסאפ, משלוח חינם מ־₪300.')
     s += header('index.html')
-    s += f'''<main id="main">
-  <section class="hero2" id="top" aria-labelledby="intro-h">
-    <div class="wrap hero2__grid">
-      <div class="hero2__text">
-        <p class="eyebrow" data-reveal>קליניקה לרפואה טבעית · פתח תקווה</p>
-        <h1 class="hero2__h" id="intro-h" data-reveal style="--d:60ms">טבע שעובד.<br>בקליניקה ובבית.</h1>
-        <p class="lead" data-reveal style="--d:120ms">קרמים שנרקחים בעבודת יד, חנות של 96 מוצרים טבעיים, וטיפולים בקליניקה של יהושע אלישע. משלוח חינם עד הבית מ־₪300.</p>
-        <div data-reveal style="--d:180ms">
-          <p class="hero2__ask">מה מטריד אתכם?</p>
-          <ul class="intent">
-            <li><a href="t-massage.html">כאבי גב וצוואר</a></li>
-            <li><a href="t-acupuncture.html">ברכיים ומפרקים</a></li>
-            <li><a href="yehoshua.html#focus">פריון והריון</a></li>
-            <li><a href="t-bach.html">חרדה ומתח</a></li>
-            <li><a href="t-reflexology.html">שינה</a></li>
-            <li><a href="shop.html#shop">עיכול</a></li>
-          </ul>
-        </div>
-        <div class="cta-row hero2__cta" data-reveal style="--d:240ms"><a class="btn" href="shop.html">לחנות</a><a class="btn btn--ghost" href="{BOOK}">לקביעת טיפול</a></div>
+    VOUCH = 'https://yehoshuatherapy.co.il/product/%d7%9b%d7%a8%d7%98%d7%99%d7%a1-%d7%9e%d7%aa%d7%a0%d7%94/'
+    s += f'''<main id="main" class="ats">
+  <section class="at at--hero" id="top" aria-labelledby="intro-h">
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>קליניקה לרפואה טבעית · פתח תקווה</p>
+      <h1 class="at__h at__h--xl" id="intro-h" data-reveal style="--d:60ms">טבע שעובד.</h1>
+      <p class="at__sub" data-reveal style="--d:120ms">טיפולים בקליניקה. קרמים בעבודת יד.<br>96 מוצרים טבעיים, עד הבית.</p>
+      <div data-reveal style="--d:180ms">{at_links(("לחנות", "shop.html"), ("לקביעת טיפול", BOOK))}</div>
+    </div>
+    <div class="at__media at__media--wide" data-reveal style="--d:240ms">{vid("kit-turn", "שלוש צנצנות הקרמים של JE מסתובבות", 1600, 900)}</div>
+  </section>
+
+  <section class="at at--dark" aria-labelledby="tx-h">
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>הקליניקה</p>
+      <h2 class="at__h" id="tx-h" data-reveal style="--d:60ms">11 שיטות טיפול.<br>מטפל אחד שמקשיב.</h2>
+      <p class="at__sub" data-reveal style="--d:120ms">עיסוי רפואי, דיקור סיני, רפלקסולוגיה ועוד. כל טיפול ₪400.</p>
+      <div data-reveal style="--d:180ms">{at_links(("לקביעת טיפול", BOOK), ("לכל הטיפולים", "treatments.html"))}</div>
+    </div>
+    <div class="at__media at__media--photo" data-reveal style="--d:200ms"><img src="img/t/reflexology.webp" alt="ידיים מעסות כף רגל עם שמן" width="1280" height="853" loading="eager" fetchpriority="high"></div>
+  </section>
+
+  <section class="at at--light" aria-labelledby="arn-h">
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>קרם ארניקה טיפולי</p>
+      <h2 class="at__h" id="arn-h" data-reveal style="--d:60ms">לשרירים שעבדו קשה.</h2>
+      <p class="at__sub" data-reveal style="--d:120ms">ארניקה, מור, מנטה וקמפור, על שיאה ושמן זית. ₪120.</p>
+      <div data-reveal style="--d:180ms">{at_links(("לקנייה", CO.format(2676)), ("למידע נוסף", "p-arnica.html"))}</div>
+    </div>
+    <div class="at__media at__media--sq" data-reveal style="--d:200ms">{vid("arnica-open", "צנצנת קרם הארניקה נפתחת", 1080, 1080)}</div>
+  </section>
+
+  <div class="at-grid">
+    <section class="at at--light at--half" aria-labelledby="foot-h">
+      <div class="at__txt">
+        <h2 class="at__h at__h--s" id="foot-h" data-reveal>קרם רגליים.</h2>
+        <p class="at__sub" data-reveal style="--d:60ms">לעקבים יבשים וסדוקים. ₪129.</p>
+        <div data-reveal style="--d:120ms">{at_links(("לקנייה", CO.format(2282)), ("למידע נוסף", "p-foot.html"))}</div>
       </div>
-      <div class="hero2__media" data-reveal style="--d:120ms">
-        <img src="img/t/reflexology.webp" alt="ידיים מעסות כף רגל עם שמן" loading="eager" fetchpriority="high">
-        <a class="hero2__tag" href="yehoshua.html"><img src="img/yehoshua.webp" alt="" width="52" height="52"><span><b>יהושע אלישע</b>מטפל ברפואה משלימה</span></a>
-        <a class="hero2__prod" href="p-arnica.html"><img src="img/arnica-34.webp" alt="" width="120" height="70"><span><b>קרם ארניקה</b>₪120 · 50 מ״ל</span><span class="hero2__buy">לקנייה</span></a>
+      <div class="at__media at__media--prod" data-reveal style="--d:160ms"><img src="img/foot.webp" alt="צנצנת לבנה של קרם רגליים עם פס ירוק" width="2339" height="1149" loading="lazy"></div>
+    </section>
+
+    <section class="at at--dark at--half" aria-labelledby="kit-h">
+      <div class="at__txt">
+        <p class="at__kick" data-reveal>ערכת הבית</p>
+        <h2 class="at__h at__h--s" id="kit-h" data-reveal style="--d:60ms">שלושה קרמים. ₪300.</h2>
+        <p class="at__sub" data-reveal style="--d:120ms">במקום ₪418. המשלוח חינם.</p>
+        <div data-reveal style="--d:180ms">{at_links(("לקניית הערכה", CO.format(4287)), ("מה בערכה", "shop.html#buy"))}</div>
       </div>
-    </div>
-  </section>
+      <div class="at__media at__media--prod" data-reveal style="--d:200ms"><img src="img/kit.webp" alt="שתי צנצנות קרם רגליים וצנצנת קרם ארניקה" width="1186" height="479" loading="lazy"></div>
+    </section>
 
-  <section class="stats" aria-label="במספרים">
-    <div class="wrap"><ul class="stats__row">
-      <li data-reveal><b>11</b><span>שיטות טיפול בקליניקה</span></li>
-      <li data-reveal style="--d:60ms"><b>6</b><span>קרמים בעבודת יד</span></li>
-      <li data-reveal style="--d:120ms"><b>96</b><span>מוצרים טבעיים בחנות</span></li>
-      <li data-reveal style="--d:180ms"><b>₪300</b><span>ומעלה, המשלוח חינם</span></li>
-    </ul></div>
-  </section>
-
-  <section class="section section--alt" id="line" aria-labelledby="line-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal><p class="eyebrow">ליין JE</p><h2 class="h-l" id="line-h">הקרמים של יהושע.</h2><p class="lead">נרקחים בעבודת יד בקליניקה, באותן נוסחאות שיהושע משתמש בהן בטיפולים.</p></div>
-      <div class="pcs">
-{"\n".join(pcard(p_, i) for i, p_ in enumerate(PD))}
+    <section class="at at--dark at--half" aria-labelledby="shop-h">
+      <div class="at__txt">
+        <p class="at__kick" data-reveal>החנות</p>
+        <h2 class="at__h at__h--s" id="shop-h" data-reveal style="--d:60ms">כל מה שטבעי.<br>במקום אחד.</h2>
+        <p class="at__sub" data-reveal style="--d:120ms">צמחי מרפא, תמציות, שמנים ופרוביוטיקה.</p>
+        <div data-reveal style="--d:180ms">{at_links(("לחנות", "shop.html#shop"), ("למבצעים", "shop.html#deals"))}</div>
       </div>
-    </div>
-  </section>
+      <p class="at__num" data-reveal style="--d:200ms" aria-hidden="true">96</p>
+      <p class="at__foot" data-reveal style="--d:240ms">מוצרים בחנות · משלוח חינם מ־₪300</p>
+    </section>
 
-  <section class="section" aria-labelledby="kit-h">
-    <div class="wrap">
-      <a class="kit" href="{CO.format(4287)}" data-reveal>
-        <div class="kit__txt"><p class="eyebrow">ערכת הבית</p><h2 class="h-l" id="kit-h">שלושה קרמים. ₪300.</h2><p class="lead">2 קרם רגליים וקרם ארניקה, במקום ₪418. חוסכים ₪118, והמשלוח חינם.</p><span class="btn">לקניית הערכה</span></div>
-        <img src="img/kit.webp" alt="שתי צנצנות קרם רגליים וצנצנת קרם ארניקה" loading="lazy">
-      </a>
-    </div>
-  </section>
-
-  <section class="section section--alt" aria-labelledby="deals-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal><p class="eyebrow">מבצעים בחנות</p><h2 class="h-l" id="deals-h">חוסכים עד ₪73.</h2><p class="lead">מבחר מהמבצעים עכשיו. יש עוד 15 בחנות.</p></div>
-      <ul class="deals deals--card" data-reveal><li class="deal"><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%93%d7%99%d7%98%d7%95%d7%a7%d7%a1-%d7%aa%d7%9e%d7%a6%d7%99%d7%aa/" class="deal__name">ברא דיטוקס תמצית</a><span class="deal__save">חוסכים ₪73</span><span class="deal__price">₪85<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1369&amp;quantity=1">לקנייה</a></li><li class="deal"><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%a0%d7%99%d7%99%d7%98-100-%d7%9e%d7%9c/" class="deal__name">ברא נייט 100 מ״ל</a><span class="deal__save">חוסכים ₪59</span><span class="deal__price">₪99<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=683&amp;quantity=1">לקנייה</a></li><li class="deal"><a href="https://yehoshuatherapy.co.il/product/100-12-zizyphus/" class="deal__name">זיזיפוס, תמצית צמחים</a><span class="deal__save">חוסכים ₪57</span><span class="deal__price">₪119<s>₪176</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=619&amp;quantity=1">לקנייה</a></li><li class="deal"><a href="https://yehoshuatherapy.co.il/product/%d7%a9%d7%9e%d7%9f-%d7%90%d7%95%d7%a8%d7%92%d7%a0%d7%95/" class="deal__name">שמן אורגנו</a><span class="deal__save">חוסכים ₪56</span><span class="deal__price">₪124<s>₪180</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1221&amp;quantity=1">לקנייה</a></li></ul>
-      <div class="cta-row" style="margin-top:36px" data-reveal><a class="btn" href="shop.html#deals">לכל המבצעים</a><a class="link" href="shop.html#shop">לחנות לפי צורך</a></div>
-    </div>
-  </section>
-
-  <section class="section" id="needs" aria-labelledby="needs-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal><p class="eyebrow">מתחילים מהבעיה</p><h2 class="h-l" id="needs-h">במה אפשר לעזור?</h2><p class="lead">בחרו את מה שמטריד אתכם, ותראו אילו טיפולים ומוצרים מתאימים.</p></div>
-      <div class="needs2">
-{needs}
+    <section class="at at--light at--half" aria-labelledby="gift-h">
+      <div class="at__txt">
+        <p class="at__kick" data-reveal>שובר מתנה</p>
+        <h2 class="at__h at__h--s" id="gift-h" data-reveal style="--d:60ms">שעה של שקט.<br>במתנה.</h2>
+        <p class="at__sub" data-reveal style="--d:120ms">טיפול בקליניקה, לבחירת מי שמקבל.</p>
+        <div data-reveal style="--d:180ms">{at_links(("לרכישת שובר", VOUCH), ("על הטיפולים", "treatments.html"))}</div>
       </div>
-    </div>
-  </section>
+      <p class="at__num at__num--ink" data-reveal style="--d:200ms" aria-hidden="true">₪400</p>
+    </section>
 
-  <section class="section" aria-labelledby="who-h">
-    <div class="wrap split">
-      <div class="portrait" data-reveal><img src="img/yehoshua.webp" alt="יהושע אלישע" loading="lazy"></div>
-      <div class="prose" data-reveal style="--d:80ms">
-        <p class="eyebrow">נעים להכיר</p>
-        <h2 class="h-l" id="who-h">גם אני לא האמנתי.</h2>
-        <p>אם הייתם אומרים לי בגיל 30 שאהיה מטפל ברפואה טבעית, הייתי מסתכל עליכם כאילו נפלתם מהירח. הגעתי מעולם הגיוני וטכני, ורפואה בשבילי הייתה רופא, וזהו.</p>
-        <p>תאונה קשה שינתה את הכל. אחריה השקעתי שנים בלימוד יסודי של הרפואה המשלימה, כדי לדעת בוודאות מה אני עושה, ואני ממשיך ללמוד עד היום.</p>
-        <dl class="cred">
-          <div><dt>הכשרה</dt><dd>רפלקסולוגיה, דיקור סיני, קינסיולוגיה יישומית, פרחי באך, עיסוי רפואי, הילינג</dd></div>
-          <div><dt>מתמחה ב</dt><dd>בעיות אורתופדיות, אתגרי פריון והריון, מצבי חרדה</dd></div>
-          <div><dt>מלמד</dt><dd>קורס רפלקסולוגיה מעשית וסדנאות בכוסות רוח, בקינזיו טייפ ובעיסוי רגליים</dd></div>
-          <div><dt>רוקח</dt><dd>ליין JE: שישה קרמים בעבודת יד</dd></div>
-          <div><dt>קליניקה</dt><dd>פתח תקווה</dd></div>
-        </dl>
-        <p style="margin-top:28px"><a class="link" href="yehoshua.html">הסיפור המלא של יהושע</a></p>
+    <section class="at at--light at--half" aria-labelledby="who-h">
+      <div class="at__txt">
+        <p class="at__kick" data-reveal>נעים להכיר</p>
+        <h2 class="at__h at__h--s" id="who-h" data-reveal style="--d:60ms">גם אני לא האמנתי.</h2>
+        <p class="at__sub" data-reveal style="--d:120ms">הגיע מעולם טכני, ותאונה קשה שינתה הכל.</p>
+        <div data-reveal style="--d:180ms">{at_links(("הסיפור המלא", "yehoshua.html"), ("לשיחה בוואטסאפ", BOOK))}</div>
       </div>
-    </div>
-  </section>
+      <div class="at__media at__media--portrait" data-reveal style="--d:200ms"><img src="img/yehoshua.webp" alt="יהושע אלישע" width="720" height="1000" loading="lazy"></div>
+    </section>
 
-{visit_html()}
-  <section class="section section--alt" aria-labelledby="tx-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal><p class="eyebrow">טיפולים</p><h2 class="h-l" id="tx-h">הטיפולים המבוקשים.</h2><p class="lead">כל טיפול ב־₪400. קובעים בוואטסאפ, ישירות מול יהושע.</p></div>
-      <div class="tx">
-{tpreview}
+    <section class="at at--dark at--half" aria-labelledby="learn-h">
+      <div class="at__txt">
+        <p class="at__kick" data-reveal>קורסים וסדנאות</p>
+        <h2 class="at__h at__h--s" id="learn-h" data-reveal style="--d:60ms">ללמוד אצל יהושע.</h2>
+        <p class="at__sub" data-reveal style="--d:120ms">רפלקסולוגיה מעשית, כוסות רוח, קינזיו טייפ ועיסוי רגליים.</p>
+        <div data-reveal style="--d:180ms">{at_links(("לכל הקורסים", "courses.html"), ("לשאלות", BOOK))}</div>
       </div>
-      <p style="text-align:center;margin-top:36px" data-reveal><a class="link" href="treatments.html">לכל 11 הטיפולים</a></p>
-    </div>
-  </section>
+      <ul class="at__list" data-reveal style="--d:200ms"><li>רפלקסולוגיה מעשית</li><li>כוסות רוח</li><li>קינזיו טייפ</li><li>עיסוי רגליים יפני־תאילנדי</li></ul>
+    </section>
+  </div>
 
 {reviews_html()}
-  <section class="section section--alt" aria-labelledby="learn-h">
-    <div class="wrap split">
-      <div class="prose" data-reveal>
-        <p class="eyebrow">קורסים וסדנאות</p>
-        <h2 class="h-l" id="learn-h">ללמוד אצל יהושע.</h2>
-        <p>קורס בסיסי ברפלקסולוגיה מעשית, וסדנאות בעיסוי רגליים יפני־תאילנדי, בכוסות רוח ובקינזיו טייפ.</p>
-        <p style="margin-top:20px"><a class="link" href="courses.html">לכל הקורסים</a></p>
-      </div>
-      <div class="gift" data-reveal style="--d:80ms;min-height:300px"><span class="gift__k">שובר מתנה</span><b>₪400</b><span>שעה של טיפול בקליניקה, לבחירת מי שמקבל.</span><a class="link" href="https://yehoshuatherapy.co.il/product/%d7%9b%d7%a8%d7%98%d7%99%d7%a1-%d7%9e%d7%aa%d7%a0%d7%94/">לרכישת שובר</a></div>
-    </div>
-  </section>
-
 {cta_band()}
 </main>
 '''
