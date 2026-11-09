@@ -2,3 +2,4 @@ node_modules/
 *.mp4
 second-player-view.jpg
 .taste-skill/
+.netlify-preview/
