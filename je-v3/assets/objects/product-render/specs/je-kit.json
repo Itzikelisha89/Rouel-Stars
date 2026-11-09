@@ -1,0 +1,279 @@
+{
+ "id": "je-kit",
+ "name": "ערכת הבית JE",
+ "label": "שתי צנצנות לבנות של קרם רגליים וצנצנת ענבר של קרם ארניקה",
+ "poster": "je-kit",
+ "units": "mm",
+ "angle": -20,
+ "camera": {
+  "elev": 12
+ },
+ "turn": {
+  "mode": "sway",
+  "amp": 14,
+  "period": 22
+ },
+ "materials": {
+  "amber": {
+   "kind": "paint",
+   "color": "#4a1f07",
+   "finish": "gloss"
+  },
+  "label": {
+   "kind": "paint",
+   "color": "#ebdfc4",
+   "finish": "satin"
+  },
+  "gold": {
+   "kind": "metal",
+   "color": "#c9a35a"
+  },
+  "lid": {
+   "kind": "paint",
+   "color": "#151514",
+   "finish": "gloss"
+  },
+  "cream": {
+   "kind": "paint",
+   "color": "#f8f3e8",
+   "finish": "matte"
+  },
+  "insert": {
+   "kind": "paint",
+   "color": "#ece2cc",
+   "finish": "satin"
+  },
+  "porcelain": {
+   "kind": "paint",
+   "color": "#f4f2ee",
+   "finish": "gloss"
+  },
+  "sage": {
+   "kind": "paint",
+   "color": "#9fb59a",
+   "finish": "satin"
+  },
+  "wlid": {
+   "kind": "paint",
+   "color": "#ffffff",
+   "finish": "satin"
+  }
+ },
+ "views": {
+  "detail-foot": {
+   "part": [
+    "foot b*"
+   ],
+   "angle": -24,
+   "elev": 16,
+   "margin": 1.25
+  }
+ },
+ "supports": [
+  "three-quarter",
+  "side",
+  "detail-foot"
+ ],
+ "make": {
+  "variants": [
+   "three-quarter",
+   "detail-foot"
+  ],
+  "grounds": [
+   "light",
+   "dark"
+  ]
+ },
+ "parts": [
+  {
+   "name": "foot a body",
+   "type": "cylinder",
+   "at": [
+    -58,
+    22,
+    6
+   ],
+   "r": 35,
+   "h": 44,
+   "round": 4,
+   "mat": "porcelain"
+  },
+  {
+   "name": "foot a label",
+   "type": "cylinder",
+   "at": [
+    -58,
+    22,
+    6
+   ],
+   "r": 35.4,
+   "h": 20,
+   "round": 0.4,
+   "mat": "sage"
+  },
+  {
+   "name": "foot a lid",
+   "type": "cylinder",
+   "at": [
+    -58,
+    52,
+    6
+   ],
+   "r": 36,
+   "h": 16,
+   "round": 3,
+   "mat": "wlid"
+  },
+  {
+   "name": "foot a groove",
+   "type": "torus",
+   "at": [
+    -58,
+    46,
+    6
+   ],
+   "R": 35.6,
+   "r": 0.6,
+   "mat": "porcelain"
+  },
+  {
+   "name": "foot b body",
+   "type": "cylinder",
+   "at": [
+    18,
+    22,
+    -6
+   ],
+   "r": 35,
+   "h": 44,
+   "round": 4,
+   "mat": "porcelain"
+  },
+  {
+   "name": "foot b label",
+   "type": "cylinder",
+   "at": [
+    18,
+    22,
+    -6
+   ],
+   "r": 35.4,
+   "h": 20,
+   "round": 0.4,
+   "mat": "sage"
+  },
+  {
+   "name": "foot b lid",
+   "type": "cylinder",
+   "at": [
+    18,
+    52,
+    -6
+   ],
+   "r": 36,
+   "h": 16,
+   "round": 3,
+   "mat": "wlid"
+  },
+  {
+   "name": "foot b groove",
+   "type": "torus",
+   "at": [
+    18,
+    46,
+    -6
+   ],
+   "R": 35.6,
+   "r": 0.6,
+   "mat": "porcelain"
+  },
+  {
+   "name": "arnica body",
+   "type": "cylinder",
+   "at": [
+    95,
+    21,
+    12
+   ],
+   "r": 27,
+   "h": 42,
+   "round": 3,
+   "mat": "amber"
+  },
+  {
+   "name": "arnica label",
+   "type": "cylinder",
+   "at": [
+    95,
+    21,
+    12
+   ],
+   "r": 27.5,
+   "h": 17,
+   "round": 0.4,
+   "mat": "label"
+  },
+  {
+   "name": "arnica label top",
+   "type": "torus",
+   "at": [
+    95,
+    29.5,
+    12
+   ],
+   "R": 27.5,
+   "r": 0.55,
+   "mat": "gold"
+  },
+  {
+   "name": "arnica label foot",
+   "type": "torus",
+   "at": [
+    95,
+    12.5,
+    12
+   ],
+   "R": 27.5,
+   "r": 0.55,
+   "mat": "gold"
+  },
+  {
+   "name": "arnica lid",
+   "type": "cylinder",
+   "at": [
+    95,
+    50,
+    12
+   ],
+   "r": 28.6,
+   "h": 16,
+   "round": 2.2,
+   "mat": "lid"
+  },
+  {
+   "name": "arnica insert",
+   "type": "cylinder",
+   "at": [
+    95,
+    58.3,
+    12
+   ],
+   "r": 24,
+   "h": 0.8,
+   "round": 0.3,
+   "mat": "insert"
+  },
+  {
+   "name": "arnica ring",
+   "type": "torus",
+   "at": [
+    95,
+    58.6,
+    12
+   ],
+   "R": 24.2,
+   "r": 0.7,
+   "mat": "gold"
+  }
+ ]
+}

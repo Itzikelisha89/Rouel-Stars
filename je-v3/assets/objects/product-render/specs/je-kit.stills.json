@@ -1,0 +1,94 @@
+{
+ "id": "je-kit",
+ "made": "2026-11-09T13:00:14.172Z",
+ "px": 1100,
+ "grounds": [
+  "light",
+  "dark"
+ ],
+ "colors": [
+  "page"
+ ],
+ "variants": {
+  "three-quarter": {
+   "view": "three-quarter",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-kit-three-quarter-page.webp",
+      "half": "stills/je-kit-three-quarter-page-half.webp",
+      "w": 1186,
+      "h": 479
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-kit-three-quarter-page-dark.webp",
+      "half": "stills/je-kit-three-quarter-page-dark-half.webp",
+      "w": 1186,
+      "h": 479
+     }
+    }
+   },
+   "box": [
+    0.0051,
+    0.0125,
+    0.9376,
+    0.9353
+   ],
+   "px": 1100
+  },
+  "detail-foot": {
+   "view": "detail-foot",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-kit-detail-foot-page.webp",
+      "half": "stills/je-kit-detail-foot-page-half.webp",
+      "w": 2339,
+      "h": 1149
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-kit-detail-foot-page-dark.webp",
+      "half": "stills/je-kit-detail-foot-page-dark-half.webp",
+      "w": 2333,
+      "h": 1149
+     }
+    }
+   },
+   "box": [
+    0.333,
+    0.1471,
+    0.9348,
+    0.9687
+   ],
+   "focus": [
+    0.336,
+    0.1446,
+    0.664,
+    0.8554
+   ],
+   "cut": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "px": 1100
+  }
+ }
+}

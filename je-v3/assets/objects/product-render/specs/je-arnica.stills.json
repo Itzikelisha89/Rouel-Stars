@@ -1,0 +1,208 @@
+{
+ "id": "je-arnica",
+ "made": "2026-11-09T12:59:07.109Z",
+ "px": 1100,
+ "grounds": [
+  "light",
+  "dark"
+ ],
+ "colors": [
+  "page"
+ ],
+ "variants": {
+  "side": {
+   "view": "side",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-arnica-side-page.webp",
+      "half": "stills/je-arnica-side-page-half.webp",
+      "w": 1183,
+      "h": 369
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-arnica-side-page-dark.webp",
+      "half": "stills/je-arnica-side-page-dark-half.webp",
+      "w": 1183,
+      "h": 369
+     }
+    }
+   },
+   "box": [
+    0.0051,
+    0.0163,
+    0.9374,
+    0.9322
+   ],
+   "px": 1100
+  },
+  "detail-cream": {
+   "view": "detail-cream",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-arnica-detail-cream-page.webp",
+      "half": "stills/je-arnica-detail-cream-page-half.webp",
+      "w": 1976,
+      "h": 1582
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-arnica-detail-cream-page-dark.webp",
+      "half": "stills/je-arnica-detail-cream-page-dark-half.webp",
+      "w": 1976,
+      "h": 1582
+     }
+    }
+   },
+   "box": [
+    0.2546,
+    0.2731,
+    0.7454,
+    1
+   ],
+   "focus": [
+    0.2848,
+    0.2717,
+    0.7152,
+    0.7283
+   ],
+   "cut": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "px": 1100
+  },
+  "three-quarter": {
+   "view": "three-quarter",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-arnica-three-quarter-page.webp",
+      "half": "stills/je-arnica-three-quarter-page-half.webp",
+      "w": 1181,
+      "h": 456
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-arnica-three-quarter-page-dark.webp",
+      "half": "stills/je-arnica-three-quarter-page-dark-half.webp",
+      "w": 1181,
+      "h": 456
+     }
+    }
+   },
+   "box": [
+    0.0051,
+    0.0132,
+    0.9382,
+    0.9079
+   ],
+   "px": 1100
+  },
+  "top": {
+   "view": "top",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-arnica-top-page.webp",
+      "half": "stills/je-arnica-top-page-half.webp",
+      "w": 1166,
+      "h": 486
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-arnica-top-page-dark.webp",
+      "half": "stills/je-arnica-top-page-dark-half.webp",
+      "w": 1166,
+      "h": 486
+     }
+    }
+   },
+   "box": [
+    0.0051,
+    0.0988,
+    0.9503,
+    0.8909
+   ],
+   "px": 1100
+  },
+  "detail-lid": {
+   "view": "detail-lid",
+   "scene": null,
+   "off": false,
+   "grounds": [
+    "light",
+    "dark"
+   ],
+   "stills": {
+    "light": {
+     "page": {
+      "file": "stills/je-arnica-detail-lid-page.webp",
+      "half": "stills/je-arnica-detail-lid-page-half.webp",
+      "w": 2404,
+      "h": 1179
+     }
+    },
+    "dark": {
+     "page": {
+      "file": "stills/je-arnica-detail-lid-page-dark.webp",
+      "half": "stills/je-arnica-detail-lid-page-dark-half.webp",
+      "w": 2404,
+      "h": 1179
+     }
+    }
+   },
+   "box": [
+    0.322,
+    0.1366,
+    0.678,
+    0.8651
+   ],
+   "focus": [
+    0.3221,
+    0.1349,
+    0.6779,
+    0.8651
+   ],
+   "cut": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "px": 1100
+  }
+ }
+}
