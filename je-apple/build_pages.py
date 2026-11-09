@@ -2,6 +2,8 @@
 Run: python3 build_pages.py  (writes index.html, yehoshua.html, treatments.html, courses.html and refreshes shop.html's header)."""
 import re, urllib.parse, json, html
 from treatments_data import T as TD, BY, TYPE_WORD as TW
+from products_data import P as PD, PBY, PWORD
+CO = 'https://yehoshuatherapy.co.il/checkout/?add-to-cart={}&amp;quantity=1'
 
 WA = 'https://wa.me/972522527090'
 def wa(text): return WA + '?text=' + urllib.parse.quote(text)
@@ -47,13 +49,14 @@ def header(current):
     <nav class="nav__links" aria-label="ראשי">
 {links}
     </nav>
-    <div class="nav__buy"><a class="btn" href="{BOOK}">לקביעת טיפול</a></div>
+    <div class="nav__buy"><a class="nav__book" href="{BOOK}">לקביעת טיפול</a><a class="btn" href="shop.html">לחנות</a></div>
     <button class="nav__menu-btn" type="button" aria-expanded="false" aria-controls="sheet" aria-label="תפריט"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
   </div>
 </header>
 <nav class="sheet" id="sheet" aria-label="תפריט">
 {sheet}
   <a href="index.html">דף הבית</a>
+  <a href="{BOOK}">לקביעת טיפול</a>
 </nav>
 '''
 
@@ -209,6 +212,113 @@ def tpage(t):
     s += FOOT
     open(f't-{slug}.html', 'w', encoding='utf-8').write(s)
 
+
+def pvis(p, cls='pc__vis'):
+    return f'<div class="{cls}"><img src="{p["img"]}" alt="{p["alt"]}" loading="lazy"></div>' if p['img'] else f'<div class="{cls} {cls}--type"><span class="pc__word">{PWORD[p["slug"]]}</span></div>'
+
+def pprice(p):
+    return f'₪{p["price"]}' + (f'<s>₪{p["reg"]}</s>' if p['reg'] > p['price'] else '')
+
+def pcard(p, i):
+    return f'''        <article class="pc" data-reveal style="--d:{(i%3)*60}ms">
+          <a class="t__cover" href="p-{p['slug']}.html" aria-label="{p['name']}"></a>
+          {pvis(p)}
+          <h3>{p['name']}</h3><p class="pc__sub">{p['size']} · {p['suits'][0]}</p>
+          <p class="pc__price">{pprice(p)}</p>
+          <a class="btn btn--sm" href="{CO.format(p['id'])}">לקנייה</a>
+        </article>'''
+
+def ppage(p):
+    save = p['reg'] - p['price']
+    media = f'<div class="tp-media tp-media--product"><img src="{p["img"]}" alt="{p["alt"]}" loading="eager"></div>' if p['img'] else f'<div class="tp-media tp-media--type"><span>{PWORD[p["slug"]]}</span></div>'
+    ing = '\n'.join(f'          <li><span class="rows__name">{a}</span><p>{b}</p></li>' for a, b in p['ingredients'])
+    use = '\n'.join(f'        <li data-reveal style="--d:{i*80}ms"><h3>{a}</h3><p>{b}</p></li>' for i, (a, b) in enumerate(p['use']))
+    suits = ''.join(f'<li>{c}</li>' for c in p['suits'])
+    revs = ''
+    if p['reviews']:
+        figs = '\n'.join(f'        <figure class="rev" data-reveal style="--d:{i*60}ms">{stars()}<blockquote>“{q}”</blockquote><figcaption><b>{n}</b> · ביקורת מהחנות</figcaption></figure>' for i, (q, n) in enumerate(p['reviews']))
+        revs = f'''  <section class="section" aria-labelledby="prev-h"><div class="wrap"><div class="section__head" data-reveal><p class="eyebrow">ביקורות</p><h2 class="h-l" id="prev-h">מה כותבים עליו.</h2></div><div class="revs">
+{figs}
+  </div></div></section>
+'''
+    faq = '\n'.join(f'        <details><summary>{q}</summary><p>{a}</p></details>' for q, a in p['faq'] + [('כמה עולה משלוח?', 'בהזמנה מ־₪300 המשלוח חינם. בהזמנה קטנה יותר, עלות המשלוח מופיעה בקופה לפני התשלום.'), ('איך משלמים?', 'לוחצים "לקנייה" והמוצר נכנס לסל בחנות המאובטחת של האתר.')])
+    others = '\n'.join(pcard(o, i) for i, o in enumerate([o for o in PD if o['slug'] != p['slug']][:3]))
+    upsell = '' if p['slug'] in ('foot', 'base', 'reflex') else f'''<a class="upsell" href="{CO.format(4287)}"><span><b>חוסכים יותר: ערכת הבית</b>2 קרם רגליים וקרם ארניקה, ₪300 במקום ₪418, משלוח חינם</span><span class="link">לערכה</span></a>'''
+    ld = json.dumps({"@context": "https://schema.org", "@type": "Product", "name": p['name'] + ' ' + p['size'], "brand": {"@type": "Brand", "name": "JE · יהושע אלישע"},
+        "description": p['promise'], "image": p['img'] or 'share.jpg',
+        "offers": {"@type": "Offer", "price": str(p['price']), "priceCurrency": "ILS", "availability": "https://schema.org/InStock", "url": CO.format(p['id']).replace('&amp;', '&')}}, ensure_ascii=False)
+    s = head(f'{p["name"]} {p["size"]} | ליין JE של יהושע אלישע', f'{p["name"]} {p["size"]}, נרקח בעבודת יד בקליניקה של יהושע אלישע: {p["promise"]} ₪{p["price"]}, משלוח חינם מ־₪300.', f'<script type="application/ld+json">{ld}</script>\n')
+    s += header('shop.html#line')
+    s += f'''<main id="main">
+  <div class="wrap"><nav class="crumbs" aria-label="מיקום"><a href="index.html">דף הבית</a> / <a href="shop.html">החנות</a> / <a href="shop.html#line">ליין JE</a> / {p['name']}</nav></div>
+  <section class="tp-hero" aria-labelledby="pp-h">
+    <div class="wrap split">
+      <div data-reveal style="--d:80ms">{media}</div>
+      <div data-reveal>
+        <p class="eyebrow">ליין JE · נרקח בעבודת יד</p>
+        <h1 class="tp-h1" id="pp-h">{p['name']}</h1>
+        <p class="lead">{p['promise']}</p>
+        <ul class="facts-row">{''.join(f'<li>{b}</li>' for b in p['badges'])}</ul>
+        <div class="buybox">
+          <p class="buybox__price">{pprice(p)}{f'<span class="buybox__save">חוסכים ₪{save}</span>' if save else ''}</p>
+          <a class="btn btn--big" href="{CO.format(p['id'])}">לקנייה</a>
+          <ul class="buybox__assure"><li>משלוח חינם בהזמנה מ־₪300</li><li>תשלום מאובטח בחנות</li><li>נרקח בקליניקה בפתח תקווה</li></ul>
+          <a class="link" href="{wa('שלום יהושע, יש לי שאלה על ' + p['name'])}">שאלה על המוצר? יהושע עונה בוואטסאפ</a>
+        </div>
+        {upsell}
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt" aria-labelledby="ing-h">
+    <div class="wrap split split--top">
+      <div data-reveal><p class="eyebrow">מה יש בפנים</p><h2 class="h-l" id="ing-h">רכיבים.</h2>{f'<p class="lead">יש בצנצנת גם צמחי מרפא ושמנים ארומתיים. הרשימה המלאה על האריזה.</p>' if p['slug'] in ('arnica','foot') else ''}</div>
+      <ul class="rows" data-reveal style="--d:80ms">
+{ing}
+      </ul>
+    </div>
+  </section>
+
+  <section class="night section" aria-labelledby="use-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><p class="eyebrow">איך משתמשים</p><h2 class="h-l" id="use-h">שלושה צעדים פשוטים.</h2></div>
+      <ol class="visit">
+{use}
+      </ol>
+      {f'<p style="text-align:center;margin-top:36px"><a class="link" href="guide.html">מדריך מריחה לפי אזור בגוף</a></p>' if p['slug']=='arnica' else ''}
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="suit-h">
+    <div class="wrap split split--top">
+      <div data-reveal><p class="eyebrow">למי זה מתאים</p><h2 class="h-l" id="suit-h">בשביל מי הוא.</h2></div>
+      <div data-reveal style="--d:80ms"><ul class="chips2">{suits}</ul><p class="note">מוצר קוסמטי לשימוש חיצוני. אינו תחליף לייעוץ או לטיפול רפואי.</p></div>
+    </div>
+  </section>
+
+{revs}
+  <section class="section section--alt" aria-labelledby="pfaq-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><h2 class="h-l" id="pfaq-h">שאלות לפני שקונים.</h2></div>
+      <div class="faq">
+{faq}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="more-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><p class="eyebrow">עוד מהליין</p><h2 class="h-l" id="more-h">אולי תאהבו גם.</h2></div>
+      <div class="pcs">
+{others}
+      </div>
+    </div>
+  </section>
+</main>
+'''
+    s += FOOT
+    open(f'p-{p["slug"]}.html', 'w', encoding='utf-8').write(s)
+
 def visit_html():
     return '''  <section class="night section" aria-labelledby="visit-h">
     <div class="wrap">
@@ -252,8 +362,8 @@ def index():
     <div class="wrap hero2__grid">
       <div class="hero2__text">
         <p class="eyebrow" data-reveal>קליניקה לרפואה טבעית · פתח תקווה</p>
-        <h1 class="hero2__h" id="intro-h" data-reveal style="--d:60ms">רפואה טבעית,<br>בגישה אישית.</h1>
-        <p class="lead" data-reveal style="--d:120ms">יהושע אלישע מטפל בכאב, בשינה, בעיכול ובמתח בשיטות של רפואה משלימה, רוקח קרמים בעבודת יד, ומלווה כל מטופל באופן אישי.</p>
+        <h1 class="hero2__h" id="intro-h" data-reveal style="--d:60ms">טבע שעובד.<br>בקליניקה ובבית.</h1>
+        <p class="lead" data-reveal style="--d:120ms">קרמים שנרקחים בעבודת יד, חנות של 96 מוצרים טבעיים, וטיפולים בקליניקה של יהושע אלישע. משלוח חינם עד הבית מ־₪300.</p>
         <div data-reveal style="--d:180ms">
           <p class="hero2__ask">מה מטריד אתכם?</p>
           <ul class="intent">
@@ -265,11 +375,12 @@ def index():
             <li><a href="shop.html#shop">עיכול</a></li>
           </ul>
         </div>
-        <div class="cta-row hero2__cta" data-reveal style="--d:240ms"><a class="btn" href="{BOOK}">לקביעת טיפול</a><a class="link" href="{wa('שלום יהושע, יש לי שאלה לפני שאני קובע טיפול')}">שאלה לפני שקובעים? כתבו ליהושע</a></div>
+        <div class="cta-row hero2__cta" data-reveal style="--d:240ms"><a class="btn" href="shop.html">לחנות</a><a class="btn btn--ghost" href="{BOOK}">לקביעת טיפול</a></div>
       </div>
       <div class="hero2__media" data-reveal style="--d:120ms">
         <img src="img/t/reflexology.webp" alt="ידיים מעסות כף רגל עם שמן" loading="eager" fetchpriority="high">
         <a class="hero2__tag" href="yehoshua.html"><img src="img/yehoshua.webp" alt="" width="52" height="52"><span><b>יהושע אלישע</b>מטפל ברפואה משלימה</span></a>
+        <a class="hero2__prod" href="p-arnica.html"><img src="img/arnica-34.webp" alt="" width="120" height="70"><span><b>קרם ארניקה</b>₪120 · 50 מ״ל</span><span class="hero2__buy">לקנייה</span></a>
       </div>
     </div>
   </section>
@@ -283,23 +394,29 @@ def index():
     </ul></div>
   </section>
 
-  <section class="section section--alt" style="padding-top:clamp(72px,9vw,120px)" aria-labelledby="doors-h">
+  <section class="section section--alt" id="line" aria-labelledby="line-h">
     <div class="wrap">
-      <div class="section__head" data-reveal><p class="eyebrow">מה אפשר למצוא כאן</p><h2 class="h-l" id="doors-h">שלוש דרכים להתחיל.</h2></div>
-      <div class="doors">
-        <a class="door" href="treatments.html" data-reveal>
-          <div class="door__img"><img src="img/t/cranio.webp" alt="ידיים מונחות בעדינות על ראשו של אדם שוכב" loading="lazy"></div>
-          <div class="door__txt"><span class="door__k">הקליניקה</span><h2>11 שיטות טיפול</h2><p>עיסוי רפואי, דיקור סיני, רפלקסולוגיה, קינסיולוגיה ועוד. טיפול ב־₪400.</p><span class="link">לכל הטיפולים</span></div>
-        </a>
-        <a class="door" href="shop.html#line" data-reveal style="--d:60ms">
-          <div class="door__img door__img--light"><img src="img/kit.webp" alt="צנצנות קרם ארניקה וקרם רגליים של JE" loading="lazy"></div>
-          <div class="door__txt"><span class="door__k">ליין JE</span><h2>קרמים בעבודת יד</h2><p>ארניקה, רגליים, ידיים, גוף ורפלקסולוגיה. נרקחים בקליניקה, החל מ־₪70.</p><span class="link">לקרמים</span></div>
-        </a>
-        <a class="door" href="shop.html#shop" data-reveal style="--d:120ms">
-          <div class="door__img"><img src="img/t/aroma.webp" alt="בקבוק זכוכית ענבר עם טפטפת ליד ענפי רוזמרין" loading="lazy"></div>
-          <div class="door__txt"><span class="door__k">החנות</span><h2>96 מוצרים טבעיים</h2><p>לשינה, לעיכול, לחורף ולילדים. תמציות, תוספים ושמנים אתריים, החל מ־₪35.</p><span class="link">לחנות</span></div>
-        </a>
+      <div class="section__head" data-reveal><p class="eyebrow">ליין JE</p><h2 class="h-l" id="line-h">הקרמים של יהושע.</h2><p class="lead">נרקחים בעבודת יד בקליניקה, באותן נוסחאות שיהושע משתמש בהן בטיפולים.</p></div>
+      <div class="pcs">
+{"\n".join(pcard(p_, i) for i, p_ in enumerate(PD))}
       </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="kit-h">
+    <div class="wrap">
+      <a class="kit" href="{CO.format(4287)}" data-reveal>
+        <div class="kit__txt"><p class="eyebrow">ערכת הבית</p><h2 class="h-l" id="kit-h">שלושה קרמים. ₪300.</h2><p class="lead">2 קרם רגליים וקרם ארניקה, במקום ₪418. חוסכים ₪118, והמשלוח חינם.</p><span class="btn">לקניית הערכה</span></div>
+        <img src="img/kit.webp" alt="שתי צנצנות קרם רגליים וצנצנת קרם ארניקה" loading="lazy">
+      </a>
+    </div>
+  </section>
+
+  <section class="section section--alt" aria-labelledby="deals-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><p class="eyebrow">מבצעים בחנות</p><h2 class="h-l" id="deals-h">חוסכים עד ₪73.</h2><p class="lead">מבחר מהמבצעים עכשיו. יש עוד 15 בחנות.</p></div>
+      <ul class="deals deals--card" data-reveal><li class="deal"><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%93%d7%99%d7%98%d7%95%d7%a7%d7%a1-%d7%aa%d7%9e%d7%a6%d7%99%d7%aa/" class="deal__name">ברא דיטוקס תמצית</a><span class="deal__save">חוסכים ₪73</span><span class="deal__price">₪85<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1369&amp;quantity=1">לקנייה</a></li><li class="deal"><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%a0%d7%99%d7%99%d7%98-100-%d7%9e%d7%9c/" class="deal__name">ברא נייט 100 מ״ל</a><span class="deal__save">חוסכים ₪59</span><span class="deal__price">₪99<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=683&amp;quantity=1">לקנייה</a></li><li class="deal"><a href="https://yehoshuatherapy.co.il/product/100-12-zizyphus/" class="deal__name">זיזיפוס, תמצית צמחים</a><span class="deal__save">חוסכים ₪57</span><span class="deal__price">₪119<s>₪176</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=619&amp;quantity=1">לקנייה</a></li><li class="deal"><a href="https://yehoshuatherapy.co.il/product/%d7%a9%d7%9e%d7%9f-%d7%90%d7%95%d7%a8%d7%92%d7%a0%d7%95/" class="deal__name">שמן אורגנו</a><span class="deal__save">חוסכים ₪56</span><span class="deal__price">₪124<s>₪180</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1221&amp;quantity=1">לקנייה</a></li></ul>
+      <div class="cta-row" style="margin-top:36px" data-reveal><a class="btn" href="shop.html#deals">לכל המבצעים</a><a class="link" href="shop.html#shop">לחנות לפי צורך</a></div>
     </div>
   </section>
 
@@ -340,18 +457,6 @@ def index():
 {tpreview}
       </div>
       <p style="text-align:center;margin-top:36px" data-reveal><a class="link" href="treatments.html">לכל 11 הטיפולים</a></p>
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="line-h">
-    <div class="wrap split">
-      <div class="prose" data-reveal>
-        <p class="eyebrow">ליין JE</p>
-        <h2 class="h-l" id="line-h">מה שעובד בקליניקה, גם בבית.</h2>
-        <p>את הקרמים יהושע רוקח בעבודת יד, באותן נוסחאות שהוא משתמש בהן בטיפולים. המוכר שבהם הוא קרם הארניקה: ארניקה, מור, מנטה וקמפור על בסיס שיאה, ₪120.</p>
-        <div class="cta-row" style="justify-content:flex-start;margin-top:22px"><a class="btn" href="shop.html#arnica">לקרם הארניקה</a><a class="link" href="shop.html#line">לכל ששת הקרמים</a></div>
-      </div>
-      <div data-reveal style="--d:80ms"><img src="img/arnica-34.webp" alt="צנצנות קרם ארניקה ומכסה שחור" loading="lazy" style="width:100%;height:auto"></div>
     </div>
   </section>
 
@@ -501,4 +606,5 @@ def shop():
 if __name__ == '__main__':
     shop(); index(); yehoshua(); treatments(); courses()
     for t in TD: tpage(t)
+    for p in PD: ppage(p)
     print('built')
