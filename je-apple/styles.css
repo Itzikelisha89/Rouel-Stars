@@ -535,3 +535,30 @@ footer a:hover { text-decoration: underline; }
   .at__media--sq { max-width: 440px; }
 }
 @media (hover: hover) and (pointer: fine) { .nav__links a:hover { opacity: 1; } }
+
+/* ---------- product pages as tiles ---------- */
+.at--page { margin-top: 12px; min-height: min(94vh, 820px); }
+.at__crumbs { position: relative; z-index: 1; align-self: stretch; text-align: start; max-width: 1120px; margin: -24px auto 28px; width: 100%; font-size: 13px; }
+.at__price { margin: 14px 0 0; font-size: 21px; font-weight: 600; letter-spacing: -0.01em; display: flex; gap: 10px; align-items: baseline; justify-content: center; flex-wrap: wrap; }
+.at__price s { color: var(--muted); font-weight: 400; font-size: 17px; }
+.at__media--prodxl { max-width: 760px; }
+.at__media--word { padding-bottom: clamp(40px, 6vw, 72px); }
+.at__word { margin: 0; font-size: clamp(120px, 20vw, 260px); line-height: .9; font-weight: 700; letter-spacing: -0.06em; white-space: nowrap;
+  background: linear-gradient(180deg, #d58a3f 0%, var(--amber) 55%, #4f2405 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pp-intro { padding: clamp(56px, 8vw, 104px) 0 clamp(40px, 6vw, 72px); }
+.pp-intro__grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: clamp(28px, 5vw, 72px); align-items: start; }
+.pp-intro__lead { margin: 0; font-size: clamp(24px, 2.8vw, 36px); line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; text-wrap: pretty; }
+.pp-assure { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.pp-assure li { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 17px; }
+.pp-assure li:first-child { border-top: 1px solid var(--line); }
+.pp-intro .upsell { margin-top: 40px; }
+@media (max-width: 860px) { .pp-intro__grid { grid-template-columns: 1fr; } .at--page { margin-inline: 0; } .at__crumbs { margin: -28px 0 24px; padding-inline: 4px; } }
+
+/* type visuals and store categories: Apple's white-on-grey, gradient numerals instead of colour blocks */
+.pc__vis--type, .tp-media--type { background: var(--bg-2); }
+.pc__word, .tp-media--type span { background: linear-gradient(180deg, #d58a3f 0%, var(--amber) 55%, #4f2405 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.needs .need { background: var(--bg) !important; color: var(--ink) !important; }
+.needs .need p, .needs .need .need__l { color: var(--muted) !important; }
+.needs .need .need__n { background: linear-gradient(180deg, #d58a3f 0%, var(--amber) 55%, #4f2405 100%); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
+.needs .need .need__go { color: var(--amber) !important; }
+@media (max-width: 860px) { .at--page { min-height: 0; } .at__word { font-size: clamp(72px, 22vw, 140px); } }

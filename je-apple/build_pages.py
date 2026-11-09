@@ -228,6 +228,13 @@ def pcard(p, i):
           <a class="btn btn--sm" href="{CO.format(p['id'])}">לקנייה</a>
         </article>'''
 
+def pmedia(p):
+    if p['slug'] == 'arnica':
+        return vid('arnica-open', 'צנצנת קרם הארניקה נפתחת', 1080, 1080)
+    if p['img']:
+        return f'<img src="{p["img"]}" alt="{p["alt"]}" loading="eager" fetchpriority="high">'
+    return f'<p class="at__word" aria-hidden="true">{p["size"]}</p>'
+
 def ppage(p):
     save = p['reg'] - p['price']
     media = f'<div class="tp-media tp-media--product"><img src="{p["img"]}" alt="{p["alt"]}" loading="eager"></div>' if p['img'] else f'<div class="tp-media tp-media--type"><span>{PWORD[p["slug"]]}</span></div>'
@@ -250,24 +257,23 @@ def ppage(p):
     s = head(f'{p["name"]} {p["size"]} | ליין JE של יהושע אלישע', f'{p["name"]} {p["size"]}, נרקח בעבודת יד בקליניקה של יהושע אלישע: {p["promise"]} ₪{p["price"]}, משלוח חינם מ־₪300.', f'<script type="application/ld+json">{ld}</script>\n')
     s += header('shop.html#line')
     s += f'''<main id="main">
-  <div class="wrap"><nav class="crumbs" aria-label="מיקום"><a href="index.html">דף הבית</a> / <a href="shop.html">החנות</a> / <a href="shop.html#line">ליין JE</a> / {p['name']}</nav></div>
-  <section class="tp-hero" aria-labelledby="pp-h">
-    <div class="wrap split">
-      <div data-reveal style="--d:80ms">{media}</div>
-      <div data-reveal>
-        <p class="eyebrow">ליין JE · נרקח בעבודת יד</p>
-        <h1 class="tp-h1" id="pp-h">{p['name']}</h1>
-        <p class="lead">{p['promise']}</p>
-        <ul class="facts-row">{''.join(f'<li>{b}</li>' for b in p['badges'])}</ul>
-        <div class="buybox">
-          <p class="buybox__price">{pprice(p)}{f'<span class="buybox__save">חוסכים ₪{save}</span>' if save else ''}</p>
-          <a class="btn btn--big" href="{CO.format(p['id'])}">לקנייה</a>
-          <ul class="buybox__assure"><li>משלוח חינם בהזמנה מ־₪300</li><li>תשלום מאובטח בחנות</li><li>נרקח בקליניקה בפתח תקווה</li></ul>
-          <a class="link" href="{wa('שלום יהושע, יש לי שאלה על ' + p['name'])}">שאלה על המוצר? יהושע עונה בוואטסאפ</a>
-        </div>
-        {upsell}
-      </div>
+  <section class="at at--light at--page" aria-labelledby="pp-h">
+    <nav class="crumbs at__crumbs" aria-label="מיקום"><a href="index.html">דף הבית</a> / <a href="shop.html">החנות</a> / <a href="shop.html#line">ליין JE</a> / {p['name']}</nav>
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>ליין JE · {p['size']}</p>
+      <h1 class="at__h at__h--xl" id="pp-h" data-reveal style="--d:60ms">{p['name'].replace(' טיפולי','').replace(' טבעי','')}.</h1>
+      <p class="at__sub" data-reveal style="--d:120ms">{p['tag']}</p>
+      <p class="at__price" data-reveal style="--d:150ms">{pprice(p)}{f'<span class="buybox__save">חוסכים ₪{save}</span>' if save else ''}</p>
+      <div data-reveal style="--d:180ms">{at_links(("לקנייה", CO.format(p['id'])), ("שאלה ליהושע", wa('שלום יהושע, יש לי שאלה על ' + p['name'])))}</div>
     </div>
+    <div class="at__media {'at__media--sq' if p['slug']=='arnica' else ('at__media--prod at__media--prodxl' if p['img'] else 'at__media--word')}" data-reveal style="--d:220ms">{pmedia(p)}</div>
+  </section>
+  <section class="pp-intro" aria-label="על המוצר">
+    <div class="wrap pp-intro__grid">
+      <p class="pp-intro__lead" data-reveal>{p['promise']}</p>
+      <ul class="pp-assure" data-reveal style="--d:80ms">{''.join(f'<li>{b}</li>' for b in p['badges'])}<li>משלוח חינם מ־₪300</li><li>תשלום מאובטח בחנות</li></ul>
+    </div>
+    {f'<div class="wrap">{upsell}</div>' if upsell else ''}
   </section>
 
   <section class="section section--alt" aria-labelledby="ing-h">
@@ -584,6 +590,19 @@ def shop():
     s = re.sub(r'  <section class="night section" id="clinic".*?</section>\n', '', s, count=1, flags=re.S)
     s = re.sub(r'<footer>.*?</footer>\n', FOOT.replace('<script src="site.js" defer></script>\n</body>\n</html>\n', ''), s, count=1, flags=re.S)
     s = s.replace('<title>יהושע אלישע | קליניקה לרפואה טבעית, קרמים בעבודת יד וחנות צמחי מרפא</title>', '<title>החנות של יהושע אלישע | ליין JE, צמחי מרפא ותמציות</title>')
+    hero = f'''  <section class="at at--light at--page" id="store-top" aria-labelledby="store-h">
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>החנות של יהושע</p>
+      <h1 class="at__h at__h--xl" id="store-h" data-reveal style="--d:60ms">החנות.</h1>
+      <p class="at__sub" data-reveal style="--d:120ms">קרמים בעבודת יד, צמחי מרפא ותמציות.<br>משלוח חינם מ־₪300.</p>
+      <div data-reveal style="--d:180ms">{at_links(("לקרמים של יהושע", "#line"), ("למבצעים", "#deals"))}</div>
+    </div>
+    <div class="at__media at__media--wide" data-reveal style="--d:220ms">{vid("kit-turn", "שלוש צנצנות הקרמים של JE מסתובבות", 1600, 900)}</div>
+  </section>
+'''
+    s = re.sub(r'  <section class="at at--light at--page" id="store-top".*?</section>\n', '', s, count=1, flags=re.S)
+    s = s.replace('<section class="section section--alt" id="line"', '<section class="section" id="line"', 1)
+    s = s.replace('  <section class="section" id="line"', hero + '  <section class="section" id="line"', 1)
     if 'site.js' not in s: s = s.replace('</body>', '<script src="site.js" defer></script>\n</body>')
     open('shop.html', 'w', encoding='utf-8').write(s)
 
