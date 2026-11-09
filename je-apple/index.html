@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>קרם ארניקה טבעי לשרירים ולמפרקים | JE רוקחות אישית</title>
-<meta name="description" content="קרם ארניקה לעיסוי, נרקח ביד בקליניקה של יהושע אלישע בפתח תקווה: ארניקה, מור, מנטה וקמפור על בסיס שיאה. 50 מ״ל ב־₪120, משלוח חינם מ־₪300.">
+<title>יהושע אלישע | קליניקה לרפואה טבעית, קרמים בעבודת יד וחנות צמחי מרפא</title>
+<meta name="description" content="הקליניקה לרפואה טבעית של יהושע אלישע בפתח תקווה: 11 שיטות טיפול, ליין קרמים בעבודת יד וחנות של 96 מוצרי צמחי מרפא, תמציות ושמנים. משלוח חינם מ־₪300.">
 <meta name="robots" content="index, follow, max-image-preview:large">
-<meta property="og:type" content="product">
+<meta property="og:type" content="website">
 <meta property="og:locale" content="he_IL">
 <meta property="og:site_name" content="JE רוקחות אישית">
-<meta property="og:title" content="קרם ארניקה. מריחה קטנה, הקלה גדולה.">
-<meta property="og:description" content="נרקח ביד בקליניקה. 50 מ״ל ב־₪120, משלוח חינם מ־₪300.">
+<meta property="og:title" content="יהושע אלישע: רפואה טבעית, מהקליניקה אליכם הביתה">
+<meta property="og:description" content="טיפולים בקליניקה, קרמים בעבודת יד וחנות צמחי מרפא. משלוח חינם מ־₪300.">
 <meta property="og:image" content="share.jpg">
 <meta property="product:price:amount" content="120">
 <meta property="product:price:currency" content="ILS">
@@ -277,8 +277,35 @@ a { color: inherit; }
 
 /* 8. close */
 .close { text-align: center; padding: clamp(110px, 14vw, 180px) 0 clamp(80px, 10vw, 120px); }
-.close img { height: clamp(260px, 40vw, 420px); width: auto; margin: 36px auto 0; }
+.close img { width: min(720px, 100%); height: auto; margin: 48px auto 0; }
+.close__ctas { display: flex; flex-wrap: wrap; gap: 14px 22px; justify-content: center; align-items: center; }
 
+
+
+/* intro: who, what, and three doors (Apple: wayfinding — where am I, where can I go) */
+.intro { padding: clamp(56px, 9vw, 120px) 0 clamp(64px, 8vw, 110px); }
+.intro__head { text-align: center; max-width: 940px; margin: 0 auto clamp(40px, 6vw, 72px); }
+.intro__h { font-size: clamp(40px, 6vw, 80px); margin-bottom: 22px; }
+.intro__lead { max-width: 46ch; margin-inline: auto; }
+.doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.door { background: var(--bg-2); border-radius: var(--r); overflow: hidden; text-decoration: none; display: flex; flex-direction: column; transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out); }
+.door__img { height: 240px; overflow: hidden; }
+.door__img img { width: 100%; height: 100%; object-fit: cover; transition: transform 600ms var(--ease-out); }
+.door__img--light { background: var(--bg-2); display: grid; place-items: center; padding: 18px; }
+.door__img--light img { object-fit: contain; }
+.door__txt { padding: 26px 28px 30px; display: flex; flex-direction: column; flex: 1; }
+.door__k { color: var(--amber); font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.door h2 { font-size: clamp(24px, 2.2vw, 30px); line-height: 1.12; font-weight: 700; letter-spacing: -0.024em; margin: 0 0 8px; }
+.door p { margin: 0 0 14px; color: var(--muted); font-size: 16px; }
+.door .link { margin-top: auto; }
+@media (hover: hover) and (pointer: fine) { .door:hover { transform: translateY(-2px); box-shadow: 0 20px 50px rgba(0,0,0,.08); } .door:hover .door__img img { transform: scale(1.03); } }
+.perks { list-style: none; padding: 0; margin: 40px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 34px; color: var(--muted); font-size: 15px; }
+.perks li::before { content: "✓"; color: #1f6b3a; font-weight: 700; margin-inline-end: 8px; }
+@media (max-width: 900px) { .doors { grid-template-columns: 1fr; max-width: 520px; margin-inline: auto; } .door { flex-direction: row; } .door__img { width: 38%; height: auto; flex: none; } .door__txt { padding: 20px; } }
+@media (max-width: 480px) { .door { flex-direction: column; } .door__img { width: 100%; height: 180px; } }
+.about__grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: clamp(32px, 6vw, 96px); align-items: start; }
+.about__sig { margin: 26px 0 0; font-weight: 600; }
+@media (max-width: 900px) { .about__grid { grid-template-columns: 1fr; } }
 
 /* the JE line */
 .pcs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -366,39 +393,71 @@ footer a:hover { text-decoration: underline; }
 
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="JE, קרם ארניקה"><img src="favicon.svg" alt="" width="22" height="22">קרם ארניקה</a>
+    <a class="brand" href="#top" aria-label="JE, יהושע אלישע"><img src="favicon.svg" alt="" width="22" height="22">יהושע אלישע</a>
     <nav class="nav__links" aria-label="ניווט בעמוד">
+      <a href="#clinic">הקליניקה</a>
       <a href="#line">ליין JE</a>
-      <a href="#deals">מבצעים</a>
       <a href="#shop">החנות</a>
-      <a href="#clinic">קליניקה</a>
+      <a href="#deals">מבצעים</a>
       <a href="#faq">שאלות</a>
     </nav>
-    <div class="nav__buy"><span>₪120</span><a class="btn" href="#buy">לקנייה</a></div>
+    <div class="nav__buy"><a class="btn" href="#shop">לחנות</a></div>
   </div>
 </header>
 
 <main id="main">
-  <section class="scene" id="top" aria-labelledby="hero-h">
-    <div class="scene__stick">
-      <div class="hero" id="hero">
-        <p class="eyebrow">JE · רוקחות אישית</p>
-        <h1 class="h-xl" id="hero-h">קרם ארניקה.</h1>
-        <p class="hero__sub">מריחה קטנה. הקלה גדולה.</p>
-        <p class="hero__meta">₪120 · 50 מ״ל · משלוח חינם מ־₪300</p>
-        <div class="hero__ctas"><a class="btn" id="hero-buy" href="#buy">לקנייה</a><a class="link" href="#how">איך משתמשים</a></div>
+  <section class="intro" id="top" aria-labelledby="intro-h">
+    <div class="wrap">
+      <div class="intro__head">
+        <p class="eyebrow" data-reveal>הקליניקה לרפואה טבעית של יהושע אלישע · פתח תקווה</p>
+        <h1 class="h-xl intro__h" id="intro-h" data-reveal style="--d:60ms">רפואה טבעית.<br>מהקליניקה אליכם הביתה.</h1>
+        <p class="lead intro__lead" data-reveal style="--d:120ms">יהושע אלישע מטפל בכאב, בשינה, בעיכול ובמתח בשיטות של רפואה משלימה. את מה שעובד בקליניקה הוא רוקח בעבודת יד, ובוחר לחנות צמחי מרפא, תמציות ושמנים שאפשר להזמין עד הבית.</p>
       </div>
-      <div class="stage">
-        <canvas id="jar" width="548" height="880" role="img" aria-label="צנצנת זכוכית ענבר עם מכסה שחור. המכסה נפתח, ובפנים קרם לבן וסמיך"></canvas>
-        <div class="captions" aria-hidden="true">
-          <p class="cap cap--side" data-from="0.18" data-to="0.42">נרקח ביד.<small>בקליניקה של יהושע אלישע בפתח תקווה, במנות קטנות.</small></p>
-          <p class="cap cap--side" data-from="0.46" data-to="0.68">פותחים.<small>כמות בגודל אפונה מספיקה לאזור אחד.</small></p>
-          <p class="cap cap--side" data-from="0.72" data-to="1.01">ומעסים.<small>קרם עשיר על בסיס שיאה, שנשאר על העור מספיק זמן לעיסוי של שלוש דקות.</small></p>
-        </div>
+      <div class="doors">
+        <a class="door" href="#clinic" data-reveal>
+          <div class="door__img"><img src="img/photo-f16699811.webp" alt="אגודל לוחץ על שריר הכתף בעיסוי" loading="eager"></div>
+          <div class="door__txt"><span class="door__k">טיפול בקליניקה</span><h2>11 שיטות טיפול</h2><p>עיסוי רפואי, דיקור סיני, רפלקסולוגיה, קינסיולוגיה ועוד. טיפול ב־₪400.</p><span class="link">לקביעת טיפול</span></div>
+        </a>
+        <a class="door" href="#line" data-reveal style="--d:60ms">
+          <div class="door__img door__img--light"><img src="img/kit.webp" alt="צנצנות קרם ארניקה וקרם רגליים של JE" loading="eager"></div>
+          <div class="door__txt"><span class="door__k">ליין JE</span><h2>קרמים בעבודת יד</h2><p>ארניקה, רגליים, ידיים, גוף ורפלקסולוגיה. נרקחים בקליניקה, החל מ־₪70.</p><span class="link">לקרמים</span></div>
+        </a>
+        <a class="door" href="#shop" data-reveal style="--d:120ms">
+          <div class="door__img"><img src="img/photo-f136901311.webp" alt="צמח ארניקה עם פרחים צהובים" loading="eager"></div>
+          <div class="door__txt"><span class="door__k">החנות</span><h2>96 מוצרים טבעיים</h2><p>לשינה, לעיכול, לחורף ולילדים. תמציות, תוספים ושמנים אתריים, החל מ־₪35.</p><span class="link">לחנות</span></div>
+        </a>
+      </div>
+      <ul class="perks" data-reveal><li>משלוח חינם מ־₪300</li><li>מבצעים בחנות, חוסכים עד ₪118</li><li>יהושע עונה בוואטסאפ</li><li>שובר מתנה לטיפול</li></ul>
+    </div>
+  </section>
+
+  <section class="section section--alt about" aria-labelledby="about-h">
+    <div class="wrap about__grid">
+      <div data-reveal>
+        <p class="eyebrow">מי עומד מאחורי הכל</p>
+        <h2 class="h-l" id="about-h">גם אני לא האמנתי.</h2>
+      </div>
+      <div data-reveal style="--d:80ms">
+        <p class="lead">הגעתי לרפואה המשלימה מעולם הגיוני וטכני, והיא לא שכנעה אותי, עד שראיתי תוצאות אצל מטופלים שוב ושוב. מאז למדתי כמה שיותר שיטות, כדי לתת לכל אחד את הכלי שמתאים לו.</p>
+        <p class="lead" style="margin-top:18px">הקרמים נולדו מהטיפולים: רציתי שלמטופלים יהיה מה למרוח בבית, בין טיפול לטיפול. החנות היא אותו רעיון, בגדול.</p>
+        <p class="about__sig">יהושע אלישע, מטפל ברפואה משלימה</p>
       </div>
     </div>
   </section>
 
+  <section class="night section" id="clinic" aria-labelledby="clinic-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal>
+        <p class="eyebrow">הקליניקה בפתח תקווה</p>
+        <h2 class="h-l" id="clinic-h">כשהקרם לא מספיק, באים לטיפול.</h2>
+        <p class="lead">11 שיטות טיפול אצל יהושע אלישע. טיפול ב־₪400.</p>
+      </div>
+      <div class="clinic">
+        <div class="clinic__list" data-reveal><ul class="chips"><li>הילינג לפי תורת הקבלה</li><li>עיסוי כפות רגליים יפני – תאילנדי</li><li>עיסוי רפואי</li><li>כוסות רוח</li><li>קרניו סקראל</li><li>פרחי באך</li><li>קנזיו טיפ</li><li>ארומתרפיה</li><li>דיקור סיני</li><li>קניסיולוגיה</li><li>רפלקסולוגיה</li></ul><a class="btn" href="https://wa.me/972522527090?text=%D7%A9%D7%9C%D7%95%D7%9D%20%D7%99%D7%94%D7%95%D7%A9%D7%A2%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A7%D7%91%D7%95%D7%A2%20%D7%98%D7%99%D7%A4%D7%95%D7%9C">לקביעת טיפול בוואטסאפ</a></div>
+        <a class="gift" href="https://yehoshuatherapy.co.il/product/%d7%9b%d7%a8%d7%98%d7%99%d7%a1-%d7%9e%d7%aa%d7%a0%d7%94/" data-reveal style="--d:80ms"><span class="gift__k">שובר מתנה</span><b>₪400</b><span>שעה של טיפול, לבחירת מי שמקבל.</span><span class="link">לרכישת שובר</span></a>
+      </div>
+    </div>
+  </section>
   <section class="section section--alt" id="line" aria-labelledby="line-h">
     <div class="wrap">
       <div class="section__head" data-reveal>
@@ -446,6 +505,63 @@ footer a:hover { text-decoration: underline; }
       </div>
     </div>
   </section>
+  <section class="section section--alt" id="shop" aria-labelledby="shop-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal>
+        <p class="eyebrow">החנות</p>
+        <h2 class="h-l" id="shop-h">יותר מ־90 מוצרים. לפי מה שצריך.</h2>
+        <p class="lead">צמחי מרפא, תמציות, שמנים אתריים ותוספי תזונה שיהושע בוחר לחנות.</p>
+      </div>
+      <div class="needs">
+        <a class="need t-night" href="https://yehoshuatherapy.co.il/product-category/%d7%a9%d7%99%d7%a0%d7%94-%d7%95%d7%94%d7%a8%d7%92%d7%a2%d7%94/" data-reveal style="--d:0ms"><span class="need__n">19</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>שינה ורוגע</h3><p>תמציות צמחים ושמנים לערב רגוע</p><span class="need__go">לקטגוריה</span></a>
+        <a class="need t-olive" href="https://yehoshuatherapy.co.il/product-category/digesting/" data-reveal style="--d:60ms"><span class="need__n">31</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>עיכול וניקוי</h3><p>פרוביוטיקה, כורכומין, צמחי מרפא</p><span class="need__go">לקטגוריה</span></a>
+        <a class="need t-slate" href="https://yehoshuatherapy.co.il/product-category/%d7%97%d7%95%d7%a8%d7%a3/" data-reveal style="--d:120ms"><span class="need__n">29</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>חורף וחיסון</h3><p>לעונות המעבר ולכל הבית</p><span class="need__go">לקטגוריה</span></a>
+        <a class="need t-sand" href="https://yehoshuatherapy.co.il/product-category/kids/" data-reveal style="--d:0ms"><span class="need__n">13</span><span class="need__l">מוצרים · החל מ־₪69</span><h3>ילדים</h3><p>פורמולות צמחים בטעם שילדים מסכימים לו</p><span class="need__go">לקטגוריה</span></a>
+        <a class="need t-amber" href="https://yehoshuatherapy.co.il/product-category/%d7%a0%d7%a9%d7%99%d7%9d-%d7%92%d7%91%d7%a8%d7%99%d7%9d/" data-reveal style="--d:60ms"><span class="need__n">61</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>נשים וגברים</h3><p>תוספי תזונה וצמחי מרפא לכל גיל</p><span class="need__go">לקטגוריה</span></a>
+        <a class="need t-ink" href="https://yehoshuatherapy.co.il/product-category/%d7%a6%d7%99%d7%95%d7%93-%d7%9c%d7%9e%d7%98%d7%a4%d7%9c%d7%99%d7%9d/" data-reveal style="--d:120ms"><span class="need__n">8</span><span class="need__l">מוצרים · החל מ־₪3</span><h3>ציוד למטפלים</h3><p>קרמי בסיס, שמנים, טייפ וצנצנות</p><span class="need__go">לקטגוריה</span></a>
+      </div>
+    </div>
+  </section>
+  <section class="section" id="deals" aria-labelledby="deals-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal>
+        <p class="eyebrow">מבצעים</p>
+        <h2 class="h-l" id="deals-h">חוסכים עד ₪118.</h2>
+        <p class="lead">המחירים המוזלים בחנות עכשיו, מהחיסכון הגדול לקטן.</p>
+      </div>
+      <ul class="deals">
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%93%d7%99%d7%98%d7%95%d7%a7%d7%a1-%d7%aa%d7%9e%d7%a6%d7%99%d7%aa-%d7%9c%d7%a0%d7%99%d7%a7%d7%95%d7%99-%d7%94%d7%92%d7%95%d7%a3-%d7%9e%d7%91%d7%a4%d7%a0%d7%99%d7%9d/" class="deal__name">ברא דיטוקס תמצית</a><span class="deal__save">חוסכים ₪73</span><span class="deal__price">₪85<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1369&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%a0%d7%99%d7%99%d7%98-100-%d7%9e%d7%9c/" class="deal__name">ברא נייט 100 מ&quot;ל</a><span class="deal__save">חוסכים ₪59</span><span class="deal__price">₪99<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=683&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/100-12-zizyphus/" class="deal__name">זיזיפוס</a><span class="deal__save">חוסכים ₪57</span><span class="deal__price">₪119<s>₪176</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=619&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%a9%d7%9e%d7%9f-%d7%90%d7%95%d7%a8%d7%92%d7%a0%d7%95-oregano-oil/" class="deal__name">שמן אורגנו</a><span class="deal__save">חוסכים ₪56</span><span class="deal__price">₪124<s>₪180</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1221&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/100-12-citrus-pinellia-plus/" class="deal__name">CITRUS &amp; PINELLIA PLUS</a><span class="deal__save">חוסכים ₪31</span><span class="deal__price">₪140<s>₪171</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=674&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%a7%d7%a8%d7%9d-%d7%91%d7%a1%d7%99%d7%a1-%d7%98%d7%91%d7%a2%d7%99-1-%d7%a7%d7%92-natural-base-cream/" class="deal__name">קרם בסיס טיפולי טבעי 1 ק&quot;ג – NATURAL BASE CREAM</a><span class="deal__save">חוסכים ₪30</span><span class="deal__price">₪220<s>₪250</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=2131&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%a7%d7%a8%d7%a0%d7%91%d7%99%d7%95%d7%98%d7%99%d7%a7/" class="deal__name">קרנביוטיק</a><span class="deal__save">חוסכים ₪29</span><span class="deal__price">₪129<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1229&amp;quantity=1">לקנייה</a></li>
+        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%98%d7%a8%d7%99%d7%a4%d7%90%d7%9c%d7%94-%d7%98%d7%91%d7%9c%d7%99%d7%95%d7%aa-%d7%94%d7%a4%d7%95%d7%a8%d7%9e%d7%95%d7%9c%d7%94-%d7%94%d7%94%d7%95%d7%93%d7%99%d7%aa-%d7%9c%d7%97%d7%99%d7%96%d7%95/" class="deal__name">טריפאלה טבליות</a><span class="deal__save">חוסכים ₪27</span><span class="deal__price">₪120<s>₪147</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1390&amp;quantity=1">לקנייה</a></li>
+      </ul>
+      <p style="text-align:center;margin-top:36px" data-reveal><a class="link" href="https://yehoshuatherapy.co.il/product-category/%d7%9e%d7%91%d7%a6%d7%a2%d7%99%d7%9d/">כל 19 המבצעים בחנות</a></p>
+    </div>
+  </section>
+  <section class="scene" id="arnica" aria-labelledby="hero-h">
+    <div class="scene__stick">
+      <div class="hero" id="hero">
+        <p class="eyebrow">בזרקור · ליין JE</p>
+        <h2 class="h-xl" id="hero-h">קרם ארניקה.</h2>
+        <p class="hero__sub">מריחה קטנה. הקלה גדולה.</p>
+        <p class="hero__meta">₪120 · 50 מ״ל · משלוח חינם מ־₪300</p>
+        <div class="hero__ctas"><a class="btn" id="hero-buy" href="#buy">לקנייה</a><a class="link" href="#how">איך משתמשים</a></div>
+      </div>
+      <div class="stage">
+        <canvas id="jar" width="548" height="880" role="img" aria-label="צנצנת זכוכית ענבר עם מכסה שחור. המכסה נפתח, ובפנים קרם לבן וסמיך"></canvas>
+        <div class="captions" aria-hidden="true">
+          <p class="cap cap--side" data-from="0.18" data-to="0.42">נרקח ביד.<small>בקליניקה של יהושע אלישע בפתח תקווה, במנות קטנות.</small></p>
+          <p class="cap cap--side" data-from="0.46" data-to="0.68">פותחים.<small>כמות בגודל אפונה מספיקה לאזור אחד.</small></p>
+          <p class="cap cap--side" data-from="0.72" data-to="1.01">ומעסים.<small>קרם עשיר על בסיס שיאה, שנשאר על העור מספיק זמן לעיסוי של שלוש דקות.</small></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="night chapter" id="ingredients" aria-labelledby="ing-h">
     <div class="wrap">
       <div class="chapter__head" data-reveal>
@@ -570,60 +686,13 @@ footer a:hover { text-decoration: underline; }
     </div>
   </section>
 
-  <section class="section" id="deals" aria-labelledby="deals-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal>
-        <p class="eyebrow">מבצעים</p>
-        <h2 class="h-l" id="deals-h">חוסכים עד ₪118.</h2>
-        <p class="lead">המחירים המוזלים בחנות עכשיו, מהחיסכון הגדול לקטן.</p>
-      </div>
-      <ul class="deals">
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%93%d7%99%d7%98%d7%95%d7%a7%d7%a1-%d7%aa%d7%9e%d7%a6%d7%99%d7%aa-%d7%9c%d7%a0%d7%99%d7%a7%d7%95%d7%99-%d7%94%d7%92%d7%95%d7%a3-%d7%9e%d7%91%d7%a4%d7%a0%d7%99%d7%9d/" class="deal__name">ברא דיטוקס תמצית</a><span class="deal__save">חוסכים ₪73</span><span class="deal__price">₪85<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1369&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%91%d7%a8%d7%90-%d7%a0%d7%99%d7%99%d7%98-100-%d7%9e%d7%9c/" class="deal__name">ברא נייט 100 מ&quot;ל</a><span class="deal__save">חוסכים ₪59</span><span class="deal__price">₪99<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=683&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/100-12-zizyphus/" class="deal__name">זיזיפוס</a><span class="deal__save">חוסכים ₪57</span><span class="deal__price">₪119<s>₪176</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=619&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%a9%d7%9e%d7%9f-%d7%90%d7%95%d7%a8%d7%92%d7%a0%d7%95-oregano-oil/" class="deal__name">שמן אורגנו</a><span class="deal__save">חוסכים ₪56</span><span class="deal__price">₪124<s>₪180</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1221&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/100-12-citrus-pinellia-plus/" class="deal__name">CITRUS &amp; PINELLIA PLUS</a><span class="deal__save">חוסכים ₪31</span><span class="deal__price">₪140<s>₪171</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=674&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%a7%d7%a8%d7%9d-%d7%91%d7%a1%d7%99%d7%a1-%d7%98%d7%91%d7%a2%d7%99-1-%d7%a7%d7%92-natural-base-cream/" class="deal__name">קרם בסיס טיפולי טבעי 1 ק&quot;ג – NATURAL BASE CREAM</a><span class="deal__save">חוסכים ₪30</span><span class="deal__price">₪220<s>₪250</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=2131&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%a7%d7%a8%d7%a0%d7%91%d7%99%d7%95%d7%98%d7%99%d7%a7/" class="deal__name">קרנביוטיק</a><span class="deal__save">חוסכים ₪29</span><span class="deal__price">₪129<s>₪158</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1229&amp;quantity=1">לקנייה</a></li>
-        <li class="deal" data-reveal><a href="https://yehoshuatherapy.co.il/product/%d7%98%d7%a8%d7%99%d7%a4%d7%90%d7%9c%d7%94-%d7%98%d7%91%d7%9c%d7%99%d7%95%d7%aa-%d7%94%d7%a4%d7%95%d7%a8%d7%9e%d7%95%d7%9c%d7%94-%d7%94%d7%94%d7%95%d7%93%d7%99%d7%aa-%d7%9c%d7%97%d7%99%d7%96%d7%95/" class="deal__name">טריפאלה טבליות</a><span class="deal__save">חוסכים ₪27</span><span class="deal__price">₪120<s>₪147</s></span><a class="btn btn--sm" href="https://yehoshuatherapy.co.il/checkout/?add-to-cart=1390&amp;quantity=1">לקנייה</a></li>
-      </ul>
-      <p style="text-align:center;margin-top:36px" data-reveal><a class="link" href="https://yehoshuatherapy.co.il/product-category/%d7%9e%d7%91%d7%a6%d7%a2%d7%99%d7%9d/">כל 19 המבצעים בחנות</a></p>
-    </div>
-  </section>
-  <section class="section section--alt" id="shop" aria-labelledby="shop-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal>
-        <p class="eyebrow">החנות</p>
-        <h2 class="h-l" id="shop-h">יותר מ־90 מוצרים. לפי מה שצריך.</h2>
-        <p class="lead">צמחי מרפא, תמציות, שמנים אתריים ותוספי תזונה שיהושע בוחר לחנות.</p>
-      </div>
-      <div class="needs">
-        <a class="need t-night" href="https://yehoshuatherapy.co.il/product-category/%d7%a9%d7%99%d7%a0%d7%94-%d7%95%d7%94%d7%a8%d7%92%d7%a2%d7%94/" data-reveal style="--d:0ms"><span class="need__n">19</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>שינה ורוגע</h3><p>תמציות צמחים ושמנים לערב רגוע</p><span class="need__go">לקטגוריה</span></a>
-        <a class="need t-olive" href="https://yehoshuatherapy.co.il/product-category/digesting/" data-reveal style="--d:60ms"><span class="need__n">31</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>עיכול וניקוי</h3><p>פרוביוטיקה, כורכומין, צמחי מרפא</p><span class="need__go">לקטגוריה</span></a>
-        <a class="need t-slate" href="https://yehoshuatherapy.co.il/product-category/%d7%97%d7%95%d7%a8%d7%a3/" data-reveal style="--d:120ms"><span class="need__n">29</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>חורף וחיסון</h3><p>לעונות המעבר ולכל הבית</p><span class="need__go">לקטגוריה</span></a>
-        <a class="need t-sand" href="https://yehoshuatherapy.co.il/product-category/kids/" data-reveal style="--d:0ms"><span class="need__n">13</span><span class="need__l">מוצרים · החל מ־₪69</span><h3>ילדים</h3><p>פורמולות צמחים בטעם שילדים מסכימים לו</p><span class="need__go">לקטגוריה</span></a>
-        <a class="need t-amber" href="https://yehoshuatherapy.co.il/product-category/%d7%a0%d7%a9%d7%99%d7%9d-%d7%92%d7%91%d7%a8%d7%99%d7%9d/" data-reveal style="--d:60ms"><span class="need__n">61</span><span class="need__l">מוצרים · החל מ־₪35</span><h3>נשים וגברים</h3><p>תוספי תזונה וצמחי מרפא לכל גיל</p><span class="need__go">לקטגוריה</span></a>
-        <a class="need t-ink" href="https://yehoshuatherapy.co.il/product-category/%d7%a6%d7%99%d7%95%d7%93-%d7%9c%d7%9e%d7%98%d7%a4%d7%9c%d7%99%d7%9d/" data-reveal style="--d:120ms"><span class="need__n">8</span><span class="need__l">מוצרים · החל מ־₪3</span><h3>ציוד למטפלים</h3><p>קרמי בסיס, שמנים, טייפ וצנצנות</p><span class="need__go">לקטגוריה</span></a>
-      </div>
-    </div>
-  </section>
-  <section class="night section" id="clinic" aria-labelledby="clinic-h">
-    <div class="wrap">
-      <div class="section__head" data-reveal>
-        <p class="eyebrow">הקליניקה בפתח תקווה</p>
-        <h2 class="h-l" id="clinic-h">כשהקרם לא מספיק, באים לטיפול.</h2>
-        <p class="lead">11 שיטות טיפול אצל יהושע אלישע. טיפול ב־₪400.</p>
-      </div>
-      <div class="clinic">
-        <div class="clinic__list" data-reveal><ul class="chips"><li>הילינג לפי תורת הקבלה</li><li>עיסוי כפות רגליים יפני – תאילנדי</li><li>עיסוי רפואי</li><li>כוסות רוח</li><li>קרניו סקראל</li><li>פרחי באך</li><li>קנזיו טיפ</li><li>ארומתרפיה</li><li>דיקור סיני</li><li>קניסיולוגיה</li><li>רפלקסולוגיה</li></ul><a class="btn" href="https://wa.me/972522527090?text=%D7%A9%D7%9C%D7%95%D7%9D%20%D7%99%D7%94%D7%95%D7%A9%D7%A2%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A7%D7%91%D7%95%D7%A2%20%D7%98%D7%99%D7%A4%D7%95%D7%9C">לקביעת טיפול בוואטסאפ</a></div>
-        <a class="gift" href="https://yehoshuatherapy.co.il/product/%d7%9b%d7%a8%d7%98%d7%99%d7%a1-%d7%9e%d7%aa%d7%a0%d7%94/" data-reveal style="--d:80ms"><span class="gift__k">שובר מתנה</span><b>₪400</b><span>שעה של טיפול, לבחירת מי שמקבל.</span><span class="link">לרכישת שובר</span></a>
-      </div>
-    </div>
-  </section>
   <section class="section" id="faq" aria-labelledby="faq-h">
     <div class="wrap">
-      <div class="section__head" data-reveal><h2 class="h-l" id="faq-h">שאלות על קרם ארניקה.</h2></div>
+      <div class="section__head" data-reveal><h2 class="h-l" id="faq-h">שאלות נפוצות.</h2></div>
       <div class="faq">
+        <details><summary>איפה הקליניקה ואיך קובעים טיפול?</summary><p>הקליניקה בפתח תקווה. כותבים ליהושע בוואטסאפ, מספרים במה צריך עזרה, וקובעים יחד את הטיפול ואת השעה. טיפול עולה ₪400.</p></details>
+        <details><summary>מה זה ליין JE?</summary><p>הקרמים שיהושע רוקח בעבודת יד בקליניקה: ארניקה, רגליים, ידיים, גוף, קרם רפלקסולוגי וקרם בסיס למטפלים. אותן נוסחאות שהוא משתמש בהן בטיפולים.</p></details>
+        <details><summary>איך מזמינים מהחנות?</summary><p>לוחצים "לקנייה" ליד המוצר, והוא נכנס לסל בחנות המאובטחת של האתר. בהזמנה מ־₪300 המשלוח חינם.</p></details>
         <details><summary>למה קרם ארניקה מתאים?</summary><p>לעיסוי של שרירים תפוסים, עומס אחרי פעילות גופנית, גב, צוואר, כתפיים ומפרקים. זה מוצר קוסמטי לעיסוי, והוא לא מחליף בדיקה או טיפול אצל רופא.</p></details>
         <details><summary>כמה פעמים ביום מורחים?</summary><p>פעם או פעמיים ביום, כמות בגודל אפונה, בעיסוי של שתיים עד שלוש דקות.</p></details>
         <details><summary>מה ההבדל בין קרם לג׳ל ארניקה?</summary><p>ג׳ל נספג מהר ומשאיר מעט שומן. קרם על בסיס שיאה ושמן זית עשיר יותר, ונשאר על העור מספיק זמן לעיסוי של כמה דקות.</p></details>
@@ -637,10 +706,10 @@ footer a:hover { text-decoration: underline; }
 
   <section class="night close" aria-labelledby="close-h">
     <div class="wrap" data-reveal>
-      <h2 class="h-l" id="close-h">צנצנת אחת. ₪120.</h2>
-      <p class="lead" style="margin-bottom:28px">נרקח ביד בקליניקה. משלוח חינם מ־₪300.</p>
-      <a class="btn" href="#buy">לקנייה</a>
-      <img src="seq/j29.webp" alt="צנצנת קרם ארניקה פתוחה, המכסה מורם מעליה" loading="lazy" width="548" height="880">
+      <h2 class="h-l" id="close-h">מתחילים מכאן.</h2>
+      <p class="lead" style="margin-bottom:32px">טיפול בקליניקה, קרם מהליין, או משהו מהחנות. ואם לא בטוחים, שואלים את יהושע.</p>
+      <div class="close__ctas"><a class="btn" href="#shop">לחנות</a><a class="btn btn--ghost" href="#clinic">לקביעת טיפול</a><a class="link" href="https://wa.me/972522527090">לכתוב ליהושע</a></div>
+      <img src="img/kit.webp" alt="צנצנות קרם ארניקה וקרם רגליים של JE" loading="lazy">
     </div>
   </section>
 </main>
@@ -654,8 +723,8 @@ footer a:hover { text-decoration: underline; }
 </footer>
 
 <div class="buybar" id="buybar" aria-hidden="true">
-  <div><b>קרם ארניקה</b><span>₪120 · משלוח חינם מ־₪300</span></div>
-  <a class="btn" href="#buy" tabindex="-1">לקנייה</a>
+  <div><b>JE · יהושע אלישע</b><span>משלוח חינם מ־₪300</span></div>
+  <a class="btn" href="#shop" tabindex="-1">לחנות</a>
 </div>
 
 <script>
@@ -675,7 +744,7 @@ footer a:hover { text-decoration: underline; }
   const order = [0, N - 1, ...Array.from({ length: N - 2 }, (_, k) => k + 1)];
   order.forEach(i => { const im = new Image(); im.decoding = 'async'; im.onload = () => { loaded++; if (i === 0 && shown < 0) draw(0); }; im.src = src(i); frames[i] = im; });
 
-  const scene = document.getElementById('top'), hero = document.getElementById('hero');
+  const scene = document.getElementById('arnica'), hero = document.getElementById('hero');
   const caps = [...document.querySelectorAll('.cap')];
   const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
   const ease = t => 1 - Math.pow(1 - t, 3);
@@ -703,7 +772,7 @@ footer a:hover { text-decoration: underline; }
       });
     }
     // the buy bar shows once the hero's button has gone
-    document.getElementById('buybar').classList.toggle('show', p > 0.12 || r.bottom < 0);
+    document.getElementById('buybar').classList.toggle('show', scrollY > innerHeight * 0.9);
   }
   addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
   addEventListener('resize', onScroll);
