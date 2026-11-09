@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}#f{width:1600px;height:1000px;position:relative}</style></head>
+<body><div id="f"></div><script type="module">
+import { loadProduct } from './assets/objects/product-render/build.js';
+window.shot = async (u, view, params, pal) => { const prod = await loadProduct(u); const el=document.getElementById('f'); el.innerHTML=''; const d=document.createElement('div'); d.style.cssText='position:absolute;inset:0'; el.appendChild(d);
+  const c = prod.mount(d, { place:'stage', view, mode:'still', params, palette: pal }); if (c.ready) await c.ready(); await new Promise(r=>setTimeout(r,120)); };
+window.ok=true;
+</script></body></html>
