@@ -1,6 +1,7 @@
 """Builds the JE site pages with one shared header, menu and footer.
 Run: python3 build_pages.py  (writes index.html, yehoshua.html, treatments.html, courses.html and refreshes shop.html's header)."""
 import re, urllib.parse, json, html
+from treatments_data import T as TD, BY, TYPE_WORD as TW
 
 WA = 'https://wa.me/972522527090'
 def wa(text): return WA + '?text=' + urllib.parse.quote(text)
@@ -106,10 +107,107 @@ def tcard(t, i):
     key, name, img, desc, good = t
     vis = f'<div class="t__img"><img src="{img}" alt="{name}" loading="lazy"></div>' if img else f'<div class="t__img t__img--type"><span>{TYPE_WORD[key]}</span></div>'
     return f'''        <article class="t" id="{key}" data-reveal style="--d:{(i%3)*60}ms">
+          <a class="t__cover" href="t-{key}.html" aria-label="{name}: איך זה עובד ומה זה נותן"></a>
           {vis}
           <div class="t__body"><h3>{name}</h3><p>{desc}</p><p class="t__good"><b>מתאים ל:</b> {good}</p>
-          <div class="t__foot"><span class="t__price">₪400</span><a class="btn btn--sm" href="{wa('שלום יהושע, אשמח לקבוע טיפול: ' + name)}">לקביעת תור</a></div></div>
+          <div class="t__foot"><span class="t__more">איך זה עובד</span><a class="btn btn--sm" href="{wa('שלום יהושע, אשמח לקבוע טיפול: ' + name)}">לקביעת תור</a></div></div>
         </article>'''
+
+def tmini(slug):
+    t = BY[slug]
+    vis = f'<img src="{t["img"]}" alt="" loading="lazy">' if t['img'] else f'<span>{TW[slug]}</span>'
+    return f'<a class="tmini" href="t-{slug}.html"><span class="tmini__img">{vis}</span><span><h3>{t["name"]}</h3><p>{t["promise"]}</p></span></a>'
+
+def tpage(t):
+    slug, name = t['slug'], t['name']
+    book = wa('שלום יהושע, אשמח לקבוע טיפול: ' + name)
+    media = f'<div class="tp-media"><img src="{t["img"]}" alt="{t["alt"]}" loading="eager"></div>' if t['img'] else f'<div class="tp-media tp-media--type"><span>{TW[slug]}</span></div>'
+    what = ''.join(f'<p>{p}</p>' for p in t['what'])
+    gives = '\n'.join(f'        <div class="give" data-reveal style="--d:{i*60}ms"><b>{a}</b><p>{b}</p></div>' for i, (a, b) in enumerate(t['gives']))
+    steps = '\n'.join(f'        <li data-reveal style="--d:{i*80}ms"><h3>{a}</h3><p>{b}</p></li>' for i, (a, b) in enumerate(t['steps']))
+    suits = ''.join(f'<li>{c}</li>' for c in t['suits'])
+    faq = '\n'.join(f'        <details><summary>{q}</summary><p>{a}</p></details>' for q, a in t['faq'] + [('כמה זה עולה?', 'טיפול עולה ₪400. אפשר גם לקנות שובר מתנה לטיפול באותו מחיר.'), ('איך קובעים?', 'כותבים ליהושע בוואטסאפ. הקליניקה בפתח תקווה, ואת הכתובת והשעה מקבלים כשקובעים.')])
+    rel = '\n'.join(f'        {tmini(r)}' for r in t['related'])
+    ld = json.dumps({"@context": "https://schema.org", "@graph": [
+        {"@type": "Service", "name": name, "serviceType": "רפואה משלימה", "description": t['promise'], "areaServed": "פתח תקווה",
+         "provider": {"@type": "Person", "name": "יהושע אלישע", "jobTitle": "מטפל ברפואה משלימה"},
+         "offers": {"@type": "Offer", "price": "400", "priceCurrency": "ILS"}},
+        {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in t['faq']]},
+        {"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "דף הבית", "item": "index.html"}, {"@type": "ListItem", "position": 2, "name": "טיפולים", "item": "treatments.html"}, {"@type": "ListItem", "position": 3, "name": name}]}]}, ensure_ascii=False)
+    s = head(f'{name} בפתח תקווה | יהושע אלישע', f'{name} אצל יהושע אלישע בפתח תקווה: {t["promise"]} איך נראה הטיפול, מה הוא נותן ולמי הוא מתאים. ₪400.', f'<script type="application/ld+json">{ld}</script>\n')
+    s += header('treatments.html')
+    s += f'''<main id="main">
+  <div class="wrap"><nav class="crumbs" aria-label="מיקום"><a href="index.html">דף הבית</a> / <a href="treatments.html">טיפולים</a> / {name}</nav></div>
+  <section class="tp-hero" aria-labelledby="tp-h">
+    <div class="wrap split">
+      <div data-reveal>
+        <p class="eyebrow">טיפול בקליניקה</p>
+        <h1 class="tp-h1" id="tp-h">{name}</h1>
+        <p class="lead">{t['promise']}</p>
+        <ul class="facts-row"><li>₪400 לטיפול</li><li>פתח תקווה</li><li>עם יהושע אלישע</li></ul>
+        <div class="cta-row" style="justify-content:flex-start"><a class="btn" href="{book}">לקביעת תור</a><a class="link" href="{wa('שלום יהושע, יש לי שאלה על ' + name)}">שאלה לפני שקובעים</a></div>
+      </div>
+      <div data-reveal style="--d:80ms">{media}</div>
+    </div>
+  </section>
+
+  <section class="section section--alt" aria-labelledby="what-h">
+    <div class="wrap split split--top">
+      <div data-reveal><p class="eyebrow">מה זה</p><h2 class="h-l" id="what-h">על השיטה.</h2></div>
+      <div class="prose" data-reveal style="--d:80ms">{what}</div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="gives-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><p class="eyebrow">מה זה נותן</p><h2 class="h-l" id="gives-h">למה מגיעים ל{name}.</h2></div>
+      <div class="gives">
+{gives}
+      </div>
+    </div>
+  </section>
+
+  <section class="night section" aria-labelledby="steps-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><p class="eyebrow">איך זה נראה</p><h2 class="h-l" id="steps-h">הטיפול, צעד אחר צעד.</h2></div>
+      <ol class="visit">
+{steps}
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="suits-h">
+    <div class="wrap split split--top">
+      <div data-reveal><p class="eyebrow">למי זה מתאים</p><h2 class="h-l" id="suits-h">אולי זה בשבילכם.</h2></div>
+      <div data-reveal style="--d:80ms"><ul class="chips2">{suits}</ul>
+      <p class="note">רפואה משלימה היא דרך נוספת, לצד הרפואה הקונבנציונלית ולא במקומה. אם יש לכם מצב רפואי, ספרו עליו ליהושע כבר בשיחה הראשונה.</p></div>
+    </div>
+  </section>
+
+  <section class="section section--alt" aria-labelledby="tfaq-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><h2 class="h-l" id="tfaq-h">שאלות על {name}.</h2></div>
+      <div class="faq">
+{faq}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="rel-h">
+    <div class="wrap">
+      <div class="section__head" data-reveal><p class="eyebrow">משתלב עם</p><h2 class="h-l" id="rel-h">טיפולים נוספים.</h2></div>
+      <div class="trail">
+{rel}
+      </div>
+      <p style="text-align:center;margin-top:32px"><a class="link" href="treatments.html">לכל 11 הטיפולים</a></p>
+    </div>
+  </section>
+
+{cta_band(f'לקבוע {name}.', 'כותבים ליהושע בוואטסאפ, וקובעים יחד זמן שנוח לכם.')}
+</main>
+'''
+    s += FOOT
+    open(f't-{slug}.html', 'w', encoding='utf-8').write(s)
 
 def visit_html():
     return '''  <section class="night section" aria-labelledby="visit-h">
@@ -361,4 +459,5 @@ def shop():
 
 if __name__ == '__main__':
     shop(); index(); yehoshua(); treatments(); courses()
+    for t in TD: tpage(t)
     print('built')

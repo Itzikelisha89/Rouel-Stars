@@ -369,3 +369,49 @@ footer a:hover { text-decoration: underline; }
 .cta-band { text-align: center; }
 .cta-band .lead { margin: 0 auto 28px; max-width: 40ch; }
 .cta-row { display: flex; flex-wrap: wrap; gap: 14px 22px; justify-content: center; align-items: center; }
+
+/* ---------- treatment pages ---------- */
+.crumbs { font-size: 14px; color: var(--muted); padding-top: 22px; }
+.crumbs a { color: var(--muted); text-decoration: none; }
+.crumbs a:hover { text-decoration: underline; }
+.tp-hero { padding: clamp(28px, 4vw, 48px) 0 clamp(64px, 8vw, 110px); }
+.tp-hero .split { align-items: center; }
+.tp-media { border-radius: var(--r); overflow: hidden; aspect-ratio: 5 / 4; background: #f1ece6; }
+.tp-media img { width: 100%; height: 100%; object-fit: cover; }
+.tp-media--type { display: grid; place-items: center; }
+.tp-media--type span { font-size: clamp(56px, 7vw, 96px); font-weight: 700; letter-spacing: -0.04em; color: var(--amber); text-align: center; line-height: .95; }
+.tp-h1 { font-size: clamp(44px, 6vw, 80px); line-height: 1.02; font-weight: 700; letter-spacing: -0.035em; margin: 0 0 16px; }
+.facts-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 28px; padding: 0; list-style: none; }
+.facts-row li { padding: 9px 15px; border-radius: 999px; background: var(--bg-2); font-size: 15px; font-weight: 500; }
+.gives { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.give { background: var(--bg); border-radius: 22px; padding: 26px; }
+.give b { display: flex; align-items: center; gap: 10px; font-size: 20px; letter-spacing: -0.015em; margin-bottom: 8px; }
+.give b::before { content: ""; width: 26px; height: 26px; flex: none; border-radius: 50%; background: rgba(156,74,12,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%239c4a0c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat; }
+.give p { margin: 0; color: var(--muted); font-size: 16px; }
+@media (max-width: 900px) { .gives { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .gives { grid-template-columns: 1fr; } }
+.chips2 { display: flex; flex-wrap: wrap; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.chips2 li { padding: 12px 18px; border-radius: 999px; background: var(--bg-2); font-size: 16px; font-weight: 500; }
+.note { font-size: 15px; color: var(--muted); border-inline-start: 3px solid var(--line); padding-inline-start: 14px; margin-top: 24px; max-width: 60ch; }
+/* treatment cards that open their page */
+.t { position: relative; text-decoration: none; color: inherit; transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out); }
+.t__more { color: var(--amber); font-weight: 500; font-size: 15px; }
+.t__more::after { content: " ‹"; }
+.t__cover { position: absolute; inset: 0; z-index: 1; border-radius: var(--r); }
+.t .btn { position: relative; z-index: 2; }
+@media (hover: hover) and (pointer: fine) { .t:hover { transform: translateY(-2px); box-shadow: 0 20px 50px rgba(0,0,0,.08); } }
+/* treatment rail: compact cards for "other treatments" and the clinic band */
+.trail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.tmini { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; padding: 14px; border-radius: 20px; background: var(--bg); text-decoration: none; transition: transform 300ms var(--ease-out), box-shadow 300ms var(--ease-out); }
+.tmini__img { width: 96px; height: 96px; border-radius: 14px; overflow: hidden; background: #f1ece6; display: grid; place-items: center; }
+.tmini__img img { width: 100%; height: 100%; object-fit: cover; }
+.tmini__img span { color: var(--amber); font-weight: 700; font-size: 15px; text-align: center; line-height: 1.05; }
+.tmini h3 { margin: 0 0 4px; font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
+.tmini p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+@media (hover: hover) and (pointer: fine) { .tmini:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,.08); } }
+@media (max-width: 900px) { .trail { grid-template-columns: 1fr; } }
+.night .tmini { background: var(--night-2); }
+.night .tmini h3 { color: var(--on-night); }
+.night .tmini p { color: var(--night-muted); }
+.night .tmini__img { background: #1d1d20; }
+.section:not(.section--alt):not(.night) .give, .section:not(.section--alt):not(.night) .tmini { background: var(--bg-2); }
