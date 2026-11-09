@@ -38,7 +38,10 @@
     const left = Math.max(0, FREE_SHIP - t);
     $('#ship-text').innerHTML = left > 0 ? `עוד <b>${ils(left)}</b> ומשלוח חינם עד הבית` : '<b>המשלוח עלינו.</b> ההזמנה שלך כוללת משלוח חינם';
     $('#ship-bar').style.width = Math.min(100, (t / FREE_SHIP) * 100) + '%';
-    $('#checkout').toggleAttribute('disabled', !keys.length);
+    const co = $('#checkout');
+    co.setAttribute('aria-disabled', String(!keys.length));
+    if (keys.length) { const k = keys[0]; co.href = `${STORE}/checkout/?add-to-cart=${PRODUCTS[k].id}&quantity=${cart[k]}`; }
+    else co.removeAttribute('href');
   }
 
   function add(key, qty = 1) {
@@ -59,9 +62,8 @@
       location.href = '/checkout/';
       return;
     }
-    // Preview build: hand the first line to the real store (WooCommerce takes one product per link).
-    const [k, q] = lines[0];
-    location.href = `${STORE}/checkout/?add-to-cart=${PRODUCTS[k].id}&quantity=${q}`;
+    // Preview build: the link itself (new tab) hands the first line to the real store,
+    // because WooCommerce takes one product per link.
   }
 
   document.addEventListener('click', e => {
@@ -71,7 +73,7 @@
     else if (t.dataset.inc) { cart[t.dataset.inc]++; save(); render(); }
     else if (t.dataset.dec) { cart[t.dataset.dec]--; if (cart[t.dataset.dec] <= 0) delete cart[t.dataset.dec]; save(); render(); }
     else if (t.hasAttribute('data-open-cart')) { e.preventDefault(); openCart(); }
-    else if (t.id === 'checkout') { checkout(); }
+    else if (t.id === 'checkout') { if (location.hostname.endsWith('yehoshuatherapy.co.il')) { e.preventDefault(); checkout(); } }
     else if (t.hasAttribute('data-buy-selected')) {
       const sel = $('input[name="pack"]:checked'); if (!sel) return;
       add(sel.value, +(sel.dataset.qty || 1));
