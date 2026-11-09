@@ -140,18 +140,15 @@ def tpage(t):
     s = head(f'{name} בפתח תקווה | יהושע אלישע', f'{name} אצל יהושע אלישע בפתח תקווה: {t["promise"]} איך נראה הטיפול, מה הוא נותן ולמי הוא מתאים. ₪400.', f'<script type="application/ld+json">{ld}</script>\n')
     s += header('treatments.html')
     s += f'''<main id="main">
-  <div class="wrap"><nav class="crumbs" aria-label="מיקום"><a href="index.html">דף הבית</a> / <a href="treatments.html">טיפולים</a> / {name}</nav></div>
-  <section class="tp-hero" aria-labelledby="tp-h">
-    <div class="wrap split">
-      <div data-reveal>
-        <p class="eyebrow">טיפול בקליניקה</p>
-        <h1 class="tp-h1" id="tp-h">{name}</h1>
-        <p class="lead">{t['promise']}</p>
-        <ul class="facts-row"><li>₪400 לטיפול</li><li>פתח תקווה</li><li>עם יהושע אלישע</li></ul>
-        <div class="cta-row" style="justify-content:flex-start"><a class="btn" href="{book}">לקביעת תור</a><a class="link" href="{wa('שלום יהושע, יש לי שאלה על ' + name)}">שאלה לפני שקובעים</a></div>
-      </div>
-      <div data-reveal style="--d:80ms">{media}</div>
+  <section class="at at--dark at--page" aria-labelledby="tp-h">
+    <nav class="crumbs at__crumbs" aria-label="מיקום"><a href="index.html">דף הבית</a> / <a href="treatments.html">טיפולים</a> / {name}</nav>
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>טיפול בקליניקה · ₪400</p>
+      <h1 class="at__h {'at__h--xl' if len(name) < 14 else ''}" id="tp-h" data-reveal style="--d:60ms">{name}.</h1>
+      <p class="at__sub" data-reveal style="--d:120ms">{t['promise']}</p>
+      <div data-reveal style="--d:180ms">{at_links(("לקביעת תור", book), ("שאלה לפני שקובעים", wa('שלום יהושע, יש לי שאלה על ' + name)))}</div>
     </div>
+    {f'<div class="at__media at__media--photo" data-reveal style="--d:220ms"><img src="{t["img"]}" alt="{t["alt"]}" width="1280" height="853" loading="eager" fetchpriority="high"></div>' if t['img'] else f'<div class="at__media at__media--word" data-reveal style="--d:220ms"><p class="at__word at__word--gold" aria-hidden="true">₪400</p></div>'}
   </section>
 
   <section class="section section--alt" aria-labelledby="what-h">
@@ -531,7 +528,15 @@ def treatments():
     s = head('טיפולים בקליניקה | יהושע אלישע, רפואה טבעית בפתח תקווה', '11 שיטות טיפול בקליניקה של יהושע אלישע בפתח תקווה: עיסוי רפואי, דיקור סיני, רפלקסולוגיה, קינסיולוגיה, כוסות רוח ועוד. טיפול ב־₪400.')
     s += header('treatments.html')
     s += f'''<main id="main">
-  <section class="page-head"><div class="wrap"><p class="eyebrow" data-reveal>הקליניקה בפתח תקווה</p><h1 class="h-xl" data-reveal style="--d:60ms">11 שיטות.<br>תוכנית אחת, שלכם.</h1><p class="lead" data-reveal style="--d:120ms">יהושע משלב בין השיטות לפי מה שאתם צריכים. כל טיפול ב־₪400, וקובעים בוואטסאפ.</p><div class="cta-row" data-reveal style="--d:180ms;margin-top:26px"><a class="btn" href="{BOOK}">לקביעת טיפול</a><a class="link" href="https://yehoshuatherapy.co.il/product/%d7%9b%d7%a8%d7%98%d7%99%d7%a1-%d7%9e%d7%aa%d7%a0%d7%94/">שובר מתנה ב־₪400</a></div></div></section>
+  <section class="at at--dark at--page" aria-labelledby="tl-h">
+    <div class="at__txt">
+      <p class="at__kick" data-reveal>הקליניקה בפתח תקווה</p>
+      <h1 class="at__h" id="tl-h" data-reveal style="--d:60ms">11 שיטות.<br>תוכנית אחת, שלכם.</h1>
+      <p class="at__sub" data-reveal style="--d:120ms">יהושע משלב בין השיטות לפי מה שאתם צריכים. כל טיפול ₪400.</p>
+      <div data-reveal style="--d:180ms">{at_links(("לקביעת טיפול", BOOK), ("שובר מתנה", "https://yehoshuatherapy.co.il/product/%d7%9b%d7%a8%d7%98%d7%99%d7%a1-%d7%9e%d7%aa%d7%a0%d7%94/"))}</div>
+    </div>
+    <div class="at__media at__media--photo" data-reveal style="--d:220ms"><img src="img/t/massage.webp" alt="עיסוי רפואי בקליניקה" width="1280" height="853" loading="eager" fetchpriority="high"></div>
+  </section>
   <section class="section section--alt" style="padding-top:clamp(48px,6vw,80px)" aria-label="כל הטיפולים">
     <div class="wrap"><div class="tx">
 {cards}

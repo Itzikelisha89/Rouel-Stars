@@ -562,3 +562,6 @@ footer a:hover { text-decoration: underline; }
 .needs .need .need__n { background: linear-gradient(180deg, #d58a3f 0%, var(--amber) 55%, #4f2405 100%); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
 .needs .need .need__go { color: var(--amber) !important; }
 @media (max-width: 860px) { .at--page { min-height: 0; } .at__word { font-size: clamp(72px, 22vw, 140px); } }
+.at--dark .at__crumbs, .at--dark .at__crumbs a { color: var(--night-muted); }
+.at__word--gold { background: linear-gradient(180deg, #f3d39b 0%, var(--gold) 45%, #8a5a1f 100%); -webkit-background-clip: text; background-clip: text; }
+.at--dark .at__sub { max-width: 680px; margin-inline: auto; }
