@@ -13,3 +13,13 @@
     addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
   }
 })();
+/* the phone booking bar, on every page that has no store bar of its own */
+(() => {
+  if (document.getElementById('buybar')) return;
+  const bar = document.createElement('div');
+  bar.className = 'bookbar'; bar.setAttribute('aria-label', 'קביעת טיפול');
+  bar.innerHTML = '<a class="btn" href="https://wa.me/972522527090?text=' + encodeURIComponent('שלום יהושע, אשמח לקבוע טיפול') + '">לקביעת טיפול</a><a class="btn btn--ghost" href="https://wa.me/972522527090">שאלה בוואטסאפ</a>';
+  document.body.appendChild(bar);
+  const toggle = () => bar.classList.toggle('show', scrollY > innerHeight * 0.7);
+  addEventListener('scroll', () => requestAnimationFrame(toggle), { passive: true }); toggle();
+})();

@@ -415,3 +415,42 @@ footer a:hover { text-decoration: underline; }
 .night .tmini p { color: var(--night-muted); }
 .night .tmini__img { background: #1d1d20; }
 .section:not(.section--alt):not(.night) .give, .section:not(.section--alt):not(.night) .tmini { background: var(--bg-2); }
+
+/* ---------- premium home hero: text and intent on one side, the photograph on the other ---------- */
+.hero2 { padding: clamp(36px, 6vw, 80px) 0 clamp(48px, 6vw, 80px); }
+.hero2__grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(32px, 5vw, 72px); align-items: center; }
+.hero2__h { font-size: clamp(46px, 6.6vw, 92px); line-height: 1; font-weight: 700; letter-spacing: -0.04em; margin: 0 0 20px; }
+.hero2__text .lead { max-width: 40ch; }
+.hero2__ask { font-weight: 600; font-size: 17px; margin: 30px 0 12px; }
+.intent { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; padding: 0; margin: 0; }
+.intent a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--bg-2); color: var(--ink); text-decoration: none; font-size: 16px; font-weight: 500; transition: background-color 200ms ease, transform 160ms var(--ease-out); }
+.intent a:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .intent a:hover { background: #ebe6e0; } }
+.hero2__cta { justify-content: flex-start; margin-top: 30px; }
+.hero2__media { position: relative; border-radius: 32px; overflow: hidden; aspect-ratio: 4 / 5; background: #f1ece6; }
+.hero2__media > img { width: 100%; height: 100%; object-fit: cover; object-position: 40% 50%; }
+.hero2__tag { position: absolute; inset-inline-start: 18px; bottom: 18px; display: flex; align-items: center; gap: 12px; padding: 10px 18px 10px 10px; border-radius: 999px; background: rgba(255,255,255,.82); -webkit-backdrop-filter: saturate(180%) blur(18px); backdrop-filter: saturate(180%) blur(18px); text-decoration: none; color: var(--ink); font-size: 14px; line-height: 1.25; box-shadow: 0 8px 30px rgba(0,0,0,.12); }
+.hero2__tag img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: 50% 20%; }
+.hero2__tag b { display: block; font-size: 16px; font-weight: 700; }
+@media (prefers-reduced-transparency: reduce) { .hero2__tag { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@media (max-width: 900px) { .hero2__grid { grid-template-columns: 1fr; } .hero2__media { aspect-ratio: 4 / 3; order: -1; } }
+/* stats: facts only, set large */
+.stats { border-block: 1px solid var(--line); }
+.stats__row { list-style: none; margin: 0; padding: 30px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.stats__row li { display: flex; flex-direction: column; gap: 4px; }
+.stats__row b { font-size: clamp(34px, 3.6vw, 52px); font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+.stats__row span { color: var(--muted); font-size: 15px; }
+@media (max-width: 760px) { .stats__row { grid-template-columns: 1fr 1fr; gap: 26px 20px; } }
+/* structured credentials */
+.cred { margin: 26px 0 0; display: grid; gap: 0; }
+.cred > div { display: grid; grid-template-columns: 110px 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }
+.cred > div:last-child { border-bottom: 1px solid var(--line); }
+.cred dt { font-weight: 600; font-size: 15px; color: var(--amber); }
+.cred dd { margin: 0; font-size: 17px; }
+/* the booking bar on phones (WTHN: one action, always within reach) */
+.bookbar { position: fixed; inset-inline: 0; bottom: 0; z-index: 60; display: none; gap: 10px; padding: 10px max(16px, env(safe-area-inset-left, 0px)) calc(10px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.82); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 -1px 0 var(--line); transform: translateY(110%); transition: transform 420ms var(--ease-out); }
+.bookbar.show { transform: none; }
+.bookbar .btn { flex: 1; }
+@media (max-width: 760px) { .bookbar { display: flex; } }
+@media (prefers-reduced-motion: reduce) { .bookbar { transition: none; } }
+.section--alt .door { background: var(--bg); }
