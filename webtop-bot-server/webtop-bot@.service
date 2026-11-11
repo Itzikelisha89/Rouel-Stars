@@ -1,0 +1,16 @@
+[Unit]
+Description=WEBTOP Telegram bot (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=webtop
+WorkingDirectory=/opt/webtop-bot/kids/%i
+ExecStart=/opt/webtop-bot/venv/bin/python bot.py
+Restart=always
+RestartSec=15
+Environment=PYTHONUNBUFFERED=1
+Environment=TZ=Asia/Jerusalem
+
+[Install]
+WantedBy=multi-user.target
