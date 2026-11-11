@@ -1,0 +1,153 @@
+#cloud-config
+# Paste into Oracle Cloud: Create instance -> Advanced options -> Management -> Paste cloud-init script.
+# The server installs webtop-bot by itself on first boot (about 5 minutes).
+write_files:
+  - path: /etc/systemd/system/webtop-bot@.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=WEBTOP Telegram bot (%i)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      User=webtop
+      WorkingDirectory=/opt/webtop-bot/kids/%i
+      ExecStart=/opt/webtop-bot/venv/bin/python bot.py
+      Restart=always
+      RestartSec=15
+      Environment=PYTHONUNBUFFERED=1
+      Environment=TZ=Asia/Jerusalem
+
+      [Install]
+      WantedBy=multi-user.target
+  - path: /usr/local/sbin/webtop-install
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      # Installs webtop-bot on an Ubuntu/Debian server. Run once, as root:
+      #   sudo bash install.sh
+      set -euo pipefail
+
+      BASE=/opt/webtop-bot
+      REPO=https://github.com/matana09/webtop-bot.git
+
+
+      [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
+
+      apt-get update
+      apt-get install -y git python3 python3-venv tzdata
+      timedatectl set-timezone Asia/Jerusalem || true
+
+      id webtop >/dev/null 2>&1 || useradd --system --home-dir "$BASE" --shell /usr/sbin/nologin webtop
+      mkdir -p "$BASE/kids"
+      chown webtop:webtop "$BASE" "$BASE/kids"
+
+      if [ -d "$BASE/src/.git" ]; then
+        sudo -u webtop git -C "$BASE/src" pull --ff-only
+      else
+        sudo -u webtop git clone "$REPO" "$BASE/src"
+      fi
+
+      [ -x "$BASE/venv/bin/python" ] || sudo -u webtop python3 -m venv "$BASE/venv"
+      sudo -u webtop "$BASE/venv/bin/pip" install -q --upgrade pip
+      sudo -u webtop "$BASE/venv/bin/pip" install -q -r "$BASE/src/requirements.txt"
+
+      [ -f /etc/systemd/system/webtop-bot@.service ] || install -m 644 "$(dirname "$0")/webtop-bot@.service" /etc/systemd/system/webtop-bot@.service
+      systemctl daemon-reload
+
+      echo
+      echo "Installed. Now add a child:  sudo add-kid <name>   (or: sudo bash add-kid.sh <name>)"
+  - path: /usr/local/sbin/add-kid
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      # Adds one child (one WEBTOP account + one Telegram bot) and starts it.
+      #   sudo bash add-kid.sh noa
+      set -euo pipefail
+
+      BASE=/opt/webtop-bot
+      NAME="${1:-}"
+
+      [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
+      [[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: add-kid <name>  (English lowercase letters/digits)"; exit 1; }
+      [ -d "$BASE/src" ] || { echo "Run install.sh first"; exit 1; }
+
+      DIR="$BASE/kids/$NAME"
+      if [ ! -d "$DIR" ]; then
+        sudo -u webtop git clone -q "$BASE/src" "$DIR"
+      fi
+
+      # Daily jobs in Israel time all year (upstream uses a fixed UTC+3).
+      sed -i "s|_IL = datetime.timezone(datetime.timedelta(hours=3))|from zoneinfo import ZoneInfo; _IL = ZoneInfo('Asia/Jerusalem')|" "$DIR/bot.py"
+
+      # Each bot needs its own signature port.
+      COUNT=$(find "$BASE/kids" -mindepth 1 -maxdepth 1 -type d | wc -l)
+      PORT=$((8764 + COUNT))
+
+      echo "Settings for $NAME (nothing you type here is shown or saved anywhere else):"
+      read -rp  "Telegram bot token (from @BotFather): " TOKEN
+      read -rp  "WEBTOP username: " USERNAME
+      read -rsp "WEBTOP password: " PASSWORD; echo
+      read -rp  "Allowed Telegram chat IDs, comma-separated (empty for now = only /myid works): " IDS
+
+      umask 077
+      cat > "$DIR/.env" <<ENV
+      TELEGRAM_TOKEN=$TOKEN
+      WEBTOP_USERNAME=$USERNAME
+      WEBTOP_PASSWORD=$PASSWORD
+      WEBTOP_DATA=
+      WEBTOP_BASE_URL=
+      ALLOWED_CHAT_IDS=$IDS
+      SIGNATURE_PUBLIC_URL=
+      SIGNATURE_HOST=127.0.0.1
+      SIGNATURE_PORT=$PORT
+      TELEGRAM_NOTIFICATIONS_ENABLED=true
+      ENV
+      chown webtop:webtop "$DIR/.env"
+      chmod 600 "$DIR/.env"
+
+      systemctl enable --now "webtop-bot@$NAME"
+      systemctl restart "webtop-bot@$NAME"
+      sleep 5
+      systemctl --no-pager status "webtop-bot@$NAME" | head -5
+      echo
+      echo "Logs:  journalctl -u webtop-bot@$NAME -f"
+  - path: /usr/local/sbin/allow-chat
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      # Sets who may use a child's bot, then restarts it.
+      #   sudo allow-chat kid1 123456789,987654321
+      set -euo pipefail
+      NAME="${1:-}"; IDS="${2:-}"
+      ENV_FILE="/opt/webtop-bot/kids/$NAME/.env"
+      [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
+      [[ "$NAME" =~ ^[a-z0-9-]+$ && -f "$ENV_FILE" ]] || { echo "Unknown child: $NAME"; exit 1; }
+      [[ "$IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo "Usage: sudo allow-chat <name> <id>[,<id>...]"; exit 1; }
+      sed -i "s/^ALLOWED_CHAT_IDS=.*/ALLOWED_CHAT_IDS=$IDS/" "$ENV_FILE"
+      systemctl restart "webtop-bot@$NAME"
+      echo "$NAME now answers: $IDS"
+  - path: /usr/local/sbin/webtop-update
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      # Pulls the latest webtop-bot and restarts every child's bot.
+      #   sudo bash update.sh
+      set -euo pipefail
+      BASE=/opt/webtop-bot
+      [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
+
+      sudo -u webtop git -C "$BASE/src" pull --ff-only
+      sudo -u webtop "$BASE/venv/bin/pip" install -q -r "$BASE/src/requirements.txt"
+      for DIR in "$BASE"/kids/*/; do
+        NAME=$(basename "$DIR")
+        sudo -u webtop git -C "$DIR" checkout -- bot.py
+        sudo -u webtop git -C "$DIR" pull -q --ff-only
+        sed -i "s|_IL = datetime.timezone(datetime.timedelta(hours=3))|from zoneinfo import ZoneInfo; _IL = ZoneInfo('Asia/Jerusalem')|" "$DIR/bot.py"
+        systemctl restart "webtop-bot@$NAME"
+        echo "updated $NAME"
+      done
+runcmd:
+  - [bash, /usr/local/sbin/webtop-install]
+  - [touch, /opt/webtop-bot/INSTALL_DONE]

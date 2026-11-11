@@ -7,7 +7,7 @@ BASE=/opt/webtop-bot
 NAME="${1:-}"
 
 [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
-[[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: sudo bash add-kid.sh <name>  (English lowercase letters/digits)"; exit 1; }
+[[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: add-kid <name>  (English lowercase letters/digits)"; exit 1; }
 [ -d "$BASE/src" ] || { echo "Run install.sh first"; exit 1; }
 
 DIR="$BASE/kids/$NAME"

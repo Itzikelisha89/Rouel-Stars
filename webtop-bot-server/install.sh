@@ -5,7 +5,7 @@ set -euo pipefail
 
 BASE=/opt/webtop-bot
 REPO=https://github.com/matana09/webtop-bot.git
-HERE="$(cd "$(dirname "$0")" && pwd)"
+
 
 [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
 
@@ -27,8 +27,8 @@ fi
 sudo -u webtop "$BASE/venv/bin/pip" install -q --upgrade pip
 sudo -u webtop "$BASE/venv/bin/pip" install -q -r "$BASE/src/requirements.txt"
 
-install -m 644 "$HERE/webtop-bot@.service" /etc/systemd/system/webtop-bot@.service
+[ -f /etc/systemd/system/webtop-bot@.service ] || install -m 644 "$(dirname "$0")/webtop-bot@.service" /etc/systemd/system/webtop-bot@.service
 systemctl daemon-reload
 
 echo
-echo "Installed. Now add a child:  sudo bash add-kid.sh <name>"
+echo "Installed. Now add a child:  sudo add-kid <name>   (or: sudo bash add-kid.sh <name>)"
