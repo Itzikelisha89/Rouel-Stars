@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# Adds one child (one WEBTOP account + one Telegram bot) and starts it.
-#   sudo bash add-kid.sh noa
+# Adds one child (one WEBTOP account) to the shared bot and starts it.
+#   sudo add-kid kid1
 set -euo pipefail
 
 BASE=/opt/webtop-bot
 NAME="${1:-}"
 
 [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
-[[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: add-kid <name>  (English lowercase letters/digits)"; exit 1; }
-[ -d "$BASE/src" ] || { echo "Run install.sh first"; exit 1; }
+[[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: sudo add-kid <name>  (English lowercase letters/digits, e.g. kid1)"; exit 1; }
+[ -f "$BASE/shared.env" ] || { echo "Run  sudo set-bot  first"; exit 1; }
+
+TOKEN=$(sed -n 's/^TELEGRAM_TOKEN=//p' "$BASE/shared.env")
+IDS=$(sed -n 's/^ALLOWED_CHAT_IDS=//p' "$BASE/shared.env")
 
 DIR="$BASE/kids/$NAME"
 if [ ! -d "$DIR" ]; then
@@ -18,18 +21,23 @@ fi
 # Daily jobs in Israel time all year (upstream uses a fixed UTC+3).
 sed -i "s|_IL = datetime.timezone(datetime.timedelta(hours=3))|from zoneinfo import ZoneInfo; _IL = ZoneInfo('Asia/Jerusalem')|" "$DIR/bot.py"
 
-# Each bot needs its own signature port.
-COUNT=$(find "$BASE/kids" -mindepth 1 -maxdepth 1 -type d | wc -l)
-PORT=$((8764 + COUNT))
+# Each child needs its own local signature port; keep the old one when re-running.
+PORT=$(sed -n 's/^SIGNATURE_PORT=//p' "$DIR/.env" 2>/dev/null || true)
+if [ -z "$PORT" ]; then
+  PORT=8765
+  while grep -qs "^SIGNATURE_PORT=$PORT$" "$BASE"/kids/*/.env; do PORT=$((PORT + 1)); done
+fi
 
-echo "Settings for $NAME (nothing you type here is shown or saved anywhere else):"
-read -rp  "Telegram bot token (from @BotFather): " TOKEN
+echo "Settings for $NAME:"
+read -rp  "Child's name as it should appear in messages (e.g. נועה): " LABEL
+[[ -n "$LABEL" && "$LABEL" != *[\<\>\&\*_\`\[\]]* ]] || { echo "Name is empty or has < > & * _ \` [ ]"; exit 1; }
 read -rp  "WEBTOP username: " USERNAME
 read -rsp "WEBTOP password: " PASSWORD; echo
-read -rp  "Allowed Telegram chat IDs, comma-separated (empty for now = only /myid works): " IDS
+[[ -n "$USERNAME" && -n "$PASSWORD" ]] || { echo "Username and password are required"; exit 1; }
 
 umask 077
 cat > "$DIR/.env" <<ENV
+KID_LABEL=$LABEL
 TELEGRAM_TOKEN=$TOKEN
 WEBTOP_USERNAME=$USERNAME
 WEBTOP_PASSWORD=$PASSWORD
@@ -46,7 +54,6 @@ chmod 600 "$DIR/.env"
 
 systemctl enable --now "webtop-bot@$NAME"
 systemctl restart "webtop-bot@$NAME"
-sleep 5
-systemctl --no-pager status "webtop-bot@$NAME" | head -5
-echo
-echo "Logs:  journalctl -u webtop-bot@$NAME -f"
+sleep 8
+systemctl is-active "webtop-bot@$NAME" || true
+journalctl -u "webtop-bot@$NAME" -n 5 --no-pager -o cat || true

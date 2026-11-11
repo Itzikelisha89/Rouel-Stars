@@ -1,0 +1,16 @@
+[Unit]
+Description=WEBTOP shared Telegram bot (answers /start and /myid)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=webtop
+WorkingDirectory=/opt/webtop-bot
+ExecStart=/opt/webtop-bot/venv/bin/python /opt/webtop-bot/lib/router.py
+Restart=always
+RestartSec=15
+Environment=PYTHONUNBUFFERED=1
+Environment=TZ=Asia/Jerusalem
+
+[Install]
+WantedBy=multi-user.target

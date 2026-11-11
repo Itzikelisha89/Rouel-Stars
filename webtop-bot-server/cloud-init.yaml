@@ -1,19 +1,19 @@
 #cloud-config
 # Paste into Oracle Cloud: Create instance -> Advanced options -> Management -> Paste cloud-init script.
-# The server installs webtop-bot by itself on first boot (about 5 minutes).
+# The server installs webtop-bot by itself on first boot (about 5-10 minutes).
 write_files:
   - path: /etc/systemd/system/webtop-bot@.service
     permissions: '0644'
     content: |
       [Unit]
-      Description=WEBTOP Telegram bot (%i)
+      Description=WEBTOP alerts for %i
       After=network-online.target
       Wants=network-online.target
 
       [Service]
       User=webtop
       WorkingDirectory=/opt/webtop-bot/kids/%i
-      ExecStart=/opt/webtop-bot/venv/bin/python bot.py
+      ExecStart=/opt/webtop-bot/venv/bin/python /opt/webtop-bot/lib/kid_worker.py
       Restart=always
       RestartSec=15
       Environment=PYTHONUNBUFFERED=1
@@ -21,6 +21,172 @@ write_files:
 
       [Install]
       WantedBy=multi-user.target
+  - path: /etc/systemd/system/webtop-router.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=WEBTOP shared Telegram bot (answers /start and /myid)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      User=webtop
+      WorkingDirectory=/opt/webtop-bot
+      ExecStart=/opt/webtop-bot/venv/bin/python /opt/webtop-bot/lib/router.py
+      Restart=always
+      RestartSec=15
+      Environment=PYTHONUNBUFFERED=1
+      Environment=TZ=Asia/Jerusalem
+
+      [Install]
+      WantedBy=multi-user.target
+  - path: /opt/webtop-bot/lib/kid_worker.py
+    permissions: '0644'
+    content: |
+      """Run one child's webtop-bot as a sender only, through the shared Telegram bot.
+
+      The shared bot is polled by router.py, so this process never polls Telegram.
+      It keeps all of webtop-bot's scheduled jobs (new homework/messages/discipline
+      every 10 minutes, 17:00 summary, 19:00 tomorrow's schedule) and puts the
+      child's name on top of every message. Run from the child's folder:
+        /opt/webtop-bot/venv/bin/python /opt/webtop-bot/lib/kid_worker.py
+      """
+      import asyncio
+      import os
+      import signal
+      import sys
+
+      sys.path.insert(0, os.getcwd())
+
+      from dotenv import load_dotenv
+
+      load_dotenv(os.path.join(os.getcwd(), ".env"))
+
+      import telegram
+      from telegram.ext import Application
+
+      LABEL = os.environ.get("KID_LABEL", "").strip() or os.path.basename(os.getcwd())
+      HEADER = f"🎒 {LABEL}\n"
+
+      base_url = os.environ.get("TELEGRAM_BASE_URL")  # only for local tests
+      if base_url:
+          _init = telegram.Bot.__init__
+
+          def _init_with_base(self, *args, **kwargs):
+              kwargs.setdefault("base_url", base_url)
+              _init(self, *args, **kwargs)
+
+          telegram.Bot.__init__ = _init_with_base
+
+
+      def _wrap(method_name: str, field: str, position: int) -> None:
+          original = getattr(telegram.Bot, method_name)
+
+          async def wrapper(self, *args, **kwargs):
+              kwargs.pop("reply_markup", None)  # no menu in the shared bot
+              if field in kwargs:
+                  if kwargs[field]:
+                      kwargs[field] = HEADER + kwargs[field]
+              elif len(args) > position and args[position]:
+                  args = list(args)
+                  args[position] = HEADER + args[position]
+              elif field == "caption":
+                  kwargs[field] = HEADER.strip()
+              return await original(self, *args, **kwargs)
+
+          setattr(telegram.Bot, method_name, wrapper)
+
+
+      _wrap("send_message", "text", 1)
+      for _name in ("send_photo", "send_document", "send_video", "send_audio"):
+          _wrap(_name, "caption", 2)
+
+
+      def _run_without_polling(self, *args, **kwargs):
+          async def main():
+              stop = asyncio.Event()
+              loop = asyncio.get_running_loop()
+              for sig in (signal.SIGTERM, signal.SIGINT):
+                  loop.add_signal_handler(sig, stop.set)
+              await self.initialize()
+              if self.post_init:
+                  await self.post_init(self)
+              await self.start()
+              print(f"{LABEL}: running, sending alerts only", flush=True)
+              await stop.wait()
+              await self.stop()
+              if self.post_shutdown:
+                  await self.post_shutdown(self)
+              await self.shutdown()
+
+          asyncio.run(main())
+
+
+      Application.run_polling = _run_without_polling
+
+      import bot  # noqa: E402  (webtop-bot's bot.py in the current folder)
+
+      bot.main()
+  - path: /opt/webtop-bot/lib/router.py
+    permissions: '0644'
+    content: |
+      """The only process that reads messages sent to the shared Telegram bot.
+
+      It answers anyone with their chat ID (needed to allow them), and tells allowed
+      chats which children the bot reports on. The children's processes send the
+      actual alerts.
+      """
+      import os
+      from pathlib import Path
+
+      from dotenv import dotenv_values, load_dotenv
+      from telegram import Update
+      from telegram.ext import Application, ContextTypes, MessageHandler, filters
+
+      BASE = Path(os.environ.get("WEBTOP_BASE", "/opt/webtop-bot"))
+      load_dotenv(BASE / "shared.env")
+
+
+      def allowed_ids() -> set[int]:
+          raw = dotenv_values(BASE / "shared.env").get("ALLOWED_CHAT_IDS") or ""
+          return {int(x) for x in raw.split(",") if x.strip().isdigit()}
+
+
+      def kid_names() -> list[str]:
+          names = []
+          for env in sorted((BASE / "kids").glob("*/.env")):
+              names.append(dotenv_values(env).get("KID_LABEL") or env.parent.name)
+          return names
+
+
+      async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+          chat = update.effective_chat
+          if chat is None:
+              return
+          if chat.id in allowed_ids():
+              names = ", ".join(kid_names()) or "עדיין אין ילדים"
+              text = (
+                  "✅ הבוט פעיל ושולח עדכונים אוטומטיים על: " + names + "\n\n"
+                  "• שיעורי בית, הודעות ומשמעת חדשים – תוך כ-10 דקות\n"
+                  "• 17:00 – סיכום יומי\n"
+                  "• 19:00 – מערכת שעות למחר"
+              )
+          else:
+              text = f"המספר שלך: {chat.id}\nכדי לקבל עדכונים, צריך להוסיף אותו בשרת."
+          await context.bot.send_message(chat.id, text)
+
+
+      def main() -> None:
+          builder = Application.builder().token(os.environ["TELEGRAM_TOKEN"])
+          if os.environ.get("TELEGRAM_BASE_URL"):  # only for local tests
+              builder = builder.base_url(os.environ["TELEGRAM_BASE_URL"])
+          app = builder.build()
+          app.add_handler(MessageHandler(filters.ALL, reply))
+          app.run_polling(drop_pending_updates=True, bootstrap_retries=-1)
+
+
+      if __name__ == "__main__":
+          main()
   - path: /usr/local/sbin/webtop-install
     permissions: '0755'
     content: |
@@ -31,16 +197,17 @@ write_files:
 
       BASE=/opt/webtop-bot
       REPO=https://github.com/matana09/webtop-bot.git
-
+      HERE="$(cd "$(dirname "$0")" && pwd)"
 
       [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
 
+      export DEBIAN_FRONTEND=noninteractive
       apt-get update
       apt-get install -y git python3 python3-venv tzdata
       timedatectl set-timezone Asia/Jerusalem || true
 
       id webtop >/dev/null 2>&1 || useradd --system --home-dir "$BASE" --shell /usr/sbin/nologin webtop
-      mkdir -p "$BASE/kids"
+      mkdir -p "$BASE/kids" "$BASE/lib"
       chown webtop:webtop "$BASE" "$BASE/kids"
 
       if [ -d "$BASE/src/.git" ]; then
@@ -53,25 +220,68 @@ write_files:
       sudo -u webtop "$BASE/venv/bin/pip" install -q --upgrade pip
       sudo -u webtop "$BASE/venv/bin/pip" install -q -r "$BASE/src/requirements.txt"
 
-      [ -f /etc/systemd/system/webtop-bot@.service ] || install -m 644 "$(dirname "$0")/webtop-bot@.service" /etc/systemd/system/webtop-bot@.service
+      # When run from the kit folder, copy its files; cloud-init has already placed them.
+      if [ -f "$HERE/lib/kid_worker.py" ]; then
+        install -m 644 "$HERE/lib/kid_worker.py" "$HERE/lib/router.py" "$BASE/lib/"
+        install -m 644 "$HERE/webtop-bot@.service" "$HERE/webtop-router.service" /etc/systemd/system/
+        install -m 755 "$HERE/set-bot.sh" /usr/local/sbin/set-bot
+        install -m 755 "$HERE/add-kid.sh" /usr/local/sbin/add-kid
+        install -m 755 "$HERE/allow-chat.sh" /usr/local/sbin/allow-chat
+        install -m 755 "$HERE/update.sh" /usr/local/sbin/webtop-update
+      fi
       systemctl daemon-reload
+      touch "$BASE/INSTALL_DONE"
 
       echo
-      echo "Installed. Now add a child:  sudo add-kid <name>   (or: sudo bash add-kid.sh <name>)"
+      echo "Installed. Next:  sudo set-bot   then   sudo add-kid <name>"
+  - path: /usr/local/sbin/set-bot
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      # Sets the one Telegram bot that all children share, and starts it.
+      #   sudo set-bot
+      set -euo pipefail
+      BASE=/opt/webtop-bot
+      [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
+      [ -f "$BASE/INSTALL_DONE" ] || { echo "Installation has not finished yet"; exit 1; }
+
+      read -rp "Telegram bot token (from @BotFather): " TOKEN
+      [[ "$TOKEN" =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]] || { echo "That does not look like a bot token"; exit 1; }
+      OLD_IDS=""
+      [ -f "$BASE/shared.env" ] && OLD_IDS=$(sed -n 's/^ALLOWED_CHAT_IDS=//p' "$BASE/shared.env")
+
+      umask 077
+      printf 'TELEGRAM_TOKEN=%s\nALLOWED_CHAT_IDS=%s\n' "$TOKEN" "$OLD_IDS" > "$BASE/shared.env"
+      chown webtop:webtop "$BASE/shared.env"; chmod 600 "$BASE/shared.env"
+
+      for ENV_FILE in "$BASE"/kids/*/.env; do
+        [ -f "$ENV_FILE" ] || continue
+        sed -i "s/^TELEGRAM_TOKEN=.*/TELEGRAM_TOKEN=$TOKEN/" "$ENV_FILE"
+        systemctl restart "webtop-bot@$(basename "$(dirname "$ENV_FILE")")"
+      done
+
+      systemctl enable --now webtop-router
+      systemctl restart webtop-router
+      sleep 3
+      systemctl is-active webtop-router
+      echo "Now open the bot in Telegram and send /start - it replies with your chat ID."
   - path: /usr/local/sbin/add-kid
     permissions: '0755'
     content: |
       #!/usr/bin/env bash
-      # Adds one child (one WEBTOP account + one Telegram bot) and starts it.
-      #   sudo bash add-kid.sh noa
+      # Adds one child (one WEBTOP account) to the shared bot and starts it.
+      #   sudo add-kid kid1
       set -euo pipefail
 
       BASE=/opt/webtop-bot
       NAME="${1:-}"
 
       [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
-      [[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: add-kid <name>  (English lowercase letters/digits)"; exit 1; }
-      [ -d "$BASE/src" ] || { echo "Run install.sh first"; exit 1; }
+      [[ "$NAME" =~ ^[a-z0-9-]+$ ]] || { echo "Usage: sudo add-kid <name>  (English lowercase letters/digits, e.g. kid1)"; exit 1; }
+      [ -f "$BASE/shared.env" ] || { echo "Run  sudo set-bot  first"; exit 1; }
+
+      TOKEN=$(sed -n 's/^TELEGRAM_TOKEN=//p' "$BASE/shared.env")
+      IDS=$(sed -n 's/^ALLOWED_CHAT_IDS=//p' "$BASE/shared.env")
 
       DIR="$BASE/kids/$NAME"
       if [ ! -d "$DIR" ]; then
@@ -81,18 +291,23 @@ write_files:
       # Daily jobs in Israel time all year (upstream uses a fixed UTC+3).
       sed -i "s|_IL = datetime.timezone(datetime.timedelta(hours=3))|from zoneinfo import ZoneInfo; _IL = ZoneInfo('Asia/Jerusalem')|" "$DIR/bot.py"
 
-      # Each bot needs its own signature port.
-      COUNT=$(find "$BASE/kids" -mindepth 1 -maxdepth 1 -type d | wc -l)
-      PORT=$((8764 + COUNT))
+      # Each child needs its own local signature port; keep the old one when re-running.
+      PORT=$(sed -n 's/^SIGNATURE_PORT=//p' "$DIR/.env" 2>/dev/null || true)
+      if [ -z "$PORT" ]; then
+        PORT=8765
+        while grep -qs "^SIGNATURE_PORT=$PORT$" "$BASE"/kids/*/.env; do PORT=$((PORT + 1)); done
+      fi
 
-      echo "Settings for $NAME (nothing you type here is shown or saved anywhere else):"
-      read -rp  "Telegram bot token (from @BotFather): " TOKEN
+      echo "Settings for $NAME:"
+      read -rp  "Child's name as it should appear in messages (e.g. נועה): " LABEL
+      [[ -n "$LABEL" && "$LABEL" != *[\<\>\&\*_\`\[\]]* ]] || { echo "Name is empty or has < > & * _ \` [ ]"; exit 1; }
       read -rp  "WEBTOP username: " USERNAME
       read -rsp "WEBTOP password: " PASSWORD; echo
-      read -rp  "Allowed Telegram chat IDs, comma-separated (empty for now = only /myid works): " IDS
+      [[ -n "$USERNAME" && -n "$PASSWORD" ]] || { echo "Username and password are required"; exit 1; }
 
       umask 077
       cat > "$DIR/.env" <<ENV
+      KID_LABEL=$LABEL
       TELEGRAM_TOKEN=$TOKEN
       WEBTOP_USERNAME=$USERNAME
       WEBTOP_PASSWORD=$PASSWORD
@@ -109,31 +324,36 @@ write_files:
 
       systemctl enable --now "webtop-bot@$NAME"
       systemctl restart "webtop-bot@$NAME"
-      sleep 5
-      systemctl --no-pager status "webtop-bot@$NAME" | head -5
-      echo
-      echo "Logs:  journalctl -u webtop-bot@$NAME -f"
+      sleep 8
+      systemctl is-active "webtop-bot@$NAME" || true
+      journalctl -u "webtop-bot@$NAME" -n 5 --no-pager -o cat || true
   - path: /usr/local/sbin/allow-chat
     permissions: '0755'
     content: |
       #!/usr/bin/env bash
-      # Sets who may use a child's bot, then restarts it.
-      #   sudo allow-chat kid1 123456789,987654321
+      # Sets which Telegram chats receive the alerts (for all children), then restarts.
+      #   sudo allow-chat 123456789,987654321
       set -euo pipefail
-      NAME="${1:-}"; IDS="${2:-}"
-      ENV_FILE="/opt/webtop-bot/kids/$NAME/.env"
+      BASE=/opt/webtop-bot
+      IDS="${1:-}"
       [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
-      [[ "$NAME" =~ ^[a-z0-9-]+$ && -f "$ENV_FILE" ]] || { echo "Unknown child: $NAME"; exit 1; }
-      [[ "$IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo "Usage: sudo allow-chat <name> <id>[,<id>...]"; exit 1; }
-      sed -i "s/^ALLOWED_CHAT_IDS=.*/ALLOWED_CHAT_IDS=$IDS/" "$ENV_FILE"
-      systemctl restart "webtop-bot@$NAME"
-      echo "$NAME now answers: $IDS"
+      [[ "$IDS" =~ ^[0-9]+(,[0-9]+)*$ ]] || { echo "Usage: sudo allow-chat <id>[,<id>...]"; exit 1; }
+      [ -f "$BASE/shared.env" ] || { echo "Run  sudo set-bot  first"; exit 1; }
+
+      sed -i "s/^ALLOWED_CHAT_IDS=.*/ALLOWED_CHAT_IDS=$IDS/" "$BASE/shared.env"
+      for ENV_FILE in "$BASE"/kids/*/.env; do
+        [ -f "$ENV_FILE" ] || continue
+        sed -i "s/^ALLOWED_CHAT_IDS=.*/ALLOWED_CHAT_IDS=$IDS/" "$ENV_FILE"
+        systemctl restart "webtop-bot@$(basename "$(dirname "$ENV_FILE")")"
+      done
+      systemctl restart webtop-router
+      echo "Alerts now go to: $IDS"
   - path: /usr/local/sbin/webtop-update
     permissions: '0755'
     content: |
       #!/usr/bin/env bash
-      # Pulls the latest webtop-bot and restarts every child's bot.
-      #   sudo bash update.sh
+      # Pulls the latest webtop-bot and restarts everything.
+      #   sudo webtop-update
       set -euo pipefail
       BASE=/opt/webtop-bot
       [ "$(id -u)" -eq 0 ] || { echo "Run with sudo"; exit 1; }
@@ -141,6 +361,7 @@ write_files:
       sudo -u webtop git -C "$BASE/src" pull --ff-only
       sudo -u webtop "$BASE/venv/bin/pip" install -q -r "$BASE/src/requirements.txt"
       for DIR in "$BASE"/kids/*/; do
+        [ -d "$DIR" ] || continue
         NAME=$(basename "$DIR")
         sudo -u webtop git -C "$DIR" checkout -- bot.py
         sudo -u webtop git -C "$DIR" pull -q --ff-only
@@ -148,6 +369,6 @@ write_files:
         systemctl restart "webtop-bot@$NAME"
         echo "updated $NAME"
       done
+      systemctl restart webtop-router
 runcmd:
   - [bash, /usr/local/sbin/webtop-install]
-  - [touch, /opt/webtop-bot/INSTALL_DONE]
