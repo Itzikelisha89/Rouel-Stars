@@ -51,13 +51,13 @@ def eleven_all():
                 'voice_settings': {'stability': 0.5, 'similarity_boost': 0.85, 'style': 0.35, 'use_speaker_boost': True}}
         if model != 'eleven_v3': body['language_code'] = 'he'
         try:
-            audio = xi(f'/text-to-speech/{vid}?output_format=mp3_44100_192', body)
+            audio = xi(f'/text-to-speech/{vid}?output_format=mp3_44100_128', body)
         except urllib.error.HTTPError as e:
             msg = e.read().decode(errors='replace')
             if model == 'eleven_v3' and e.code in (400, 422):
                 print('eleven_v3 refused, trying eleven_multilingual_v2:', msg[:200])
                 body['model_id'] = 'eleven_multilingual_v2'; body['language_code'] = 'he'
-                audio = xi(f'/text-to-speech/{vid}?output_format=mp3_44100_192', body)
+                audio = xi(f'/text-to-speech/{vid}?output_format=mp3_44100_128', body)
             else:
                 raise SystemExit(f'ElevenLabs {e.code}: {msg[:300]}')
         open(f'{OUT}/{k}.mp3', 'wb').write(audio)

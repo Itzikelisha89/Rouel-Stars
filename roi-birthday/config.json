@@ -2,8 +2,8 @@
   "_readme": "כל הטקסטים והקריינות של הסרטון. אחרי שינוי בקריינות: npm run audio. אחרי שינוי בטקסטים בלבד: npm run soundtrack. ואז npm run render.",
   "voice": {
     "engine": "elevenlabs",
-    "elevenlabs_voice_id": "",
-    "elevenlabs_voice_name": "",
+    "elevenlabs_voice_id": "Y7cO0fLW2Gh1pljqJ5IF",
+    "elevenlabs_voice_name": "Itzik",
     "elevenlabs_model": "eleven_v3",
     "fallback_edge_voice": "he-IL-AvriNeural",
     "fallback_rate": "+2%",
