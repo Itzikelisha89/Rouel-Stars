@@ -1,0 +1,9 @@
+build/seg/
+build/stills/
+build/render.log
+build/soundtrack.wav
+build/ROI_DROR_FullHD.mp4
+build/vo/*.mp3
+build/vo/*.wav
+assets/photos/hero_bust.jpg
+node_modules/

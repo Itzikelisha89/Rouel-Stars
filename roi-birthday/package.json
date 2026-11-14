@@ -1,0 +1,13 @@
+{
+  "name": "roi-dror-birthday",
+  "version": "1.0.0",
+  "private": true,
+  "description": "סרטון יום הולדת לרועי דרור – 90 שניות, 9:16 לוואטסאפ",
+  "scripts": {
+    "audio": "python3 tools/voice.py && python3 tools/soundtrack.py",
+    "soundtrack": "python3 tools/soundtrack.py",
+    "preview": "npx --yes http-server -p 8080 -c-1 .",
+    "render": "node tools/render.js --hd && node tools/whatsapp.js",
+    "stills": "node tools/render.js --stills"
+  }
+}
