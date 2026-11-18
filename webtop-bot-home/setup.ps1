@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-$KitSha = "feae18cd76de3899d2ecf6ba2d86620eb4de0b2a"
+$KitSha = "2be0340d95e2f2fc1a103c56a673349c5e21f63e"
 $UpstreamSha = "f52680f785cd1c540ce6b1f465142341f2d8e394"
 $Kit = "https://raw.githubusercontent.com/itzikelisha89/rouel-stars/$KitSha"
 $Base = Join-Path $env:LOCALAPPDATA "webtop-bot"
@@ -110,12 +110,12 @@ Step "Stopping the bot on the server"
 Step "Creating Desktop buttons and autostart"
 $desktop = [Environment]::GetFolderPath("Desktop")
 $ctl = "`"$VPy`" `"$Base\lib\control.py`""
-[IO.File]::WriteAllText("$desktop\WEBTOP-start.bat", "@echo off`r`n$ctl start`r`ntimeout /t 5`r`n", $Utf8)
-[IO.File]::WriteAllText("$desktop\WEBTOP-fix.bat", "@echo off`r`n$ctl restart`r`ntimeout /t 5`r`n", $Utf8)
-[IO.File]::WriteAllText("$desktop\WEBTOP-status.bat", "@echo off`r`n$ctl status`r`n", $Utf8)
+[IO.File]::WriteAllText("$desktop\WEBTOP-start.bat", "@echo off`r`nchcp 65001 >nul`r`n$ctl start`r`ntimeout /t 5`r`n", $Utf8)
+[IO.File]::WriteAllText("$desktop\WEBTOP-fix.bat", "@echo off`r`nchcp 65001 >nul`r`n$ctl restart`r`ntimeout /t 5`r`n", $Utf8)
+[IO.File]::WriteAllText("$desktop\WEBTOP-status.bat", "@echo off`r`nchcp 65001 >nul`r`n$ctl status`r`n", $Utf8)
 $pyw = "$Base\venv\Scripts\pythonw.exe"
 $vbs = "CreateObject(""WScript.Shell"").Run """"""$pyw"""" """"$Base\lib\control.py"""" start"", 0, False"
-[IO.File]::WriteAllText("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\webtop-bot.vbs", $vbs, $Utf8)
+[IO.File]::WriteAllText("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\webtop-bot.vbs", $vbs, [Text.Encoding]::Unicode)
 powercfg /change standby-timeout-ac 0
 powercfg /change hibernate-timeout-ac 0
 
