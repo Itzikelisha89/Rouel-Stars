@@ -84,6 +84,11 @@ def status() -> Path:
     for log in sorted((BASE / "logs").glob("*.log")):
         out += ["", f"----- {log.stem} (last lines) -----", tail(log)]
     desktop = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Desktop"
+    if WIN:  # the real Desktop, also when OneDrive moved it
+        import ctypes
+        buf = ctypes.create_unicode_buffer(260)
+        if ctypes.windll.shell32.SHGetFolderPathW(None, 0x10, None, 0, buf) == 0:
+            desktop = Path(buf.value)
     report = (desktop if desktop.exists() else BASE) / "webtop-status.txt"
     report.write_text("\n".join(out) + "\n", encoding="utf-8-sig")
     print(f"Report written: {report}")
