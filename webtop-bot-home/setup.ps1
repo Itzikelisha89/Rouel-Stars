@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-$KitSha = "985f61786cd2f0d65175d1c89e1ede5411f71974"
+$KitSha = "1c689151d6324e65269ebf6e2f7fdaa9b93a807f"
 $UpstreamSha = "f52680f785cd1c540ce6b1f465142341f2d8e394"
 $Kit = "https://raw.githubusercontent.com/itzikelisha89/rouel-stars/$KitSha"
 $Base = Join-Path $env:LOCALAPPDATA "webtop-bot"
