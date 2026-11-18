@@ -35,8 +35,10 @@ _state = {"running": False, "last": {}}  # last[(kid folder, mode)] = time
 
 
 def allowed_ids() -> set[int]:
+    import re
+
     raw = dotenv_values(BASE / "shared.env").get("ALLOWED_CHAT_IDS") or ""
-    return {int(x) for x in raw.split(",") if x.strip().isdigit()}
+    return {int(n) for n in re.findall(r"-?\d+", raw) if not n.startswith("-")}  # ignores hidden marks/spaces
 
 
 def kid_dirs() -> list[Path]:

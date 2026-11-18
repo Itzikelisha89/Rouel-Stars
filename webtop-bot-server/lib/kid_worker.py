@@ -17,6 +17,29 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.getcwd(), ".env"), override=True)  # the child's settings win over the computer's
 
+
+def clean_allowed_chat_ids() -> None:
+    """Keep only plain chat ID numbers (copied text can hide marks, quotes or spaces)."""
+    import re
+    import unicodedata
+
+    raw = os.environ.get("ALLOWED_CHAT_IDS", "")
+    numbers = re.findall(r"-?\d+", raw)
+    clean = ",".join(n for n in numbers if not n.startswith("-"))
+    if clean == raw:
+        return
+    odd = sorted({unicodedata.name(c, hex(ord(c))) for c in raw if not c.isdigit() and c not in ",-"})
+    groups = sum(n.startswith("-") for n in numbers)
+    print(f"note: ALLOWED_CHAT_IDS cleaned - kept {len(numbers) - groups} chat ID(s)"
+          + (f", removed characters: {', '.join(odd)}" if odd else "")
+          + (f", dropped {groups} group ID(s) (negative numbers are not supported)" if groups else ""), flush=True)
+    if not clean:
+        print("WARNING: no usable chat ID left - run allow-chat with the parent's chat ID", flush=True)
+    os.environ["ALLOWED_CHAT_IDS"] = clean
+
+
+clean_allowed_chat_ids()
+
 import telegram
 from telegram.ext import Application
 
