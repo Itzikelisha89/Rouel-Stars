@@ -62,7 +62,10 @@ def _run_without_polling(self, *args, **kwargs):
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, stop.set)
+            try:
+                loop.add_signal_handler(sig, stop.set)
+            except (NotImplementedError, RuntimeError):
+                pass  # Windows: the process is stopped by its supervisor instead
         await self.initialize()
         if self.post_init:
             import webtop_service
