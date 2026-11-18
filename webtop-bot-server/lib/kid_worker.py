@@ -1,9 +1,9 @@
 """Run one child's webtop-bot as a sender only, through the shared Telegram bot.
 
 The shared bot is polled by router.py, so this process never polls Telegram.
-It keeps all of webtop-bot's scheduled jobs (new homework/messages/discipline
-every 10 minutes, 17:00 summary, 19:00 tomorrow's schedule) and puts the
-child's name on top of every message. Run from the child's folder:
+It checks WEBTOP only at CHECK_HOURS (default 8,10,12,14) Sunday-Friday, sends
+new homework/messages/discipline, and puts the child's name on top of every
+message. The 17:00/19:00 messages are off unless DAILY_SUMMARIES=true. Run from the child's folder:
   /opt/webtop-bot/venv/bin/python /opt/webtop-bot/lib/kid_worker.py
 """
 import asyncio
@@ -65,7 +65,18 @@ def _run_without_polling(self, *args, **kwargs):
             loop.add_signal_handler(sig, stop.set)
         await self.initialize()
         if self.post_init:
-            await self.post_init(self)
+            import webtop_service
+
+            real_dashboard = webtop_service.webtop.get_raw_dashboard
+
+            async def _skip_startup_login(*_a, **_k):
+                return None
+
+            webtop_service.webtop.get_raw_dashboard = _skip_startup_login  # no sign-in on start
+            try:
+                await self.post_init(self)
+            finally:
+                webtop_service.webtop.get_raw_dashboard = real_dashboard
         await self.start()
         print(f"{LABEL}: running, sending alerts only", flush=True)
         await stop.wait()
@@ -79,26 +90,43 @@ def _run_without_polling(self, *args, **kwargs):
 
 Application.run_polling = _run_without_polling
 
-# Be gentle with WEBTOP: several children share one server address, so check
-# less often than upstream (every 10 minutes) and spread the children apart.
+# Be gentle with WEBTOP (agreed with the Ministry of Education): check only at
+# fixed hours on school days, children 5 minutes apart, and nothing else.
+import datetime as _dt  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
+
 from telegram.ext import JobQueue  # noqa: E402
 
-POLL_SECONDS = int(os.environ.get("POLL_MINUTES") or 30) * 60
+CHECK_HOURS = [int(h) for h in (os.environ.get("CHECK_HOURS") or "8,10,12,14").split(",") if h.strip()]
+SCHOOL_DAYS = (0, 1, 2, 3, 4, 5)  # PTB counts 0 = Sunday ... 6 = Saturday
 try:
     _index = max(0, int(os.environ.get("SIGNATURE_PORT") or 8765) - 8765)
 except ValueError:
     _index = 0
 _run_repeating = JobQueue.run_repeating
+_run_daily = JobQueue.run_daily
 
 
-def _gentle_run_repeating(self, callback, interval, *args, **kwargs):
-    if getattr(callback, "__name__", "") == "check_notifications":
-        interval = POLL_SECONDS
-        kwargs["first"] = 120 + _index * 300  # kid1 after 2 min, kid2 after 7, kid3 after 12
-    return _run_repeating(self, callback, interval, *args, **kwargs)
+def _fixed_hours_instead(self, callback, interval, *args, **kwargs):
+    if getattr(callback, "__name__", "") != "check_notifications":
+        return _run_repeating(self, callback, interval, *args, **kwargs)
+    zone = ZoneInfo("Asia/Jerusalem")
+    job = None
+    for hour in CHECK_HOURS:
+        at = _dt.time(hour=hour, minute=(_index * 5) % 60, tzinfo=zone)
+        job = _run_daily(self, callback, time=at, days=SCHOOL_DAYS, name=f"check_notifications_{hour:02d}")
+    return job
 
 
-JobQueue.run_repeating = _gentle_run_repeating
+def _only_wanted_daily(self, callback, *args, **kwargs):
+    if getattr(callback, "__name__", "") in ("send_daily_summary", "send_evening_schedule") \
+            and os.environ.get("DAILY_SUMMARIES", "").lower() not in ("1", "true", "yes"):
+        return None  # off: these also sign in to WEBTOP
+    return _run_daily(self, callback, *args, **kwargs)
+
+
+JobQueue.run_repeating = _fixed_hours_instead
+JobQueue.run_daily = _only_wanted_daily
 
 import bot  # noqa: E402  (webtop-bot's bot.py in the current folder)
 
