@@ -18,7 +18,7 @@ from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 BASE = Path(os.environ.get("WEBTOP_BASE", "/opt/webtop-bot"))
-load_dotenv(BASE / "shared.env")
+load_dotenv(BASE / "shared.env", override=True)  # never another bot's token
 
 SUMMARY_BUTTON = "📋 סיכום היום"
 TOMORROW_BUTTON = "🗓️ מה יש מחר"
@@ -72,7 +72,7 @@ async def run_answers(bot, chat_id: int, mode: str, folders: list[Path]) -> None
             proc = await asyncio.create_subprocess_exec(
                 sys.executable, str(SEND_SUMMARY), mode, cwd=folder,
                 env={**os.environ, "TZ": "Asia/Jerusalem", "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8",
-                     "ALLOWED_CHAT_IDS": str(chat_id)},  # answer only the chat that asked
+                     "ANSWER_CHAT_ID": str(chat_id)},  # answer only the chat that asked
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
                 **({"creationflags": 0x08000000} if os.name == "nt" else {}),  # no console window on Windows
             )

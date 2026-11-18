@@ -13,6 +13,9 @@ from types import SimpleNamespace
 
 import kid_worker  # noqa: F401  (loads the child's .env, adds the name header)
 
+if os.environ.get("ANSWER_CHAT_ID"):  # the router asks to answer only the chat that asked
+    os.environ["ALLOWED_CHAT_IDS"] = os.environ["ANSWER_CHAT_ID"]
+
 
 async def main(mode: str) -> int:
     import notifier

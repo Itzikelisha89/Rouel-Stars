@@ -121,7 +121,7 @@ powercfg /change hibernate-timeout-ac 0
 
 # ---- 7. Start ----------------------------------------------------------------------
 Step "Starting the bot"
-& $VPy "$Base\lib\control.py" start
+& $VPy "$Base\lib\control.py" restart
 Start-Sleep -Seconds 20
 & $VPy "$Base\lib\control.py" status
 Write-Host ""

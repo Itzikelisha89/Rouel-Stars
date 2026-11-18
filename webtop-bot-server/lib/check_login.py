@@ -12,7 +12,7 @@ sys.path.insert(0, os.getcwd())
 
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.getcwd(), ".env"))
+load_dotenv(os.path.join(os.getcwd(), ".env"), override=True)
 
 import httpx
 

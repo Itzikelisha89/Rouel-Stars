@@ -15,7 +15,7 @@ sys.path.insert(0, os.getcwd())
 
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.getcwd(), ".env"))
+load_dotenv(os.path.join(os.getcwd(), ".env"), override=True)  # the child's settings win over the computer's
 
 import telegram
 from telegram.ext import Application

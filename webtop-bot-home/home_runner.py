@@ -17,6 +17,9 @@ LOGS = BASE / "logs"
 PID_FILE = BASE / "runner.pid"
 STATUS_FILE = BASE / "status.json"
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0
+OWN_SETTINGS = {"TELEGRAM_TOKEN", "ALLOWED_CHAT_IDS", "WEBTOP_USERNAME", "WEBTOP_PASSWORD", "WEBTOP_DATA",
+                "WEBTOP_BASE_URL", "KID_LABEL", "SIGNATURE_PORT", "SIGNATURE_HOST", "SIGNATURE_PUBLIC_URL",
+                "TELEGRAM_NOTIFICATIONS_ENABLED", "ANSWER_CHAT_ID"}
 PYTHON = Path(sys.executable)
 if PYTHON.name.lower() == "pythonw.exe":
     PYTHON = PYTHON.with_name("python.exe")
@@ -63,7 +66,9 @@ def main() -> None:
         pass
     PID_FILE.write_text(str(os.getpid()))
 
-    env = {**os.environ, "WEBTOP_BASE": str(BASE), "PYTHONUNBUFFERED": "1",
+    # Drop bot settings that another program put in the computer's environment.
+    clean = {k: v for k, v in os.environ.items() if k.upper() not in OWN_SETTINGS}
+    env = {**clean, "WEBTOP_BASE": str(BASE), "PYTHONUNBUFFERED": "1",
            "PYTHONIOENCODING": "utf-8", "TZ": "Asia/Jerusalem"}
     procs: dict[str, subprocess.Popen] = {}
     info: dict[str, dict] = {}

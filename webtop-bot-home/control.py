@@ -73,6 +73,10 @@ def tail(path: Path, lines: int = 25) -> str:
 def status() -> Path:
     out = [f"WEBTOP bot status  {time.strftime('%Y-%m-%d %H:%M:%S')}",
            f"Runner running: {process_alive(runner_pid())}"]
+    from home_runner import OWN_SETTINGS
+    clash = sorted(k for k in os.environ if k.upper() in OWN_SETTINGS)
+    out.append("Computer environment also sets: " + (", ".join(clash) if clash else "nothing (good)")
+               + "  (ignored by the bot)")
     try:
         snap = json.loads(STATUS_FILE.read_text(encoding="utf-8"))
         out.append(f"Status updated: {snap['updated']}")
