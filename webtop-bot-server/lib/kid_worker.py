@@ -79,6 +79,27 @@ def _run_without_polling(self, *args, **kwargs):
 
 Application.run_polling = _run_without_polling
 
+# Be gentle with WEBTOP: several children share one server address, so check
+# less often than upstream (every 10 minutes) and spread the children apart.
+from telegram.ext import JobQueue  # noqa: E402
+
+POLL_SECONDS = int(os.environ.get("POLL_MINUTES") or 30) * 60
+try:
+    _index = max(0, int(os.environ.get("SIGNATURE_PORT") or 8765) - 8765)
+except ValueError:
+    _index = 0
+_run_repeating = JobQueue.run_repeating
+
+
+def _gentle_run_repeating(self, callback, interval, *args, **kwargs):
+    if getattr(callback, "__name__", "") == "check_notifications":
+        interval = POLL_SECONDS
+        kwargs["first"] = 120 + _index * 300  # kid1 after 2 min, kid2 after 7, kid3 after 12
+    return _run_repeating(self, callback, interval, *args, **kwargs)
+
+
+JobQueue.run_repeating = _gentle_run_repeating
+
 import bot  # noqa: E402  (webtop-bot's bot.py in the current folder)
 
 bot.main()
