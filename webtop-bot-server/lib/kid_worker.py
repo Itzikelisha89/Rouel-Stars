@@ -128,6 +128,7 @@ def _only_wanted_daily(self, callback, *args, **kwargs):
 JobQueue.run_repeating = _fixed_hours_instead
 JobQueue.run_daily = _only_wanted_daily
 
-import bot  # noqa: E402  (webtop-bot's bot.py in the current folder)
+if __name__ == "__main__":
+    import bot  # noqa: E402  (webtop-bot's bot.py in the current folder)
 
-bot.main()
+    bot.main()

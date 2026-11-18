@@ -30,13 +30,14 @@ sudo -u webtop "$BASE/venv/bin/pip" install -q -r "$BASE/src/requirements.txt"
 
 # When run from the kit folder, copy its files; cloud-init has already placed them.
 if [ -f "$HERE/lib/kid_worker.py" ]; then
-  install -m 644 "$HERE/lib/kid_worker.py" "$HERE/lib/router.py" "$HERE/lib/check_login.py" "$BASE/lib/"
+  install -m 644 "$HERE/lib/kid_worker.py" "$HERE/lib/router.py" "$HERE/lib/check_login.py" "$HERE/lib/send_summary.py" "$BASE/lib/"
   install -m 644 "$HERE/webtop-bot@.service" "$HERE/webtop-router.service" /etc/systemd/system/
   install -m 755 "$HERE/set-bot.sh" /usr/local/sbin/set-bot
   install -m 755 "$HERE/add-kid.sh" /usr/local/sbin/add-kid
   install -m 755 "$HERE/allow-chat.sh" /usr/local/sbin/allow-chat
   install -m 755 "$HERE/update.sh" /usr/local/sbin/webtop-update
   install -m 755 "$HERE/webtop-check.sh" /usr/local/sbin/webtop-check
+  install -m 755 "$HERE/webtop-summary.sh" /usr/local/sbin/webtop-summary
 fi
 systemctl daemon-reload
 touch "$BASE/INSTALL_DONE"
