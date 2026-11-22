@@ -311,7 +311,10 @@ if (-not $keepConfig) {
     $state  | ConvertTo-Json | Set-Content -Path (Join-Path $Base 'state.json') -Encoding UTF8
 }
 # Only SYSTEM and Administrators may read/change the folder (it holds the bot token).
-& icacls.exe $Base /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /Q | Out-Null
+# Set the ACL on the folder only, then make every file inside inherit it.
+# (Applying (OI)(CI) grants to files with /T leaves the files with an EMPTY ACL - even SYSTEM is denied.)
+& icacls.exe $Base /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /Q | Out-Null
+& icacls.exe "$Base\*" /reset /T /Q | Out-Null
 
 # ------------------------------------------------------------------ scheduled task (runs as SYSTEM)
 $action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
@@ -328,14 +331,29 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
 $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $triggers -Settings $settings `
     -Principal $taskPrincipal -Description 'ParentLock - remote lock from Telegram' -Force | Out-Null
+$startedAt = Get-Date
 Start-ScheduledTask -TaskName $TaskName
+
+# Make sure the agent really started: it writes "agent started" to the log within seconds.
+$logPath = Join-Path $Base 'log.txt'
+$agentOk = $false
+for ($i = 0; $i -lt 30 -and -not $agentOk; $i++) {
+    Start-Sleep -Seconds 1
+    if ((Test-Path $logPath) -and (Get-Item $logPath).LastWriteTime -ge $startedAt.AddSeconds(-2)) {
+        $agentOk = [bool](Get-Content $logPath -Tail 20 -Encoding UTF8 | Select-String -SimpleMatch 'agent started')
+    }
+}
+if (-not $agentOk) {
+    $info = Get-ScheduledTaskInfo -TaskName $TaskName
+    throw "The agent did not start (task result: $($info.LastTaskResult)). Check $Base and the scheduled task 'ParentLock'."
+}
+Say 'Agent is running.' Green
 
 Say ''
 Say 'Done! Within a few seconds you should get a message in Telegram that this computer is on.' Green
 Say 'Buttons will appear at the bottom of the chat - use them to lock / unlock.' Green
 Say "Log file: $Base\log.txt" DarkGray
 if ($AnswersFile) {
-    Start-Sleep -Seconds 5
     Say "Task state: $((Get-ScheduledTask -TaskName $TaskName).State)"
     Say 'INSTALL OK'
     try { Stop-Transcript | Out-Null } catch {}
