@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ParentLock pitch</title>
+<script src="tl.js"></script>
+<style>
+@font-face{font-family:Heebo;font-weight:400;src:url(node_modules/@fontsource/heebo/files/heebo-hebrew-400-normal.woff2)}
+@font-face{font-family:Heebo;font-weight:700;src:url(node_modules/@fontsource/heebo/files/heebo-hebrew-700-normal.woff2)}
+@font-face{font-family:Heebo;font-weight:800;src:url(node_modules/@fontsource/heebo/files/heebo-hebrew-800-normal.woff2)}
+@font-face{font-family:Heebo;font-weight:900;src:url(node_modules/@fontsource/heebo/files/heebo-hebrew-900-normal.woff2)}
+@font-face{font-family:HeeboL;font-weight:400;src:url(node_modules/@fontsource/heebo/files/heebo-latin-400-normal.woff2)}
+@font-face{font-family:HeeboL;font-weight:700;src:url(node_modules/@fontsource/heebo/files/heebo-latin-700-normal.woff2)}
+@font-face{font-family:HeeboL;font-weight:800;src:url(node_modules/@fontsource/heebo/files/heebo-latin-800-normal.woff2)}
+@font-face{font-family:HeeboL;font-weight:900;src:url(node_modules/@fontsource/heebo/files/heebo-latin-900-normal.woff2)}
+:root{
+  --bg:#0a0f1f; --panel:#121a33; --panel2:#18223f; --line:#2a3760;
+  --text:#eef2ff; --muted:#93a0c4; --accent:#38bdf8; --green:#22c55e; --red:#f43f5e;
+  --amber:#fbbf24; --violet:#a78bfa; --tg:#2aa3e0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg)}
+body{font-family:HeeboL,Heebo,'Noto Color Emoji',sans-serif;color:var(--text)}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+#bg{position:absolute;inset:0}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.35}
+#grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:64px 64px}
+.scene{position:absolute;inset:0;display:none}
+.abs{position:absolute}
+.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.12em}
+.center{position:absolute;inset:0 0 140px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.kicker{font-size:34px;font-weight:700;letter-spacing:.3em;color:var(--accent);direction:ltr}
+.h1{font-size:120px;font-weight:900;line-height:1.05}
+.h2{font-size:72px;font-weight:800;line-height:1.15}
+.sub{font-size:40px;color:var(--muted);font-weight:400}
+.acc{color:var(--accent)} .grn{color:var(--green)} .red{color:var(--red)} .amb{color:var(--amber)}
+.label{font-size:30px;font-weight:700;color:var(--muted);text-align:center}
+.chip{display:inline-flex;align-items:center;gap:14px;padding:16px 28px;border-radius:999px;background:var(--panel2);border:2px solid var(--line);font-size:34px;font-weight:700;white-space:nowrap}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:28px;padding:28px 34px}
+.bubble{position:absolute;padding:24px 34px;border-radius:30px;font-size:46px;font-weight:800;background:#fff;color:#0f172a;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.node{display:flex;flex-direction:column;align-items:center;gap:16px}
+.circle{width:190px;height:190px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:96px;background:var(--panel2);border:3px solid var(--line)}
+svg.over{position:absolute;inset:0;width:1920px;height:1080px;overflow:visible}
+svg.over .ln{fill:none;stroke-width:6;stroke-linecap:round}
+
+/* monitor */
+.monitor{position:absolute}
+.screen{position:relative;width:100%;aspect-ratio:16/10;border-radius:18px;border:12px solid #1c2541;background:#000;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.neck{width:90px;height:50px;margin:0 auto;background:#1c2541}
+.base{width:300px;height:16px;margin:0 auto;border-radius:10px;background:#1c2541}
+.layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.game{background:radial-gradient(circle at 30% 30%,#ff4ecd,transparent 50%),radial-gradient(circle at 70% 70%,#7c3aed,transparent 55%),#1a0b3d}
+.game .gp{font-size:120px;color:#fff;filter:drop-shadow(0 0 25px #ff4ecd)}
+.game .gt{font-size:40px;font-weight:900;color:#fff;direction:ltr;letter-spacing:.2em}
+.lock{background:radial-gradient(circle at 50% 35%,#1d3a7a,#0a1430 70%)}
+.lock .li{font-size:110px;color:#fff}
+.lock .lt{font-size:40px;font-weight:800;color:#fff}
+.lock .ls{font-size:26px;color:#9fb0d8}
+.desk{background:linear-gradient(135deg,#0ea5e9,#6366f1)}
+.black{background:#000;color:#94a3b8}
+
+/* phone */
+.phone{position:absolute;width:430px;height:860px;border-radius:56px;border:14px solid #0b1224;background:#0e1726;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.6),0 0 0 2px #26324f}
+.ph-head{height:104px;padding:34px 22px 0;display:flex;align-items:center;gap:14px;background:#17233a;border-bottom:1px solid #22304d}
+.ph-av{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#6366f1);display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff}
+.ph-name{font-size:24px;font-weight:800;direction:ltr;text-align:right}
+.ph-st{font-size:18px;color:#7f8fb3}
+.ph-chat{position:absolute;top:104px;bottom:262px;left:0;right:0;padding:16px 16px 10px;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;overflow:hidden;background:radial-gradient(circle at 20% 20%,#13233f,#0e1726)}
+.msg{max-width:84%;padding:12px 16px;border-radius:18px;font-size:21px;line-height:1.35;white-space:pre-line}
+.msg.bot{align-self:flex-end;background:#1f2d48;border-bottom-left-radius:6px}
+.msg.me{align-self:flex-start;background:#2b6cb0;border-bottom-right-radius:6px}
+.ph-kb{position:absolute;bottom:0;left:0;right:0;height:262px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:9px;background:#17233a}
+.key{border-radius:12px;background:#24365a;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700}
+.key.on{background:#3b82f6;box-shadow:0 0 0 4px rgba(59,130,246,.45)}
+.tap{position:absolute;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.55);pointer-events:none;opacity:0}
+
+/* ai scene */
+.mess{position:absolute}
+.mess>div{transform-origin:center}
+.stamp{position:absolute;font-size:84px;font-weight:900;color:var(--red);border:8px solid var(--red);border-radius:20px;padding:6px 34px;background:rgba(10,15,31,.7)}
+
+/* subtitles */
+#sub{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);max-width:1640px;padding:16px 38px;border-radius:22px;background:rgba(5,8,18,.72);border:1px solid rgba(255,255,255,.08);font-size:38px;font-weight:700;text-align:center;line-height:1.3;opacity:0;width:max-content}
+#fade{position:absolute;inset:0;background:#000;pointer-events:none}
+.blue{background-image:linear-gradient(rgba(56,189,248,.12) 2px,transparent 2px),linear-gradient(90deg,rgba(56,189,248,.12) 2px,transparent 2px),linear-gradient(rgba(56,189,248,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.05) 1px,transparent 1px);background-size:160px 160px,160px 160px,32px 32px,32px 32px;background-color:#0b2147}
+.panel{position:absolute;top:90px;bottom:170px;width:820px;border-radius:32px;background:var(--panel);border:3px solid var(--line);padding:34px;overflow:hidden}
+.panel h3{font-size:52px;font-weight:900;display:flex;align-items:center;gap:18px;margin-bottom:22px}
+.code{direction:ltr;text-align:left;font-family:'DejaVu Sans Mono',monospace;font-size:22px;line-height:1.6;color:#9fb0d8;height:330px;overflow:hidden;background:#0b1224;border-radius:18px;padding:18px 22px;position:relative}
+.code .k{color:#c084fc}.code .s{color:#86efac}.code .c{color:#64748b}
+.badge{display:inline-flex;align-items:center;gap:12px;font-size:32px;font-weight:800;padding:12px 22px;border-radius:16px;background:var(--panel2);margin:14px 0 0 12px}
+.layerbar{position:absolute;left:50%;width:1300px;margin-left:-650px;border-radius:30px;display:flex;align-items:center;justify-content:space-between;padding:0 56px}
+.drop{position:absolute;width:10px;height:34px;border-radius:6px;background:linear-gradient(#7dd3fc,#38bdf8)}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg">
+    <div class="blob" id="b1" style="width:900px;height:900px;background:#2563eb"></div>
+    <div class="blob" id="b2" style="width:800px;height:800px;background:#7c3aed"></div>
+    <div class="blob" id="b3" style="width:700px;height:700px;background:#0ea5e9"></div>
+    <div id="grid"></div>
+  </div>
+
+  <!-- ============ INTRO ============ -->
+  <section class="scene" id="sc-intro">
+    <div class="center" style="gap:30px">
+      <div class="kicker" data-in="0.2">PARENTLOCK</div>
+      <div class="h1" data-in="0.5" data-a="pop">כשה-<span class="acc">AI</span> לא מספיק</div>
+      <div class="sub" data-in="1.2">סיפור על ילד, מחשב, ומהנדס</div>
+    </div>
+  </section>
+
+  <!-- ============ KID ============ -->
+  <section class="scene" id="sc-kid">
+    <div class="monitor" style="left:560px;top:210px;width:800px" data-in="0.05">
+      <div class="screen"><div class="layer game" id="kidgame"><div class="gp"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <line x1="6" x2="10" y1="11" y2="11" />
+  <line x1="8" x2="8" y1="9" y2="13" />
+  <line x1="15" x2="15.01" y1="12" y2="12" />
+  <line x1="18" x2="18.01" y1="10" y2="10" />
+  <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+</svg></div><div class="gt">GAME ON</div></div></div>
+      <div class="neck"></div><div class="base"></div>
+    </div>
+    <div class="abs" style="left:1010px;top:610px;font-size:230px;color:#c7d2fe" data-in="0.3"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+  <circle cx="12" cy="7" r="4" />
+</svg></div>
+    <div class="abs" style="left:1460px;top:150px;font-size:150px;color:#fda4af" data-in="2.3" data-a="fade"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+  <circle cx="12" cy="7" r="4" />
+</svg></div>
+    <div class="bubble" style="left:1130px;top:330px" data-in="2.5" data-a="pop">יאללה, למקלחת! 🚿</div>
+    <div class="abs" id="kidreply" style="left:330px;top:300px" data-in="4.2" data-a="pop"><div class="bubble" style="position:relative;background:#1e293b;color:#fff">כלום. 🎮</div></div>
+  </section>
+
+  <!-- ============ HOTSPOT ============ -->
+  <section class="scene" id="sc-hotspot">
+    <div class="abs node" style="left:1400px;top:300px;width:360px" data-in="0.2">
+      <div class="circle" style="font-size:110px"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="20" height="8" x="2" y="14" rx="2" />
+  <path d="M6.01 18H6" />
+  <path d="M10.01 18H10" />
+  <path d="M15 10v4" />
+  <path d="M17.84 7.17a4 4 0 0 0-5.66 0" />
+  <path d="M20.66 4.34a8 8 0 0 0-11.31 0" />
+</svg></div>
+      <div class="label">ראוטר הבית</div>
+    </div>
+    <div class="abs" style="left:1540px;top:250px;font-size:130px;color:var(--red)" data-in="1.4" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+</svg></div>
+    <div class="abs label red" style="left:1400px;top:560px;width:360px" data-in="1.6">האינטרנט נותק ✂️</div>
+
+    <div class="monitor" style="left:700px;top:260px;width:540px" data-in="0.1">
+      <div class="screen"><div class="layer game"><div class="gp" style="font-size:90px"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <line x1="6" x2="10" y1="11" y2="11" />
+  <line x1="8" x2="8" y1="9" y2="13" />
+  <line x1="15" x2="15.01" y1="12" y2="12" />
+  <line x1="18" x2="18.01" y1="10" y2="10" />
+  <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+</svg></div></div></div>
+      <div class="neck"></div><div class="base"></div>
+    </div>
+    <div class="abs chip grn" style="left:800px;top:700px" data-in="3.9" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 20h.01" />
+  <path d="M2 8.82a15 15 0 0 1 20 0" />
+  <path d="M5 12.859a10 10 0 0 1 14 0" />
+  <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+</svg> עדיין מחובר 😏</div>
+
+    <div class="abs node" style="left:200px;top:270px;width:320px" data-in="3.0" data-a="pop">
+      <div class="abs" id="waves" style="left:130px;top:-40px;font-size:70px;color:var(--green)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 20h.01" />
+  <path d="M2 8.82a15 15 0 0 1 20 0" />
+  <path d="M5 12.859a10 10 0 0 1 14 0" />
+  <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+</svg></div>
+      <div style="font-size:200px;color:#e2e8f0"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+  <path d="M12 18h.01" />
+</svg></div>
+      <div class="label">נקודה חמה מהטלפון</div>
+    </div>
+    <svg class="over"><path class="ln" d="M500 430 L700 430" stroke="#22c55e" stroke-dasharray="1" pathLength="1" data-in="3.4" data-a="draw"/></svg>
+  </section>
+
+  <!-- ============ AI (complicated) ============ -->
+  <section class="scene" id="sc-ai">
+    <div class="card abs" style="right:90px;top:120px;width:560px" data-in="0.6">
+      <div style="display:flex;align-items:center;gap:18px;font-size:44px;font-weight:900"><span class="acc" style="font-size:60px"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+</svg></span> AI</div>
+      <div style="margin-top:22px;font-size:34px;color:var(--muted)">"ביקשתי פתרון…"</div>
+      <div style="margin-top:18px;padding:22px;border-radius:20px;background:var(--panel2);font-size:32px;line-height:1.4" data-in="1.4" data-a="fade">אפשר לעשות את זה ככה, וגם ככה, ואפשר גם…</div>
+    </div>
+    <svg class="over">
+      <path class="ln" d="M330 230 L760 420 L420 560 L900 690 L300 800 L760 230 L1050 520 L420 560" stroke="#3b4a77" stroke-width="3" stroke-dasharray="1" pathLength="1" data-in="4.0" data-a="draw"/>
+    </svg>
+    <div class="mess" style="left:120px;top:170px" data-in="3.8" data-a="pop"><div class="chip" style="transform:rotate(-6deg)">Microsoft Family Safety</div></div>
+    <div class="mess" style="left:560px;top:360px" data-in="4.5" data-a="pop"><div class="chip" style="transform:rotate(4deg)">👥 חשבונות נפרדים</div></div>
+    <div class="mess" style="left:860px;top:220px" data-in="5.1" data-a="pop"><div class="chip" style="transform:rotate(-3deg)">Group Policy</div></div>
+    <div class="mess" style="left:200px;top:500px" data-in="5.7" data-a="pop"><div class="chip" style="transform:rotate(5deg)">⏳ הגבלות זמן</div></div>
+    <div class="mess" style="left:760px;top:630px" data-in="6.0" data-a="pop"><div class="chip" style="transform:rotate(-5deg)">🔑 הרשאות משתמשים</div></div>
+    <div class="mess" style="left:120px;top:740px" data-in="6.5" data-a="pop"><div class="chip" style="transform:rotate(3deg)">💳 אפליקציה בתשלום</div></div>
+    <div class="mess" style="left:960px;top:470px" data-in="6.9" data-a="pop"><div class="chip" style="transform:rotate(6deg)">סיסמה לכל ילד</div></div>
+    <div class="mess" style="left:520px;top:840px" data-in="7.2" data-a="pop"><div class="chip" style="transform:rotate(-2deg)">ניהול מכשירים</div></div>
+    <div class="mess" style="left:420px;top:380px" data-in="7.6" data-a="pop"><div class="stamp" style="position:relative;transform:rotate(-10deg)">מסובך מדי</div></div>
+  </section>
+
+  <!-- ============ ARCHITECT VIEW ============ -->
+  <section class="scene" id="sc-arch">
+    <div class="abs blue" style="inset:0" data-in="0.4" data-a="fade"></div>
+    <div class="abs" style="top:110px;left:0;right:0;text-align:center" data-in="1.9">
+      <div class="h2"><span class="acc"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <circle cx="12" cy="12" r="10" />
+  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+</svg></span> התמונה הגדולה</div>
+    </div>
+    <svg class="over">
+      <path class="ln" d="M1340 520 L1060 520" stroke="#38bdf8" stroke-dasharray="1" pathLength="1" data-in="3.2" data-a="draw"/>
+      <path class="ln" d="M860 520 L590 520" stroke="#38bdf8" stroke-dasharray="1" pathLength="1" data-in="3.5" data-a="draw"/>
+    </svg>
+    <div class="abs node" style="left:1340px;top:360px;width:300px" data-in="2.9" data-a="pop">
+      <div style="font-size:220px;color:#e2e8f0;line-height:1"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+  <path d="M12 18h.01" />
+</svg></div><div class="label" style="color:#fff">הטלפון שלי</div>
+    </div>
+    <div class="abs node" style="left:860px;top:420px;width:200px" data-in="3.1" data-a="pop">
+      <div class="circle" style="background:var(--tg);border-color:#7dd3fc;color:#fff;width:200px;height:200px"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  <path d="m21.854 2.147-10.94 10.939" />
+</svg></div><div class="label" style="color:#fff;direction:ltr">Telegram</div>
+    </div>
+    <div class="abs" style="left:240px;top:380px;width:360px" data-in="3.5" data-a="pop">
+      <div class="monitor" style="position:relative;width:360px"><div class="screen"><div class="layer" style="background:#0b1730"><div style="font-size:90px;color:var(--accent)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+</svg></div></div></div><div class="neck" style="height:30px"></div><div class="base" style="width:200px"></div></div>
+      <div class="label" style="color:#fff;margin-top:10px">המחשב + בוט</div>
+    </div>
+    <div class="abs" style="left:1330px;top:760px;display:flex;gap:16px">
+      <div class="chip" data-in="4.2" data-a="pop">🔒 נעל</div>
+      <div class="chip" data-in="5.1" data-a="pop">🔓 פתח</div>
+      <div class="chip" data-in="5.9" data-a="pop">📊 סטטוס</div>
+    </div>
+  </section>
+
+  <!-- ============ PROBLEM ============ -->
+  <section class="scene" id="sc-problem">
+    <div class="abs blue" style="inset:0;opacity:.6"></div>
+    <svg class="over">
+      <path class="ln" d="M1340 520 L1060 520" stroke="#38bdf8"/>
+      <path class="ln" d="M860 520 L590 520" stroke="#38bdf8" data-out="1.2" data-in="0" data-a="fade"/>
+      <path class="ln" d="M860 520 L590 520" stroke="#f43f5e" stroke-dasharray="18 16" data-in="1.2" data-a="fade"/>
+    </svg>
+    <div class="abs node" style="left:1340px;top:360px;width:300px"><div style="font-size:220px;color:#e2e8f0;line-height:1"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+  <path d="M12 18h.01" />
+</svg></div></div>
+    <div class="abs node" style="left:860px;top:420px;width:200px"><div class="circle" style="background:var(--tg);border-color:#7dd3fc;color:#fff;width:200px;height:200px"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  <path d="m21.854 2.147-10.94 10.939" />
+</svg></div></div>
+    <div class="abs" style="left:240px;top:380px;width:360px">
+      <div class="monitor" style="position:relative;width:360px"><div class="screen"><div class="layer" style="background:#0b1730"><div style="font-size:90px;color:var(--accent)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+</svg></div></div></div><div class="neck" style="height:30px"></div><div class="base" style="width:200px"></div></div>
+    </div>
+    <div class="abs" style="left:170px;top:300px;width:500px;height:430px;border:10px solid var(--red);border-radius:40px;box-shadow:0 0 60px rgba(244,63,94,.5)" data-in="1.1" data-a="pop"></div>
+    <div class="abs chip red" style="left:240px;top:780px" data-in="1.3" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <circle cx="12" cy="12" r="10" />
+  <path d="M4.929 4.929 19.07 19.071" />
+</svg> אינטרנט חסום</div>
+    <div class="abs" id="qmark" style="left:640px;top:210px;font-size:240px;font-weight:900;color:var(--amber)" data-in="2.3" data-a="pop">?</div>
+  </section>
+
+  <!-- ============ FIREWALL ============ -->
+  <section class="scene" id="sc-firewall">
+    <div class="abs" style="top:70px;left:0;right:0;text-align:center" data-in="0.3" data-out="7.6">
+      <div class="h2">חוק <span class="grn" style="direction:ltr;display:inline-block">Firewall</span> על המחשב עצמו</div>
+    </div>
+    <div class="abs" id="shield" style="left:330px;top:250px;width:580px;height:580px;border-radius:50%;border:8px solid var(--green);background:radial-gradient(circle,rgba(34,197,94,.10),rgba(34,197,94,.02) 70%)" data-in="1.4" data-a="pop"></div>
+    <div class="abs" style="left:575px;top:205px;font-size:90px;color:var(--green)" data-in="1.6" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+  <path d="m9 12 2 2 4-4" />
+</svg></div>
+    <div class="monitor" style="left:440px;top:400px;width:360px"><div class="screen"><div class="layer" style="background:#0b1730"><div style="font-size:80px;color:var(--accent)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" />
+  <path d="M20.054 15.987H3.946" />
+</svg></div></div></div><div class="neck" style="height:30px"></div><div class="base" style="width:200px"></div></div>
+
+    <svg class="over">
+      <path class="ln" d="M1330 300 L840 470" stroke="#2aa3e0" stroke-width="8" stroke-dasharray="1" pathLength="1" data-in="4.4" data-a="draw"/>
+      <path class="ln" d="M1330 430 L915 500" stroke="#f43f5e" stroke-dasharray="1" pathLength="1" data-in="3.2" data-a="draw"/>
+      <path class="ln" d="M1330 560 L915 560" stroke="#f43f5e" stroke-dasharray="1" pathLength="1" data-in="3.35" data-a="draw"/>
+      <path class="ln" d="M1330 690 L915 620" stroke="#f43f5e" stroke-dasharray="1" pathLength="1" data-in="3.5" data-a="draw"/>
+      <path class="ln" d="M1330 820 L900 680" stroke="#f43f5e" stroke-dasharray="1" pathLength="1" data-in="3.65" data-a="draw"/>
+    </svg>
+    <div class="abs chip" style="left:1340px;top:265px;background:var(--tg);border-color:#7dd3fc" data-in="4.3" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  <path d="m21.854 2.147-10.94 10.939" />
+</svg> <span style="direction:ltr">Telegram</span> ✅</div>
+    <div class="abs chip" style="left:1340px;top:395px" data-in="3.1" data-a="pop"><span style="direction:ltr">YouTube</span></div>
+    <div class="abs chip" style="left:1340px;top:525px" data-in="3.25" data-a="pop">🎮 משחקים אונליין</div>
+    <div class="abs chip" style="left:1340px;top:655px" data-in="3.4" data-a="pop"><span style="direction:ltr">TikTok</span></div>
+    <div class="abs chip" style="left:1340px;top:785px" data-in="3.55" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <circle cx="12" cy="12" r="10" />
+  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+  <path d="M2 12h20" />
+</svg> כל השאר</div>
+    <div class="abs" style="left:880px;top:455px;font-size:64px;color:var(--red)" data-in="3.8" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+</svg></div>
+    <div class="abs" style="left:880px;top:525px;font-size:64px;color:var(--red)" data-in="3.9" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+</svg></div>
+    <div class="abs" style="left:880px;top:590px;font-size:64px;color:var(--red)" data-in="4.0" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+</svg></div>
+    <div class="abs" style="left:865px;top:650px;font-size:64px;color:var(--red)" data-in="4.1" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 6 6 18" />
+  <path d="m6 6 12 12" />
+</svg></div>
+
+    <div class="abs chip" style="left:60px;top:470px" data-in="5.6" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="20" height="8" x="2" y="14" rx="2" />
+  <path d="M6.01 18H6" />
+  <path d="M10.01 18H10" />
+  <path d="M15 10v4" />
+  <path d="M17.84 7.17a4 4 0 0 0-5.66 0" />
+  <path d="M20.66 4.34a8 8 0 0 0-11.31 0" />
+</svg> ראוטר</div>
+    <div class="abs chip" style="left:60px;top:590px" data-in="6.3" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+  <path d="M12 18h.01" />
+</svg> נקודה חמה</div>
+    <div class="abs label" style="left:40px;top:700px;width:300px;color:var(--amber)" data-in="7.1">לא משנה מאיפה מגיע האינטרנט</div>
+    <div class="abs" style="left:0;right:0;top:80px;text-align:center" data-in="8.0" data-a="pop">
+      <span class="chip grn" style="font-size:44px;padding:18px 40px;border-color:var(--green)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+</svg> החסימה יושבת בתוך המחשב</span>
+    </div>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="scene" id="sc-demo">
+    <div class="monitor" style="left:150px;top:150px;width:900px" data-in="0">
+      <div class="screen">
+        <div class="layer game" id="d-game"><div class="gp"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <line x1="6" x2="10" y1="11" y2="11" />
+  <line x1="8" x2="8" y1="9" y2="13" />
+  <line x1="15" x2="15.01" y1="12" y2="12" />
+  <line x1="18" x2="18.01" y1="10" y2="10" />
+  <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+</svg></div><div class="gt">GAME ON</div></div>
+        <div class="layer lock" id="d-lock" style="opacity:0"><div class="li"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+</svg></div><div class="lt">החשבון מושבת</div><div class="ls">פנה להורים כדי להיכנס</div></div>
+        <div class="layer black" id="d-boot" style="opacity:0"><div id="d-spin" style="font-size:110px"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 2v10" />
+  <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
+</svg></div><div style="font-size:30px">מפעיל מחדש…</div></div>
+        <div class="layer desk" id="d-desk" style="opacity:0"><div style="font-size:110px;color:#fff"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+  <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+</svg></div><div style="font-size:40px;font-weight:800;color:#fff">פתוח</div></div>
+      </div>
+      <div class="neck"></div><div class="base"></div>
+    </div>
+    <div class="abs" style="left:150px;top:820px;width:900px;display:flex;gap:16px;justify-content:center">
+      <div class="chip red" id="d-net" style="opacity:0"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 20h.01" />
+  <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+  <path d="M5 12.859a10 10 0 0 1 5.17-2.69" />
+  <path d="M19 12.859a10 10 0 0 0-2.007-1.523" />
+  <path d="M2 8.82a15 15 0 0 1 4.177-2.643" />
+  <path d="M22 8.82a15 15 0 0 0-11.288-3.764" />
+  <path d="m2 2 20 20" />
+</svg> אין אינטרנט</div>
+      <div class="chip grn" id="d-reboot" style="opacity:0">✓ גם אחרי הפעלה מחדש</div>
+      <div class="chip amb" id="d-timer" style="opacity:0"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <line x1="10" x2="14" y1="2" y2="2" />
+  <line x1="12" x2="15" y1="14" y2="11" />
+  <circle cx="12" cy="14" r="8" />
+</svg> <span id="d-timer-t">30:00</span></div>
+    </div>
+
+    <div class="phone" style="left:1290px;top:70px" data-in="0">
+      <div class="ph-head"><div class="ph-av"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+</svg></div><div><div class="ph-name">elisha_pc_lock_bot</div><div class="ph-st">bot</div></div></div>
+      <div class="ph-chat">
+        <div class="msg bot">💻 ELISHA נדלק.
+מצב: 🔓 פתוח</div>
+        <div class="msg me" data-in="0.95" data-a="msg">🔒 נעל</div>
+        <div class="msg bot" data-in="1.7" data-a="msg">🔒 ELISHA נעול. האינטרנט חסום.
+elish נותק.</div>
+        <div class="msg bot" data-in="6.0" data-a="msg">💻 ELISHA נדלק.
+מצב: 🔒 נעול</div>
+        <div class="msg me" data-in="7.55" data-a="msg">⏱ חצי שעה</div>
+        <div class="msg bot" data-in="8.2" data-a="msg">🔓 ELISHA פתוח ל-30 דקות. אחר כך הוא יינעל לבד.</div>
+        <div class="msg me" data-in="10.55" data-a="msg">📊 מצב</div>
+        <div class="msg bot" data-in="11.1" data-a="msg">📊 ELISHA
+מצב: ⏱ פתוח, נשארו 30 דקות
+אינטרנט: 🌐 פתוח
+מחוברים: elish (פעיל)</div>
+      </div>
+      <div class="ph-kb">
+        <div class="key" id="k-lock">🔒 נעל</div><div class="key">🔓 פתח</div>
+        <div class="key" id="k-30">⏱ חצי שעה</div><div class="key">⏱ שעה</div>
+        <div class="key">➕ 15 דקות</div><div class="key" id="k-st">📊 מצב</div>
+        <div class="key">🚫 חסום אינטרנט</div><div class="key">🌐 החזר אינטרנט</div>
+      </div>
+      <div class="tap" id="tap"></div>
+    </div>
+  </section>
+
+  <!-- ============ AI vs ARCHITECT ============ -->
+  <section class="scene" id="sc-split">
+    <div class="panel" style="right:100px" data-in="0.2">
+      <h3><span class="acc"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 8V4H8" />
+  <rect width="16" height="12" x="4" y="8" rx="2" />
+  <path d="M2 14h2" />
+  <path d="M20 14h2" />
+  <path d="M15 13v2" />
+  <path d="M9 13v2" />
+</svg></span> ה-AI</h3>
+      <div class="code"><div id="codeScroll">
+<span class="c"># ParentLock agent</span><br>
+<span class="k">function</span> Do-Lock($grace) {<br>
+&nbsp;&nbsp;Set-KidsEnabled $false<br>
+&nbsp;&nbsp;Add-NetBlock<br>
+&nbsp;&nbsp;Notify-All <span class="s">"🔒 locked"</span><br>
+}<br>
+New-NetFirewallRule -Action Block `<br>
+&nbsp;&nbsp;-RemoteAddress $TcpBlock<br>
+Register-ScheduledTask -Principal SYSTEM<br>
+<span class="k">while</span> ($true) { Invoke-Tg <span class="s">'getUpdates'</span> }<br>
+<span class="c"># icacls: fix empty ACL (bug found)</span><br>
+icacls $Base /reset /T<br>
+<span class="k">function</span> Check-Timer { ... }<br>
+<span class="k">function</span> Enforce-Lock { ... }<br>
+</div></div>
+      <div>
+        <span class="badge" data-in="1.0" data-a="pop">✅ כתב קוד</span>
+        <span class="badge" data-in="2.2" data-a="pop">🧪 בדק</span>
+        <span class="badge" data-in="3.0" data-a="pop">🐞 מצא באג</span>
+      </div>
+    </div>
+    <div class="panel" id="mepanel" style="left:100px" data-in="3.5">
+      <h3><span class="amb"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+  <circle cx="12" cy="7" r="4" />
+</svg></span> אני</h3>
+      <div class="blue" style="position:relative;height:330px;border-radius:18px;overflow:hidden">
+        <svg viewBox="0 0 750 330" style="position:absolute;inset:0;width:100%;height:100%">
+          <path d="M640 165 L430 165 M320 165 L140 165" stroke="#38bdf8" stroke-width="5" fill="none" stroke-dasharray="1" pathLength="1" data-in="3.9" data-a="draw"/>
+          <circle cx="110" cy="165" r="95" stroke="#22c55e" stroke-width="5" fill="none" stroke-dasharray="1" pathLength="1" data-in="4.3" data-a="draw"/>
+        </svg>
+        <div class="abs" style="left:610px;top:115px;font-size:90px;color:#e2e8f0"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+  <path d="M12 18h.01" />
+</svg></div>
+        <div class="abs" style="left:330px;top:115px;font-size:90px;color:var(--tg)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+  <path d="m21.854 2.147-10.94 10.939" />
+</svg></div>
+        <div class="abs" style="left:65px;top:120px;font-size:90px;color:var(--accent)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" />
+  <path d="M20.054 15.987H3.946" />
+</svg></div>
+      </div>
+      <div><span class="badge amb" data-in="4.0" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <circle cx="12" cy="12" r="10" />
+  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+</svg> ארכיטקטורה</span><span class="badge" data-in="5.0" data-a="pop">💡 הרעיון</span></div>
+    </div>
+  </section>
+
+  <!-- ============ STATEMENT ============ -->
+  <section class="scene" id="sc-statement">
+    <div class="layerbar" style="top:560px;height:190px;background:var(--panel);border:3px solid var(--line)" data-in="0.3">
+      <div style="font-size:60px;font-weight:900"><span class="acc">AI</span> · כלי מדהים</div>
+      <div style="display:flex;gap:30px;font-size:60px;color:var(--muted)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="m16 18 6-6-6-6" />
+  <path d="m8 6-6 6 6 6" />
+</svg><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12 20v-9" />
+  <path d="M14 7a4 4 0 0 1 4 4v3a6 6 0 0 1-12 0v-3a4 4 0 0 1 4-4z" />
+  <path d="M14.12 3.88 16 2" />
+  <path d="M21 21a4 4 0 0 0-3.81-4" />
+  <path d="M21 5a4 4 0 0 1-3.55 3.97" />
+  <path d="M22 13h-4" />
+  <path d="M3 21a4 4 0 0 1 3.81-4" />
+  <path d="M3 5a4 4 0 0 0 3.55 3.97" />
+  <path d="M6 13H2" />
+  <path d="m8 2 1.88 1.88" />
+  <path d="M9 7.13V6a3 3 0 1 1 6 0v1.13" />
+</svg><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M20 6 9 17l-5-5" />
+</svg></div>
+    </div>
+    <div class="layerbar" style="top:330px;height:190px;background:linear-gradient(90deg,#3b2a05,#1d2440);border:3px solid var(--amber);box-shadow:0 0 70px rgba(251,191,36,.25)" data-in="2.5" data-a="drop">
+      <div style="font-size:60px;font-weight:900"><span class="amb">מהנדס</span> · ארכיטקט</div>
+      <div style="display:flex;gap:30px;font-size:60px;color:var(--amber)"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <circle cx="12" cy="12" r="10" />
+  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+</svg><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" />
+  <path d="m14.5 12.5 2-2" />
+  <path d="m11.5 9.5 2-2" />
+  <path d="m8.5 6.5 2-2" />
+  <path d="m17.5 15.5 2-2" />
+</svg><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" />
+  <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" />
+  <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" />
+</svg></div>
+    </div>
+    <div class="abs" style="top:130px;left:0;right:0;text-align:center" data-in="3.7">
+      <div class="h2">רואה את <span class="amb">התמונה</span></div>
+    </div>
+  </section>
+
+  <!-- ============ SHOWER ============ -->
+  <section class="scene" id="sc-shower">
+    <div class="abs" style="left:810px;top:110px;font-size:300px;color:#cbd5e1" data-in="0.1" data-a="drop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <path d="m4 4 2.5 2.5" />
+  <path d="M13.5 6.5a4.95 4.95 0 0 0-7 7" />
+  <path d="M15 5 5 15" />
+  <path d="M14 17v.01" />
+  <path d="M10 16v.01" />
+  <path d="M13 13v.01" />
+  <path d="M16 10v.01" />
+  <path d="M11 20v.01" />
+  <path d="M17 14v.01" />
+  <path d="M20 11v.01" />
+</svg></div>
+    <div id="drops"></div>
+    <div class="abs" style="left:0;right:0;top:640px;text-align:center" data-in="1.2" data-a="pop"><div class="h1">כבר במקלחת 🚿😄</div></div>
+    <div class="abs chip" style="left:160px;top:200px" data-in="0.4" data-a="pop"><svg class="ic"
+ 
+  xmlns="http://www.w3.org/2000/svg"
+ 
+ 
+  viewBox="0 0 24 24"
+ 
+ 
+ 
+ 
+ 
+>
+  <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+</svg> המחשב נעול</div>
+  </section>
+
+  <!-- ============ END ============ -->
+  <section class="scene" id="sc-end">
+    <div class="center" style="gap:26px">
+      <div class="h1" data-in="0.2"><span class="acc">AI</span> כותב קוד.</div>
+      <div class="h1" data-in="0.9"><span class="amb">מהנדס</span> בונה פתרון.</div>
+      <div class="sub" style="margin-top:30px" data-in="1.8" data-a="fade"><span style="direction:ltr;display:inline-block">ParentLock</span> · איציק</div>
+    </div>
+  </section>
+
+  <div id="sub"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const easeOut=x=>1-Math.pow(1-x,3);
+const back=x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+const prog=(lt,at,d)=>clamp((lt-at)/d);
+const $=id=>document.getElementById(id);
+const show=(el,o)=>{el.style.opacity=o};
+
+function applyAnim(el,lt){
+  const at=parseFloat(el.dataset.in), type=el.dataset.a||'up';
+  const p=prog(lt,at,type==='draw'?0.7:0.5), ep=easeOut(p);
+  const o=el.dataset.out?1-prog(lt,parseFloat(el.dataset.out),0.4):1;
+  const s=el.style;
+  switch(type){
+    case 'up':   s.opacity=ep*o; s.transform=`translateY(${(1-ep)*40}px)`; break;
+    case 'drop': s.opacity=ep*o; s.transform=`translateY(${-(1-ep)*140}px)`; break;
+    case 'pop':  s.opacity=clamp(p*2.5)*o; s.transform=`scale(${p>0?0.4+0.6*back(p):0.4})`; break;
+    case 'fade': s.opacity=ep*o; break;
+    case 'draw': s.strokeDashoffset=1-ep; s.opacity=(p>0?1:0)*o; break;
+    case 'msg':  s.display=p>0?'':'none'; s.opacity=ep*o; s.transform=`translateY(${(1-ep)*24}px)`; break;
+  }
+}
+
+function press(lt,at,keyId,tap){
+  const k=$(keyId), on=lt>=at&&lt<at+0.5;
+  k.classList.toggle('on',on);
+  if(lt>=at-0.4&&lt<at+0.6){
+    const r=k.getBoundingClientRect(), ph=k.closest('.phone').getBoundingClientRect();
+    tap.style.left=(r.left-ph.left+r.width/2-35-14)+'px'; tap.style.top=(r.top-ph.top+r.height/2-35-14)+'px';
+    const q=(lt-(at-0.4))/1.0; tap.style.opacity=q<0.4?q/0.4*0.9:0.9*(1-(q-0.4)/0.6);
+    tap.style.transform=`scale(${lt<at?1:0.8})`; return true;
+  }
+  return false;
+}
+
+const FX={
+  kid(lt){ const r=$('kidreply'); if(lt>4.2&&lt<4.9){r.style.marginLeft=(Math.sin(lt*70)*10*(4.9-lt))+'px'} else r.style.marginLeft='0';
+           $('kidgame').style.filter=`hue-rotate(${lt*40}deg)`; },
+  hotspot(lt){ $('waves').style.opacity=lt<3.4?0:0.4+0.6*Math.abs(Math.sin(lt*3)); },
+  problem(lt){ const q=$('qmark'); if(lt>2.8) q.style.transform=`scale(${1+0.06*Math.sin((lt-2.8)*6)})`; },
+  firewall(lt){ const s=$('shield'); if(lt>1.9){ s.style.boxShadow=`0 0 ${50+30*Math.sin(lt*3)}px rgba(34,197,94,.45)`; } },
+  demo(lt){
+    const tap=$('tap'); let t=false;
+    t=press(lt,0.85,'k-lock',tap)||t; t=press(lt,7.45,'k-30',tap)||t; t=press(lt,10.45,'k-st',tap)||t;
+    if(!t) tap.style.opacity=0;
+    const lockOn = lt>=2.0 && lt<8.4;
+    show($('d-game'), lt<2.0?1:clamp(1-(lt-2.0)/0.3));
+    show($('d-lock'), lockOn ? clamp((lt-2.0)/0.3) * (lt>=4.6&&lt<5.8?0:1) : 0);
+    show($('d-boot'), lt>=4.6&&lt<5.8?1:0);
+    $('d-spin').style.transform=`rotate(${lt*240}deg)`;
+    show($('d-desk'), lt>=8.4?clamp((lt-8.4)/0.3):0);
+    show($('d-net'), lt>=3.2&&lt<8.4?clamp((lt-3.2)/0.3):0);
+    show($('d-reboot'), lt>=5.9&&lt<8.4?clamp((lt-5.9)/0.3):0);
+    show($('d-timer'), lt>=8.5?clamp((lt-8.5)/0.3):0);
+    const left=Math.max(0,1800-Math.floor((lt-8.5)*1));
+    $('d-timer-t').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+  },
+  split(lt){ $('codeScroll').style.transform=`translateY(${-Math.min(260,lt*48)}px)`;
+             const m=$('mepanel'); const h=clamp((lt-5.0)/0.4);
+             m.style.borderColor=h>0?`rgba(251,191,36,${0.4+0.6*h})`:''; m.style.boxShadow=h>0?`0 0 ${80*h}px rgba(251,191,36,.35)`:''; },
+  shower(lt){
+    const box=$('drops'); if(!box.children.length){ for(let i=0;i<26;i++){const d=document.createElement('div');d.className='drop';box.appendChild(d);} }
+    [...box.children].forEach((d,i)=>{ const sp=0.55+((i*37)%10)/25, ph=((i*53)%100)/100;
+      const y=((lt*sp+ph)%1); d.style.left=(880+((i*71)%170))+'px'; d.style.top=(400+y*260)+'px'; d.style.opacity=lt<0.5?0:(1-y)*0.9; });
+  }
+};
+
+function bg(t){
+  $('b1').style.left=(200+180*Math.sin(t*0.13))+'px'; $('b1').style.top=(-300+120*Math.cos(t*0.11))+'px';
+  $('b2').style.left=(1100+160*Math.cos(t*0.09))+'px'; $('b2').style.top=(400+140*Math.sin(t*0.12))+'px';
+  $('b3').style.left=(-200+120*Math.sin(t*0.07))+'px'; $('b3').style.top=(500+100*Math.cos(t*0.1))+'px';
+}
+
+function subtitles(t){
+  const el=$('sub'); let txt='', o=0;
+  for(const v of TL.voice){ const s=v.at-0.1, e=v.at+(v.to-v.from)+0.3;
+    if(t>=s&&t<=e){ txt=v.text; o=Math.min(1,(t-s)/0.2,(e-t)/0.2); break; } }
+  if(el.textContent!==txt) el.textContent=txt;
+  el.style.opacity=txt?o:0;
+}
+
+window.render=function(t){
+  bg(t);
+  for(const sc of TL.scenes){
+    const el=$('sc-'+sc.id), lt=t-sc.s, d=sc.e-sc.s;
+    if(lt<0||lt>=d){ el.style.display='none'; continue; }
+    el.style.display='block';
+    let o=Math.min(1,lt/0.35,(d-lt)/0.35);
+    if(sc.id==='intro') o=Math.min(1,(d-lt)/0.35);
+    if(sc.id==='end') o=Math.min(1,lt/0.35);
+    el.style.opacity=o;
+    el.querySelectorAll('[data-in]').forEach(x=>applyAnim(x,lt));
+    if(FX[sc.id]) FX[sc.id](lt,el,d);
+  }
+  subtitles(t);
+  $('fade').style.opacity = Math.max(clamp(1-t/0.6), clamp((t-(TL.total-0.9))/0.9));
+};
+render(0);
+</script>
+</body>
+</html>
