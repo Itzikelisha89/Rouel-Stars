@@ -1,8 +1,27 @@
 ﻿# ParentLock installer - run via install.bat (it asks for administrator rights).
 # Console text is in English because the Windows console cannot show Hebrew correctly.
+#
+# Unattended mode (for automation):  Install.ps1 -AnswersFile C:\path\answers.json
+#   answers.json = { "pcName": "...", "token": "...", "kidAccounts": ["noa","ben"],
+#                    "parentName": "Parent", "parentPassword": "...",      (optional: creates/updates an admin account)
+#                    "demoteAdmins": ["dad"],                               (optional: remove admin rights)
+#                    "chatIds": ["123"] }                                   (optional: default = whoever messaged the bot)
+#   The answers file is deleted after reading (it holds the token and password).
+#   Output goes to install-result.txt next to the answers file; it ends with INSTALL OK or INSTALL FAILED.
 #Requires -Version 5.1
+param([string]$AnswersFile)
 
 $ErrorActionPreference = 'Stop'
+if ($AnswersFile) {
+    $AnswersFile = (Resolve-Path $AnswersFile).Path
+    $ResultFile = Join-Path (Split-Path -Parent $AnswersFile) 'install-result.txt'
+    Start-Transcript -Path $ResultFile -Force | Out-Null
+}
+trap {
+    Write-Host "INSTALL FAILED: $_" -ForegroundColor Red
+    if ($AnswersFile) { try { Stop-Transcript | Out-Null } catch {} }
+    exit 1
+}
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $Base     = 'C:\ProgramData\ParentLock'
@@ -55,7 +74,29 @@ if (-not (Test-Path (Join-Path $SrcDir 'ParentLock.ps1'))) {
     Say 'ParentLock.ps1 is missing. Extract the whole ZIP folder first, then run install.bat from it.' Red; exit 1
 }
 
-Clear-Host
+function Demote-User([string]$name) {
+    try { Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $name } catch {}
+    try { Remove-LocalGroupMember -SID 'S-1-5-32-544' -Member $name }
+    catch {
+        $grpName = (New-Object Security.Principal.SecurityIdentifier('S-1-5-32-544')).Translate(
+            [Security.Principal.NTAccount]).Value.Split('\')[-1]
+        & net.exe localgroup "$grpName" "$name" /delete | Out-Null
+    }
+    Say "   '$name' is now a standard user (takes effect at next sign-in)." Green
+}
+function Set-ParentAccount([string]$pname, $securePassword) {
+    if (Get-LocalUser -Name $pname -ErrorAction SilentlyContinue) {
+        Set-LocalUser -Name $pname -Password $securePassword -PasswordNeverExpires $true
+        Enable-LocalUser -Name $pname
+    } else {
+        New-LocalUser -Name $pname -FullName $pname -Password $securePassword -PasswordNeverExpires -AccountNeverExpires | Out-Null
+    }
+    try { Add-LocalGroupMember -SID 'S-1-5-32-544' -Member $pname } catch {}
+    try { Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $pname } catch {}
+    Say "   Administrator account '$pname' is ready." Green
+}
+
+if (-not $AnswersFile) { Clear-Host }
 Say '==============================================' Cyan
 Say '   ParentLock - lock this PC from your phone' Cyan
 Say '==============================================' Cyan
@@ -63,12 +104,65 @@ Say ''
 
 $configPath = Join-Path $Base 'config.json'
 $keepConfig = $false
-if (Test-Path $configPath) {
+if (-not $AnswersFile -and (Test-Path $configPath)) {
     Say 'ParentLock is already installed on this computer.' Yellow
     $keepConfig = Ask-YesNo 'Keep the current settings and only update the program?' $true
 }
 
-if (-not $keepConfig) {
+if ($AnswersFile) {
+    # ================================================================ unattended
+    $ans = Get-Content -Path $AnswersFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    Remove-Item -Path $AnswersFile -Force
+    $pcName = if ($ans.pcName) { [string]$ans.pcName } else { $env:COMPUTERNAME }
+    $token = ([string]$ans.token).Trim()
+    $me = Tg $token 'getMe'
+    if (-not $me.ok) { throw 'The bot token is invalid.' }
+    Say "Bot: @$($me.result.username)"
+    try { [void](Tg $token 'deleteWebhook' @{}) } catch {}
+
+    $lastUpdate = 0
+    $found = [ordered]@{}
+    $upd = Tg $token 'getUpdates' @{ timeout = 0 }
+    foreach ($u in @($upd.result)) {
+        if ($null -eq $u) { continue }
+        if ([long]$u.update_id -gt $lastUpdate) { $lastUpdate = [long]$u.update_id }
+        if ($u.message -and $u.message.chat.type -eq 'private') {
+            $c = $u.message.chat
+            $found[[string]$c.id] = ("{0} {1}" -f $c.first_name, $c.last_name).Trim()
+        }
+    }
+    $chatIds = if ($ans.chatIds) { @($ans.chatIds | ForEach-Object { [string]$_ }) } else { @($found.Keys) }
+    if ($chatIds.Count -eq 0) { throw "No Telegram chat found. Send /start to @$($me.result.username) first, then run again." }
+    foreach ($k in $found.Keys) { if ($chatIds -contains $k) { Say "Controller: $($found[$k]) ($k)" } }
+    [void](Tg $token 'getUpdates' @{ offset = $lastUpdate + 1; timeout = 0 })
+
+    $kids = @($ans.kidAccounts | ForEach-Object { [string]$_ } | Where-Object { $_ })
+    if ($kids.Count -eq 0) { throw 'kidAccounts is empty.' }
+    foreach ($k in $kids) {
+        if (-not (Get-LocalUser -Name $k -ErrorAction SilentlyContinue)) { throw "Windows account '$k' does not exist." }
+    }
+    Say "Kids' accounts: $($kids -join ', ')"
+
+    if ($ans.parentPassword) {
+        $pname = if ($ans.parentName) { [string]$ans.parentName } else { 'Parent' }
+        if ($kids -contains $pname) { throw 'parentName cannot be one of the kids'' accounts.' }
+        Set-ParentAccount $pname (ConvertTo-SecureString ([string]$ans.parentPassword) -AsPlainText -Force)
+    }
+
+    $admins = Get-AdminNames
+    $toDemote = @(@($kids | Where-Object { $admins -contains $_ }) + @($ans.demoteAdmins | Where-Object { $_ }) | Select-Object -Unique)
+    $remaining = @(Get-LocalUser | Where-Object {
+        $_.Enabled -and ($admins -contains $_.Name) -and ($toDemote -notcontains $_.Name) -and ($kids -notcontains $_.Name) })
+    if ($remaining.Count -eq 0) {
+        throw 'No administrator account would be left. Add parentName/parentPassword to create one.'
+    }
+    foreach ($name in $toDemote) { Demote-User $name }
+    Say "Administrator accounts left: $(($remaining | ForEach-Object Name) -join ', ')"
+
+    $config = [ordered]@{ pcName = $pcName; token = $token; chatIds = @($chatIds); kidAccounts = @($kids) }
+    $state = [ordered]@{ locked = $false; netBlocked = $false; graceUntil = 0; lockAt = 0; warned = $false; offset = $lastUpdate + 1 }
+}
+elseif (-not $keepConfig) {
     # -------------------------------------------------------------- 1. computer name
     $pcName = (Read-Host "1) A name for this computer, as it will appear in Telegram (Enter = $env:COMPUTERNAME)").Trim()
     if (-not $pcName) { $pcName = $env:COMPUTERNAME }
@@ -240,3 +334,9 @@ Say ''
 Say 'Done! Within a few seconds you should get a message in Telegram that this computer is on.' Green
 Say 'Buttons will appear at the bottom of the chat - use them to lock / unlock.' Green
 Say "Log file: $Base\log.txt" DarkGray
+if ($AnswersFile) {
+    Start-Sleep -Seconds 5
+    Say "Task state: $((Get-ScheduledTask -TaskName $TaskName).State)"
+    Say 'INSTALL OK'
+    try { Stop-Transcript | Out-Null } catch {}
+}
