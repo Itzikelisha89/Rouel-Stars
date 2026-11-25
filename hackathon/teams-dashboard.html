@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>חמ"ל צוותי ההאקתון</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#03070d; --bg2:#06121c; --panel:rgba(10,30,44,.55); --panel-solid:#0a1c29;
+  --line:rgba(94,234,255,.16); --line-strong:rgba(94,234,255,.45);
+  --cyan:#5eeaff; --cyan-2:#22c3e6; --cyan-deep:#0e7490; --glow:0 0 24px rgba(94,234,255,.35);
+  --text:#e6fbff; --muted:#86a9b6; --dim:#4f6f7c;
+  --ok:#4ade80; --wait:#fbbf24; --new:#f472b6;
+  --r:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif;min-height:100%}
+body{overflow-x:hidden}
+#net{position:fixed;inset:0;z-index:0;pointer-events:none}
+.aurora{position:fixed;inset:-20% -10% auto;height:70vh;z-index:0;pointer-events:none;
+  background:radial-gradient(60% 60% at 70% 20%,rgba(34,195,230,.22),transparent 70%),radial-gradient(40% 50% at 15% 10%,rgba(14,116,144,.25),transparent 70%)}
+.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:28px 24px 80px}
+.en{font-family:"Space Grotesk",Heebo,sans-serif;letter-spacing:.02em}
+
+/* header */
+header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+.brand{display:flex;align-items:center;gap:14px}
+.mark{width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;box-shadow:var(--glow);background:radial-gradient(circle,rgba(94,234,255,.15),transparent 70%)}
+.brand small{display:block;color:var(--muted);font-size:13px;letter-spacing:.08em}
+.brand b{font-size:20px;font-weight:800}
+.brand b span{color:var(--cyan)}
+.live{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);backdrop-filter:blur(10px);font-size:14px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pulse 1.8s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;margin-bottom:22px}
+.title{padding:34px 34px 30px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(160deg,rgba(14,116,144,.22),rgba(6,18,28,.6));position:relative;overflow:hidden}
+.title:after{content:"";position:absolute;inset:auto -30% -60% auto;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,255,.18),transparent 65%)}
+.eyebrow{color:var(--cyan);font-weight:600;font-size:14px;letter-spacing:.12em}
+.title h1{font-size:clamp(30px,4vw,46px);font-weight:900;line-height:1.05;margin:10px 0 6px}
+.title h1 .en{display:block;font-size:clamp(44px,6.4vw,78px);background:linear-gradient(180deg,#eaffff,var(--cyan) 60%,var(--cyan-deep));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(94,234,255,.35));line-height:1}
+.title p{color:var(--muted);max-width:46ch;margin-top:12px;line-height:1.6}
+.countdown{display:flex;gap:10px;margin-top:22px}
+.cd{min-width:70px;text-align:center;padding:10px 8px;border:1px solid var(--line);border-radius:12px;background:rgba(3,7,13,.5)}
+.cd b{display:block;font-size:26px;font-family:"Space Grotesk";color:var(--cyan)}
+.cd span{font-size:12px;color:var(--muted)}
+
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.kpi{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px);position:relative;overflow:hidden}
+.kpi .lbl{color:var(--muted);font-size:14px}
+.kpi .val{font-size:44px;font-weight:800;font-family:"Space Grotesk";margin-top:6px;line-height:1}
+.kpi .sub{font-size:13px;color:var(--ok);margin-top:8px}
+.kpi svg{position:absolute;left:12px;top:14px;opacity:.5}
+.kpi.goal .bar{height:6px;border-radius:9px;background:rgba(94,234,255,.12);margin-top:12px;overflow:hidden}
+.kpi.goal .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan-deep),var(--cyan));box-shadow:var(--glow);transition:width 1s}
+
+/* grid */
+.main{display:grid;grid-template-columns:1fr 340px;gap:22px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.search{flex:1;min-width:220px;display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--text);font:inherit;font-size:15px}
+.search input::placeholder{color:var(--dim)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;transition:.2s}
+.chip:hover{border-color:var(--line-strong);color:var(--text)}
+.chip.on{background:rgba(94,234,255,.14);border-color:var(--cyan);color:var(--cyan);box-shadow:var(--glow)}
+
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:14px}
+.card{position:relative;padding:18px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,rgba(10,30,44,.7),rgba(6,18,28,.55));backdrop-filter:blur(8px);cursor:pointer;transition:transform .25s,border-color .25s,box-shadow .25s;animation:in .5s both}
+.card:hover{transform:translateY(-4px);border-color:var(--line-strong);box-shadow:0 12px 40px -12px rgba(94,234,255,.35)}
+.card.fresh{border-color:var(--new);box-shadow:0 0 0 1px var(--new),0 0 30px rgba(244,114,182,.3)}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+.card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.num{font-family:"Space Grotesk";color:var(--dim);font-size:13px}
+.status{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid}
+.status.ok{color:var(--ok);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.08)}
+.status.wait{color:var(--wait);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+.status.new{color:var(--new);border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.1)}
+.card h3{font-size:21px;font-weight:800;margin:8px 0 4px}
+.card .idea{color:var(--muted);font-size:14px;line-height:1.5;min-height:42px}
+.track{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--cyan);padding:4px 10px;border-radius:8px;background:rgba(94,234,255,.08)}
+.leader{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px;color:#02131b;flex:none;position:relative}
+.av:after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--cyan);opacity:.6}
+.leader .who small{display:block;font-size:11px;color:var(--dim);letter-spacing:.06em}
+.leader .who b{font-size:15px}
+.leader .who em{display:flex;align-items:center;gap:5px;font-style:normal;font-size:13px;color:var(--muted)}
+.members{display:flex;margin-inline-start:auto}
+.members i{width:24px;height:24px;border-radius:50%;border:2px solid var(--panel-solid);margin-inline-start:-8px;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700;color:#02131b}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 0}
+
+/* side */
+aside{display:flex;flex-direction:column;gap:16px}
+.panel{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px)}
+.panel h4{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.panel h4 span{color:var(--dim);font-weight:400;font-size:12px}
+.orig{display:grid;gap:10px}
+.orow{display:grid;grid-template-columns:96px 1fr 26px;gap:10px;align-items:center;font-size:13px;cursor:pointer}
+.orow:hover .otrack i{filter:brightness(1.3)}
+.otrack{height:8px;border-radius:9px;background:rgba(94,234,255,.08);overflow:hidden}
+.otrack i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--cyan-deep),var(--cyan));transition:width .8s}
+.orow b{font-family:"Space Grotesk";color:var(--cyan);text-align:left}
+.feed{display:grid;gap:10px;max-height:300px;overflow:hidden}
+.fi{display:flex;gap:10px;align-items:center;font-size:13px;padding:10px;border-radius:12px;background:rgba(3,7,13,.45);border:1px solid transparent;animation:in .5s both}
+.fi:first-child{border-color:rgba(244,114,182,.35)}
+.fi .t{color:var(--dim);font-size:11px;margin-inline-start:auto;white-space:nowrap}
+.fi b{color:var(--text)}
+.mapbox{position:relative;height:210px;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(14,116,144,.15),transparent 70%)}
+.mapbox svg{width:100%;height:100%}
+.pin{animation:ping 2.4s infinite;transform-origin:center;transform-box:fill-box}
+@keyframes ping{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(2.4)}}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(1,4,8,.75);backdrop-filter:blur(6px);padding:16px}
+.modal.open{display:grid}
+.sheet{width:min(560px,100%);border:1px solid var(--line-strong);border-radius:22px;background:linear-gradient(180deg,#0b2333,#06121c);padding:28px;box-shadow:0 30px 80px -20px rgba(94,234,255,.35);animation:in .3s both;position:relative}
+.sheet .x{position:absolute;left:16px;top:16px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--muted);font-size:18px;cursor:pointer}
+.sheet h2{font-size:28px;font-weight:900}
+.sheet .idea{color:var(--muted);margin:6px 0 18px;line-height:1.6}
+.mlist{display:grid;gap:10px;margin-top:14px}
+.mrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(3,7,13,.45)}
+.mrow .av{width:36px;height:36px;font-size:13px}
+.mrow small{color:var(--muted);display:block;font-size:12px}
+.crown{font-size:11px;color:#02131b;background:var(--cyan);padding:2px 8px;border-radius:6px;margin-inline-start:auto;font-weight:700}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.meta div{padding:12px;border-radius:12px;border:1px solid var(--line);text-align:center}
+.meta small{color:var(--dim);font-size:11px;display:block}
+.meta b{font-size:14px}
+
+.demo{position:fixed;bottom:14px;left:14px;z-index:5;font-size:12px;color:var(--dim);padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(3,7,13,.7)}
+footer{margin-top:40px;text-align:center;color:var(--dim);font-size:13px}
+
+@media (max-width:1000px){.hero,.main{grid-template-columns:1fr}}
+@media (max-width:560px){.wrap{padding:18px 16px 70px}.title{padding:24px}.kpi .val{font-size:34px}.cd{min-width:58px}.orow{grid-template-columns:80px 1fr 22px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="net"></canvas>
+<div class="aurora"></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 11 21 3l-8 18-2-8-8-2Z" fill="#5eeaff" opacity=".9"/><path d="M11 13 21 3" stroke="#03070d" stroke-width="1.4"/></svg></div>
+      <div><small>מחדשים היום · מובילים את המחר</small><b>ועדת <span>חדשנות</span> · מערך ספיר</b></div>
+    </div>
+    <div class="live"><span class="dot"></span><span>הרשמה פתוחה · מתעדכן בזמן אמת</span></div>
+  </header>
+
+  <section class="hero">
+    <div class="title">
+      <div class="eyebrow">חמ"ל הרשמה · מסך צוותים</div>
+      <h1>האקתון בסימן<span class="en">AI Agents</span></h1>
+      <p>כל הצוותים שכבר בפנים: מי מוביל, מאיפה הגיעו ומה הם הולכים לבנות. כרטיס נפתח בלחיצה ומציג את כל חברי הצוות.</p>
+      <div class="countdown" id="cd"></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M15 14.5c3 0 5 1.6 5 4"/></svg>
+        <div class="lbl">צוותים רשומים</div><div class="val" id="kTeams">0</div><div class="sub" id="kTeamsSub">+0 היום</div></div>
+      <div class="kpi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><circle cx="12" cy="7" r="3.5"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg>
+        <div class="lbl">משתתפים</div><div class="val" id="kPeople">0</div><div class="sub" id="kAvg">ממוצע 0 לצוות</div></div>
+      <div class="kpi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.4"/></svg>
+        <div class="lbl">ערים ומוסדות</div><div class="val" id="kPlaces">0</div><div class="sub" id="kTop">—</div></div>
+      <div class="kpi goal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="#5eeaff"/></svg>
+        <div class="lbl">יעד: 40 צוותים</div><div class="val" id="kGoal">0%</div><div class="bar"><i id="kBar" style="width:0"></i></div></div>
+    </div>
+  </section>
+
+  <section class="main">
+    <div>
+      <div class="toolbar">
+        <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86a9b6" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="q" placeholder="חיפוש צוות, ראש צוות, עיר או רעיון…"></label>
+      </div>
+      <div class="chips" id="tracks" style="margin-bottom:16px"></div>
+      <div class="teams" id="grid"></div>
+    </div>
+
+    <aside>
+      <div class="panel">
+        <h4>מפת המשתתפים <span>לפי עיר מגורים</span></h4>
+        <div class="mapbox" id="map"></div>
+      </div>
+      <div class="panel">
+        <h4>מאיפה הצוותים <span>לחיצה מסננת</span></h4>
+        <div class="orig" id="orig"></div>
+      </div>
+      <div class="panel">
+        <h4>נרשמו עכשיו <span id="clock"></span></h4>
+        <div class="feed" id="feed"></div>
+      </div>
+    </aside>
+  </section>
+
+  <footer>ועדת חדשנות · מערך ספיר · מסך הדמיה לתצוגה</footer>
+</div>
+
+<div class="demo">⚡ נתוני הדמיה, לא רישום אמיתי</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+// ---- demo data (fictional) ----
+const PALETTE=["#5eeaff","#7dd3fc","#a5f3fc","#67e8f9","#99f6e4","#c4b5fd","#f9a8d4","#fde68a"];
+const CITIES={ // rough relative positions on a mini map of the south (x,y in 0..100)
+ "שדרות":[42,30],"נתיבות":[48,46],"אופקים":[56,58],"באר שבע":[70,62],"אשקלון":[30,14],"קיבוץ ניר עם":[38,26],
+ "תל אביב":[40,-2],"ירוחם":[78,82],"דימונה":[86,76],"רהט":[66,50]
+};
+const TRACKS=["חינוך","בריאות","עסקים קטנים","חקלאות","קהילה וחוסן","נגישות"];
+const seed=[
+ ["NegevMind","סוכן שמלווה תלמידי תיכון בהכנה לבגרות ומתאים תרגול לכל תלמיד","חינוך","נועה לוי","שדרות","ספיר · הנדסת תוכנה",["עומר","שירה","דניאל","מאיה"],"ok"],
+ ["Shift+Agent","סוכן שמשבץ משמרות לעסקים קטנים ומטפל בהחלפות בוואטסאפ","עסקים קטנים","אביב כהן","נתיבות","ספיר · ניהול",["רון","טל","ליה"],"ok"],
+ ["AgroSense","סוכן שקורא חיישני השקיה ומתריע לחקלאי לפני שהיבול נפגע","חקלאות","יונתן אזולאי","קיבוץ ניר עם","ספיר · מדעי הנתונים",["גל","אלון","הדר","נטע"],"ok"],
+ ["Kav Ham","מוקד חוסן קהילתי: סוכן שמחבר מתנדבים לפניות בזמן חירום","קהילה וחוסן","מיכל פרץ","שדרות","ספיר · עבודה סוציאלית",["איתי","רוני","עדי"],"ok"],
+ ["SeeFor.me","סוכן קולי שמתאר לעיוורים את מה שהמצלמה רואה, בעברית","נגישות","עידו ביטון","באר שבע","בן־גוריון · הנדסת חשמל",["יעל","אורי","נוי","שחר"],"ok"],
+ ["DocTalk","סוכן שמסכם ביקור אצל רופא ושולח למטופל תזכורות לתרופות","בריאות","רותם אוחיון","אופקים","ספיר · סיעוד",["בן","ליאור","אגם"],"wait"],
+ ["ClassPilot","סוכן למורה: בונה מערכי שיעור ובודק עבודות לפי מחוון","חינוך","דנה שושן","אשקלון","ספיר · חינוך",["מאור","עמית","שני","תמר"],"ok"],
+ ["Tziporen","סוכן שמנהל את כל הניירת של עסק קטן: חשבוניות, ספקים, תשלומים","עסקים קטנים","אליה מזרחי","נתיבות","יזמים עצמאיים",["דור","אוריה"],"wait"],
+ ["Hive Medic","סוכן טריאז' לקופת חולים שמכוון פונים לשירות הנכון","בריאות","שקד גבאי","באר שבע","סורוקה · צוות חדשנות",["נדב","ענבר","קרן","לביא"],"ok"],
+ ["Orchard OS","תכנון קטיף ועובדים לפי תחזית מזג אוויר וזמינות","חקלאות","אסף דהן","אופקים","מושב · חקלאים צעירים",["יובל","אביטל","הלל"],"ok"],
+ ["Bridge","סוכן תרגום עברית־ערבית־אמהרית לרשויות מקומיות","קהילה וחוסן","סלמאן אבו־קף","רהט","ספיר · תקשורת",["מוחמד","ריהאם","ספיר"],"ok"],
+ ["StepUp","סוכן שמתאים מסלולי נגישות במבני ציבור ומדווח על חסמים","נגישות","הילה בן־שושן","ירוחם","ספיר · הנדסה",["אופיר","גאיה","זיו"],"wait"],
+ ["Mentor360","סוכן חונך לסטודנטים בשנה א', מזהה נשירה מוקדם","חינוך","אור ששון","דימונה","ספיר · מדעי ההתנהגות",["אליאור","מעיין","רז","נגה"],"ok"],
+ ["Kupa.ai","סוכן שעונה ללקוחות של מכולת שכונתית ומזמין מלאי לבד","עסקים קטנים","שי עמר","שדרות","תיכון שער הנגב",["אלה","עידן","יהב"],"ok"],
+];
+const LATE=[ // will "register" live
+ ["Pulse","סוכן שמנטר קשישים בודדים בשיחה יומית ומתריע למשפחה","בריאות","טליה רביבו","קיבוץ ניר עם","ספיר · גרונטולוגיה",["אריאל","צליל","יואב"]],
+ ["Sand Robots","סוכנים שמתאמים רחפני ריסוס בשדות","חקלאות","ניר חדד","נתיבות","הנדסאים · מכטרוניקה",["עדן","פלג","מור","רועי"]],
+ ["Lomdim","סוכן שמסביר מתמטיקה בקול ובשפת סימנים","נגישות","קורל אלמוג","אשקלון","ספיר · חינוך מיוחד",["אוהד","ליבי"]],
+ ["Kehila OS","סוכן לוועדי שכונה: סקרים, אירועים ותקציב","קהילה וחוסן","בר יוסף","באר שבע","בן־גוריון · מדיניות",["סתיו","אלמוג","נועם"]],
+ ["Startupy","סוכן שהופך רעיון לתוכנית עסקית ומצגת למשקיעים","עסקים קטנים","ליאם גולן","תל אביב","בוגרי ספיר",["דין","שגיא","אנה","יאיר"]],
+];
+let teams=seed.map((t,i)=>mk(t,i,Date.now()-(seed.length-i)*37*60e3));
+function mk(t,i,ts){return{id:i+1,name:t[0],idea:t[1],track:t[2],leader:t[3],city:t[4],org:t[5],members:t[6],status:t[7]||"new",ts,color:PALETTE[i%PALETTE.length]}}
+const initials=n=>n.split(/[\s־]+/).map(w=>w[0]).slice(0,2).join("");
+
+// ---- state ----
+let fTrack="הכל", fCity=null, q="";
+const $=s=>document.querySelector(s);
+
+function renderChips(){
+  $("#tracks").innerHTML=["הכל",...TRACKS].map(t=>{
+    const n=t==="הכל"?teams.length:teams.filter(x=>x.track===t).length;
+    return `<button class="chip ${t===fTrack?"on":""}" data-t="${t}">${t} · ${n}</button>`}).join("")+
+    (fCity?`<button class="chip on" data-c="x">📍 ${fCity} ✕</button>`:"");
+}
+function filtered(){
+  return teams.filter(t=>(fTrack==="הכל"||t.track===fTrack)&&(!fCity||t.city===fCity)&&
+   (!q||[t.name,t.leader,t.city,t.org,t.idea,...t.members].join(" ").includes(q)));
+}
+function card(t){
+  const st={ok:["מאושר","ok"],wait:["ממתין לאישור","wait"],new:["חדש!","new"]}[t.status];
+  return `<article class="card ${t.status==="new"?"fresh":""}" data-id="${t.id}">
+   <div class="top"><span class="num en">#${String(t.id).padStart(2,"0")}</span><span class="status ${st[1]}">${st[0]}</span></div>
+   <h3 class="en">${t.name}</h3><p class="idea">${t.idea}</p>
+   <span class="track">◆ ${t.track}</span>
+   <div class="leader">
+     <div class="av" style="background:${t.color}">${initials(t.leader)}</div>
+     <div class="who"><small>ראש צוות</small><b>${t.leader}</b><em>📍 ${t.city} · ${t.org}</em></div>
+     <div class="members">${t.members.slice(0,3).map((m,i)=>`<i style="background:${PALETTE[(t.id+i+2)%PALETTE.length]}">${m[0]}</i>`).join("")}${t.members.length>3?`<i style="background:#1e3a4a;color:#cfefff">+${t.members.length-3}</i>`:""}</div>
+   </div></article>`;
+}
+function renderGrid(){
+  const list=filtered().sort((a,b)=>b.ts-a.ts);
+  $("#grid").innerHTML=list.length?list.map(card).join(""):`<div class="empty">אין צוותים שמתאימים לחיפוש</div>`;
+}
+function countUp(el,to,suf=""){
+  const from=+el.dataset.v||0; el.dataset.v=to; const t0=performance.now();
+  const step=n=>{const p=Math.min(1,(n-t0)/700);el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(step)};
+  requestAnimationFrame(step);
+}
+function renderKpis(){
+  const people=teams.reduce((s,t)=>s+t.members.length+1,0);
+  const places=new Set(teams.map(t=>t.city)).size;
+  const today=teams.filter(t=>Date.now()-t.ts<24*36e5).length;
+  countUp($("#kTeams"),teams.length); $("#kTeamsSub").textContent=`+${today} ב-24 השעות האחרונות`;
+  countUp($("#kPeople"),people); $("#kAvg").textContent=`ממוצע ${(people/teams.length).toFixed(1)} לצוות`;
+  countUp($("#kPlaces"),places);
+  const top=Object.entries(cityCounts()).sort((a,b)=>b[1]-a[1])[0]; $("#kTop").textContent=`הכי הרבה: ${top[0]} (${top[1]})`;
+  const g=Math.round(teams.length/40*100); countUp($("#kGoal"),g,"%"); $("#kBar").style.width=g+"%";
+}
+const cityCounts=()=>teams.reduce((m,t)=>(m[t.city]=(m[t.city]||0)+1,m),{});
+function renderOrig(){
+  const c=Object.entries(cityCounts()).sort((a,b)=>b[1]-a[1]); const max=c[0][1];
+  $("#orig").innerHTML=c.map(([k,v])=>`<div class="orow" data-city="${k}"><span>${k}</span><div class="otrack"><i style="width:${v/max*100}%"></i></div><b>${v}</b></div>`).join("");
+}
+function renderMap(){
+  const c=cityCounts();
+  let s=`<svg viewBox="-5 -10 110 105" preserveAspectRatio="xMidYMid meet">
+   <path d="M30 -8 L52 -6 L62 20 L80 40 L96 70 L92 92 L70 95 L60 80 L46 62 L34 40 L24 18 Z" fill="rgba(94,234,255,.05)" stroke="rgba(94,234,255,.25)" stroke-width=".5" stroke-dasharray="1.5 1.5"/>
+   <text x="2" y="10" fill="#4f6f7c" font-size="4" font-family="Heebo">הים התיכון</text>`;
+  const keys=Object.keys(c);
+  keys.forEach((k,i)=>{const [x,y]=CITIES[k]||[50,50];keys.slice(i+1).forEach(k2=>{const [x2,y2]=CITIES[k2]||[50,50];if(Math.hypot(x-x2,y-y2)<30)s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="rgba(94,234,255,.15)" stroke-width=".4"/>`})});
+  keys.forEach(k=>{const [x,y]=CITIES[k]||[50,50];const r=2+c[k]*1.1;
+    s+=`<circle class="pin" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#5eeaff" stroke-width=".5"/>
+        <circle cx="${x}" cy="${y}" r="${r*.55}" fill="#5eeaff" opacity=".85"/>
+        <text x="${x-r-1}" y="${y+1.4}" fill="#cfefff" font-size="4.6" font-family="Heebo" text-anchor="start">${k} · ${c[k]}</text>`});
+  $("#map").innerHTML=s+"</svg>";
+}
+function ago(ts){const m=Math.round((Date.now()-ts)/6e4);return m<1?"עכשיו":m<60?`לפני ${m} דק'`:`לפני ${Math.round(m/60)} שע'`}
+function renderFeed(){
+  $("#feed").innerHTML=[...teams].sort((a,b)=>b.ts-a.ts).slice(0,5).map(t=>`<div class="fi"><div class="av" style="width:30px;height:30px;font-size:11px;background:${t.color}">${initials(t.leader)}</div><div><b class="en">${t.name}</b> · ${t.leader}<br><span style="color:var(--muted)">${t.city}</span></div><span class="t">${ago(t.ts)}</span></div>`).join("");
+}
+function renderAll(){renderChips();renderGrid();renderKpis();renderOrig();renderMap();renderFeed()}
+
+// modal
+function openTeam(id){
+  const t=teams.find(x=>x.id==id);
+  $("#sheet").innerHTML=`<button class="x" aria-label="סגור">✕</button>
+   <span class="track">◆ מסלול ${t.track}</span><h2 class="en" style="margin-top:10px">${t.name}</h2><p class="idea">${t.idea}</p>
+   <div class="meta"><div><small>עיר</small><b>${t.city}</b></div><div><small>מוסד</small><b>${t.org}</b></div><div><small>חברים</small><b>${t.members.length+1}</b></div></div>
+   <div class="mlist">
+    <div class="mrow"><div class="av" style="background:${t.color}">${initials(t.leader)}</div><div><b>${t.leader}</b><small>${t.org}</small></div><span class="crown">ראש צוות</span></div>
+    ${t.members.map((m,i)=>`<div class="mrow"><div class="av" style="background:${PALETTE[(t.id+i+2)%PALETTE.length]}">${m[0]}</div><div><b>${m}</b><small>חבר/ת צוות</small></div></div>`).join("")}
+   </div>`;
+  $("#modal").classList.add("open");
+}
+document.addEventListener("click",e=>{
+  const c=e.target.closest(".card"); if(c) return openTeam(c.dataset.id);
+  const ch=e.target.closest(".chip"); if(ch){ if(ch.dataset.c) fCity=null; else fTrack=ch.dataset.t; renderChips();renderGrid();return }
+  const o=e.target.closest(".orow"); if(o){ fCity=fCity===o.dataset.city?null:o.dataset.city; renderChips();renderGrid();return }
+  if(e.target.id==="modal"||e.target.closest(".x")) $("#modal").classList.remove("open");
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#modal").classList.remove("open")});
+$("#q").addEventListener("input",e=>{q=e.target.value.trim();renderGrid()});
+
+// live simulation
+let li=0;
+setInterval(()=>{
+  if(li>=LATE.length) return;
+  teams.forEach(t=>{if(t.status==="new")t.status="wait"});
+  teams.push(mk(LATE[li],teams.length,Date.now())); li++;
+  renderAll();
+},9000);
+
+// countdown to event (demo date)
+const EVENT=new Date(); EVENT.setDate(EVENT.getDate()+12); EVENT.setHours(9,0,0,0);
+function tick(){
+  let d=Math.max(0,EVENT-Date.now());const u=[["ימים",864e5],["שעות",36e5],["דקות",6e4],["שניות",1e3]];
+  $("#cd").innerHTML=u.map(([l,ms])=>{const v=Math.floor(d/ms);d-=v*ms;return `<div class="cd"><b>${String(v).padStart(2,"0")}</b><span>${l}</span></div>`}).join("");
+  $("#clock").textContent=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+}
+setInterval(tick,1000);tick();setInterval(renderFeed,30000);
+
+// neural network background
+const cv=$("#net"),cx=cv.getContext("2d");let P=[];
+function size(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio;
+  P=Array.from({length:Math.min(90,Math.round(innerWidth/16))},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25}))}
+function draw(){
+  cx.clearRect(0,0,cv.width,cv.height);const D=140*devicePixelRatio;
+  for(const p of P){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>cv.width)p.vx*=-1;if(p.y<0||p.y>cv.height)p.vy*=-1}
+  for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],b=P[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(d<D){cx.strokeStyle=`rgba(94,234,255,${.14*(1-d/D)})`;cx.lineWidth=devicePixelRatio*.7;cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke()}}
+  for(const p of P){cx.fillStyle="rgba(94,234,255,.7)";cx.beginPath();cx.arc(p.x,p.y,1.4*devicePixelRatio,0,7);cx.fill()}
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches)requestAnimationFrame(draw);
+}
+addEventListener("resize",size);size();draw();
+renderAll();
+</script>
+</body>
+</html>
