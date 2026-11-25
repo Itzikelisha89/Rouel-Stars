@@ -4,74 +4,136 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>חמ"ל צוותי ההאקתון</title>
+<meta name="description" content="האקתון בסימן AI Agents: כל הצוותים שנרשמו, ספירה לאחור, פרסים ומקומות אחרונים">
+<meta property="og:title" content="האקתון בסימן AI Agents: הצוותים כבר כאן">
+<meta property="og:description" content="נשארו מקומות אחרונים. תראו מי כבר נרשם ותצטרפו">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
-  --bg:#03070d; --bg2:#06121c; --panel:rgba(10,30,44,.55); --panel-solid:#0a1c29;
+  --bg:#03070d; --panel:rgba(10,30,44,.55); --panel-solid:#0a1c29;
   --line:rgba(94,234,255,.16); --line-strong:rgba(94,234,255,.45);
-  --cyan:#5eeaff; --cyan-2:#22c3e6; --cyan-deep:#0e7490; --glow:0 0 24px rgba(94,234,255,.35);
+  --cyan:#5eeaff; --cyan-deep:#0e7490; --glow:0 0 24px rgba(94,234,255,.35);
   --text:#e6fbff; --muted:#86a9b6; --dim:#4f6f7c;
-  --ok:#4ade80; --wait:#fbbf24; --new:#f472b6;
+  --ok:#4ade80; --wait:#fbbf24; --new:#f472b6; --hot:#ff5d73; --gold:#fcd34d;
   --r:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif;min-height:100%}
+html{scroll-behavior:smooth}
+html,body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif}
 body{overflow-x:hidden}
-#net{position:fixed;inset:0;z-index:0;pointer-events:none}
+button{font:inherit}
+#net,#confetti{position:fixed;inset:0;pointer-events:none}
+#net{z-index:0}#confetti{z-index:40}
 .aurora{position:fixed;inset:-20% -10% auto;height:70vh;z-index:0;pointer-events:none;
   background:radial-gradient(60% 60% at 70% 20%,rgba(34,195,230,.22),transparent 70%),radial-gradient(40% 50% at 15% 10%,rgba(14,116,144,.25),transparent 70%)}
-.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:28px 24px 80px}
+.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:0 24px 110px}
 .en{font-family:"Space Grotesk",Heebo,sans-serif;letter-spacing:.02em}
+section{margin-top:22px}
+.sec-h{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:46px 0 18px}
+.sec-h h2{font-size:clamp(24px,3vw,34px);font-weight:900}
+.sec-h h2 span{color:var(--cyan)}
+.sec-h p{color:var(--muted);font-size:14px}
+.panel{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px)}
+
+/* urgency bar */
+.urgent{position:sticky;top:0;z-index:15;margin:0 -24px;padding:10px 24px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  background:linear-gradient(90deg,rgba(255,93,115,.18),rgba(14,116,144,.35),rgba(255,93,115,.18));border-bottom:1px solid rgba(255,93,115,.35);backdrop-filter:blur(12px);font-size:14px}
+.urgent b{color:#fff}
+.urgent .mini{font-family:"Space Grotesk";color:var(--hot);font-weight:700;letter-spacing:.04em}
+.urgent .go{padding:6px 14px;border-radius:999px;background:var(--hot);color:#fff;border:0;font-weight:700;cursor:pointer}
 
 /* header */
-header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:22px 0 6px}
 .brand{display:flex;align-items:center;gap:14px}
 .mark{width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;box-shadow:var(--glow);background:radial-gradient(circle,rgba(94,234,255,.15),transparent 70%)}
 .brand small{display:block;color:var(--muted);font-size:13px;letter-spacing:.08em}
 .brand b{font-size:20px;font-weight:800}
 .brand b span{color:var(--cyan)}
-.live{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);backdrop-filter:blur(10px);font-size:14px;color:var(--muted)}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:pulse 1.8s infinite}
-@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+.hdr-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.live{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:14px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,.6)}70%{box-shadow:0 0 0 10px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+.ghost{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-size:14px}
+.ghost:hover{color:var(--text);border-color:var(--line-strong)}
+.cta{display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:14px;border:0;cursor:pointer;font-weight:800;font-size:17px;color:#02131b;
+  background:linear-gradient(135deg,#a5f3fc,var(--cyan) 45%,#22c3e6);box-shadow:0 10px 30px -8px rgba(94,234,255,.6);transition:transform .2s;position:relative;overflow:hidden}
+.cta:hover{transform:translateY(-2px)}
+.cta:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%);animation:shine 3.2s infinite}
+@keyframes shine{60%,100%{transform:translateX(120%)}}
 
 /* hero */
-.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;margin-bottom:22px}
-.title{padding:34px 34px 30px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(160deg,rgba(14,116,144,.22),rgba(6,18,28,.6));position:relative;overflow:hidden}
-.title:after{content:"";position:absolute;inset:auto -30% -60% auto;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,255,.18),transparent 65%)}
+.hero{display:grid;grid-template-columns:1.35fr 1fr;gap:22px}
+.title{padding:34px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(160deg,rgba(14,116,144,.22),rgba(6,18,28,.6));position:relative;overflow:hidden}
+.title:after{content:"";position:absolute;inset:auto -30% -60% auto;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(94,234,255,.18),transparent 65%);pointer-events:none}
 .eyebrow{color:var(--cyan);font-weight:600;font-size:14px;letter-spacing:.12em}
 .title h1{font-size:clamp(30px,4vw,46px);font-weight:900;line-height:1.05;margin:10px 0 6px}
-.title h1 .en{display:block;font-size:clamp(44px,6.4vw,78px);background:linear-gradient(180deg,#eaffff,var(--cyan) 60%,var(--cyan-deep));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(94,234,255,.35));line-height:1}
-.title p{color:var(--muted);max-width:46ch;margin-top:12px;line-height:1.6}
-.countdown{display:flex;gap:10px;margin-top:22px}
-.cd{min-width:70px;text-align:center;padding:10px 8px;border:1px solid var(--line);border-radius:12px;background:rgba(3,7,13,.5)}
-.cd b{display:block;font-size:26px;font-family:"Space Grotesk";color:var(--cyan)}
+.title h1 .en{display:block;font-size:clamp(46px,6.6vw,82px);background:linear-gradient(180deg,#eaffff,var(--cyan) 60%,var(--cyan-deep));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(94,234,255,.35));line-height:1}
+.title p{color:var(--muted);max-width:48ch;margin-top:12px;line-height:1.6}
+.cd-label{margin-top:22px;font-size:13px;color:var(--muted);letter-spacing:.08em}
+.countdown{display:flex;gap:10px;margin-top:8px}
+.cd{min-width:78px;text-align:center;padding:12px 8px;border:1px solid var(--line);border-radius:14px;background:rgba(3,7,13,.55);position:relative;overflow:hidden}
+.cd b{display:block;font-size:34px;font-family:"Space Grotesk";color:var(--cyan);line-height:1.1;text-shadow:0 0 18px rgba(94,234,255,.5)}
 .cd span{font-size:12px;color:var(--muted)}
+.cd.flip b{animation:flip .45s}
+@keyframes flip{0%{transform:translateY(-40%);opacity:0}100%{transform:none;opacity:1}}
+.countdown.final .cd b{color:var(--hot);text-shadow:0 0 18px rgba(255,93,115,.6)}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:24px;position:relative;z-index:1}
+.facts{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px;color:var(--muted);font-size:14px}
+.facts span{display:flex;align-items:center;gap:6px}
 
-.kpis{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.kpi{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px);position:relative;overflow:hidden}
+.side-hero{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.kpi{padding:18px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px);position:relative;overflow:hidden}
 .kpi .lbl{color:var(--muted);font-size:14px}
-.kpi .val{font-size:44px;font-weight:800;font-family:"Space Grotesk";margin-top:6px;line-height:1}
+.kpi .val{font-size:40px;font-weight:800;font-family:"Space Grotesk";margin-top:6px;line-height:1}
 .kpi .sub{font-size:13px;color:var(--ok);margin-top:8px}
-.kpi svg{position:absolute;left:12px;top:14px;opacity:.5}
-.kpi.goal .bar{height:6px;border-radius:9px;background:rgba(94,234,255,.12);margin-top:12px;overflow:hidden}
-.kpi.goal .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan-deep),var(--cyan));box-shadow:var(--glow);transition:width 1s}
+.kpi.spots{grid-column:1/-1;display:flex;align-items:center;gap:18px}
+.ring{width:110px;height:110px;flex:none;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:"Space Grotesk";font-size:30px;line-height:1;text-align:center}
+.ring b small{display:block;font-family:Heebo;font-size:11px;color:var(--muted);font-weight:400}
+.spots h3{font-size:20px;font-weight:800}
+.spots p{color:var(--muted);font-size:14px;margin-top:4px;line-height:1.5}
+.spots .hotline{color:var(--hot);font-weight:700}
 
-/* grid */
+/* marquee */
+.marquee{margin:26px -24px 0;overflow:hidden;border-block:1px solid var(--line);background:rgba(6,18,28,.6);padding:14px 0;mask:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.mtrack{display:flex;gap:56px;width:max-content;animation:scroll 38s linear infinite}
+.marquee:hover .mtrack{animation-play-state:paused}
+@keyframes scroll{to{transform:translateX(50%)}}
+.mtrack span{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:600;white-space:nowrap}
+.mtrack span i{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-style:normal;font-size:14px;background:rgba(94,234,255,.1);color:var(--cyan)}
+
+/* prizes */
+.prizes{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:16px;align-items:end}
+.prize{padding:24px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel);text-align:center;position:relative;overflow:hidden}
+.prize.first{padding:34px 24px;border-color:rgba(252,211,77,.5);background:linear-gradient(180deg,rgba(252,211,77,.12),rgba(10,30,44,.6));box-shadow:0 0 50px -10px rgba(252,211,77,.35)}
+.prize .medal{font-size:40px}
+.prize .amt{font-family:"Space Grotesk";font-size:40px;font-weight:700;margin:8px 0 2px}
+.prize.first .amt{font-size:54px;color:var(--gold);text-shadow:0 0 24px rgba(252,211,77,.5)}
+.prize p{color:var(--muted);font-size:14px}
+.pool{margin-top:14px;text-align:center;color:var(--muted)}
+.pool b{color:var(--gold);font-family:"Space Grotesk";font-size:20px}
+.extras{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+.extras div{padding:14px;border-radius:14px;border:1px dashed var(--line);font-size:14px;color:var(--muted);display:flex;gap:10px;align-items:center}
+.extras b{color:var(--text);display:block}
+
+/* main board */
 .main{display:grid;grid-template-columns:1fr 340px;gap:22px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .search{flex:1;min-width:220px;display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
 .search input{flex:1;background:none;border:0;outline:0;color:var(--text);font:inherit;font-size:15px}
 .search input::placeholder{color:var(--dim)}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:14px;cursor:pointer;transition:.2s}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:14px;cursor:pointer;transition:.2s}
 .chip:hover{border-color:var(--line-strong);color:var(--text)}
 .chip.on{background:rgba(94,234,255,.14);border-color:var(--cyan);color:var(--cyan);box-shadow:var(--glow)}
-
 .teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:14px}
-.card{position:relative;padding:18px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,rgba(10,30,44,.7),rgba(6,18,28,.55));backdrop-filter:blur(8px);cursor:pointer;transition:transform .25s,border-color .25s,box-shadow .25s;animation:in .5s both}
+.card{position:relative;padding:18px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,rgba(10,30,44,.7),rgba(6,18,28,.55));cursor:pointer;transition:transform .25s,border-color .25s,box-shadow .25s;animation:in .5s both}
 .card:hover{transform:translateY(-4px);border-color:var(--line-strong);box-shadow:0 12px 40px -12px rgba(94,234,255,.35)}
 .card.fresh{border-color:var(--new);box-shadow:0 0 0 1px var(--new),0 0 30px rgba(244,114,182,.3)}
+.card.mine{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 30px rgba(252,211,77,.3)}
 @keyframes in{from{opacity:0;transform:translateY(10px)}}
 .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .num{font-family:"Space Grotesk";color:var(--dim);font-size:13px}
@@ -79,44 +141,124 @@ header{display:flex;align-items:center;justify-content:space-between;gap:20px;fl
 .status.ok{color:var(--ok);border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.08)}
 .status.wait{color:var(--wait);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
 .status.new{color:var(--new);border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.1)}
+.status.mine{color:var(--gold);border-color:rgba(252,211,77,.45);background:rgba(252,211,77,.1)}
 .card h3{font-size:21px;font-weight:800;margin:8px 0 4px}
 .card .idea{color:var(--muted);font-size:14px;line-height:1.5;min-height:42px}
-.track{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--cyan);padding:4px 10px;border-radius:8px;background:rgba(94,234,255,.08)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.track{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--cyan);padding:4px 10px;border-radius:8px;background:rgba(94,234,255,.08)}
+.track.need{color:var(--new);background:rgba(244,114,182,.1)}
 .leader{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
 .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px;color:#02131b;flex:none;position:relative}
 .av:after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--cyan);opacity:.6}
 .leader .who small{display:block;font-size:11px;color:var(--dim);letter-spacing:.06em}
 .leader .who b{font-size:15px}
-.leader .who em{display:flex;align-items:center;gap:5px;font-style:normal;font-size:13px;color:var(--muted)}
+.leader .who em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
 .members{display:flex;margin-inline-start:auto}
 .members i{width:24px;height:24px;border-radius:50%;border:2px solid var(--panel-solid);margin-inline-start:-8px;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700;color:#02131b}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 0}
-
-/* side */
 aside{display:flex;flex-direction:column;gap:16px}
-.panel{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px)}
-.panel h4{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
-.panel h4 span{color:var(--dim);font-weight:400;font-size:12px}
+aside h4{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+aside h4 span{color:var(--dim);font-weight:400;font-size:12px}
 .orig{display:grid;gap:10px}
-.orow{display:grid;grid-template-columns:96px 1fr 26px;gap:10px;align-items:center;font-size:13px;cursor:pointer}
-.orow:hover .otrack i{filter:brightness(1.3)}
+.orow{display:grid;grid-template-columns:22px 92px 1fr 26px;gap:8px;align-items:center;font-size:13px;cursor:pointer}
+.orow .rk{font-family:"Space Grotesk";color:var(--dim)}
+.orow:first-child .rk{color:var(--gold)}
 .otrack{height:8px;border-radius:9px;background:rgba(94,234,255,.08);overflow:hidden}
 .otrack i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--cyan-deep),var(--cyan));transition:width .8s}
+.orow:first-child .otrack i{background:linear-gradient(90deg,#b45309,var(--gold))}
 .orow b{font-family:"Space Grotesk";color:var(--cyan);text-align:left}
-.feed{display:grid;gap:10px;max-height:300px;overflow:hidden}
+.feed{display:grid;gap:10px}
 .fi{display:flex;gap:10px;align-items:center;font-size:13px;padding:10px;border-radius:12px;background:rgba(3,7,13,.45);border:1px solid transparent;animation:in .5s both}
 .fi:first-child{border-color:rgba(244,114,182,.35)}
 .fi .t{color:var(--dim);font-size:11px;margin-inline-start:auto;white-space:nowrap}
-.fi b{color:var(--text)}
-.mapbox{position:relative;height:210px;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(14,116,144,.15),transparent 70%)}
+.mapbox{height:210px;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(14,116,144,.15),transparent 70%)}
 .mapbox svg{width:100%;height:100%}
 .pin{animation:ping 2.4s infinite;transform-origin:center;transform-box:fill-box}
 @keyframes ping{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(2.4)}}
+.roles{display:grid;gap:8px}
+.roles div{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.roles b{color:var(--text);font-family:"Space Grotesk"}
+.stack{display:flex;height:10px;border-radius:9px;overflow:hidden;margin:4px 0 12px}
+
+/* spotlight */
+.spot{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;padding:24px 28px;border-radius:22px;border:1px solid var(--line-strong);
+  background:linear-gradient(120deg,rgba(94,234,255,.1),rgba(6,18,28,.7) 40%);position:relative;overflow:hidden}
+.spot .badge{position:absolute;top:14px;left:18px;font-size:12px;color:var(--cyan);letter-spacing:.12em}
+.spot .av{width:84px;height:84px;font-size:28px}
+.spot h3{font-size:30px;font-weight:900}
+.spot p{color:var(--muted);margin-top:4px}
+.spot .q{font-size:18px;margin-top:10px;color:var(--text)}
+.spot-dots{display:flex;gap:6px}
+.spot-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.spot-dots i.on{background:var(--cyan);box-shadow:var(--glow)}
+
+/* timeline */
+.timeline{display:grid;grid-template-columns:repeat(6,1fr);gap:0;position:relative}
+.timeline:before{content:"";position:absolute;top:22px;inset-inline:6%;height:2px;background:linear-gradient(90deg,var(--cyan-deep),var(--cyan),var(--cyan-deep));opacity:.5}
+.step{text-align:center;padding:0 8px;position:relative}
+.step i{width:46px;height:46px;border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;font-style:normal;font-size:20px;background:var(--panel-solid);border:1.5px solid var(--line-strong);box-shadow:var(--glow);position:relative}
+.step b{display:block;font-family:"Space Grotesk";color:var(--cyan);font-size:14px}
+.step span{display:block;font-weight:700;margin:4px 0}
+.step small{color:var(--muted);font-size:13px;line-height:1.4;display:block}
+
+/* why + judges */
+.why{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.why div{padding:22px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel);transition:.25s}
+.why div:hover{border-color:var(--line-strong);transform:translateY(-3px)}
+.why i{font-style:normal;font-size:28px}
+.why b{display:block;font-size:18px;margin:10px 0 6px}
+.why p{color:var(--muted);font-size:14px;line-height:1.55}
+.judges{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.judge{text-align:center;padding:20px 12px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel)}
+.judge .av{width:72px;height:72px;margin:0 auto 12px;font-size:24px}
+.judge b{display:block}
+.judge small{color:var(--muted);font-size:13px}
+.judge .tag{display:inline-block;margin-top:8px;font-size:11px;color:var(--cyan);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+
+/* looking for team */
+.lft{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.lf{padding:16px;border-radius:16px;border:1px dashed rgba(244,114,182,.35);background:rgba(244,114,182,.04);display:flex;gap:12px;align-items:center}
+.lf b{display:block}
+.lf small{color:var(--muted);font-size:13px}
+.lf button{margin-inline-start:auto;padding:6px 12px;border-radius:10px;border:1px solid rgba(244,114,182,.5);background:none;color:var(--new);cursor:pointer;font-size:13px;white-space:nowrap}
+
+/* share */
+.share{display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:center;padding:30px;border-radius:24px;border:1px solid var(--line-strong);background:linear-gradient(135deg,rgba(14,116,144,.3),rgba(6,18,28,.8))}
+.share h2{font-size:clamp(26px,3vw,36px);font-weight:900;line-height:1.15}
+.share p{color:var(--muted);margin:10px 0 18px;line-height:1.6}
+.sbtns{display:flex;gap:10px;flex-wrap:wrap}
+.sbtn{display:inline-flex;gap:8px;align-items:center;padding:11px 16px;border-radius:12px;border:1px solid var(--line);background:rgba(3,7,13,.5);color:var(--text);cursor:pointer;font-size:14px;text-decoration:none}
+.sbtn:hover{border-color:var(--line-strong)}
+.sbtn.wa{background:#25d366;color:#04210f;border:0;font-weight:700}
+.qrbox{justify-self:center;text-align:center}
+.qrbox #qr{padding:14px;background:#fff;border-radius:18px;box-shadow:0 0 0 4px rgba(94,234,255,.35),0 0 40px rgba(94,234,255,.35);display:inline-block}
+.qrbox small{display:block;margin-top:10px;color:var(--muted)}
+
+/* faq */
+.faq{display:grid;gap:10px}
+details{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:16px 18px}
+summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between}
+summary:after{content:"+";color:var(--cyan);font-size:20px;line-height:1}
+details[open] summary:after{content:"–"}
+details p{color:var(--muted);margin-top:10px;line-height:1.6}
+
+.contacts{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:30px}
+footer{margin-top:30px;text-align:center;color:var(--dim);font-size:13px}
+
+/* floating */
+.fab{position:fixed;bottom:18px;right:18px;z-index:16}
+.toast-zone{position:fixed;bottom:18px;left:18px;z-index:16;display:grid;gap:8px;max-width:320px}
+.toast{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(10,28,41,.95);border:1px solid var(--line-strong);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13px;animation:tin .4s both}
+.toast.out{animation:tout .4s both}
+@keyframes tin{from{opacity:0;transform:translateY(20px)}}
+@keyframes tout{to{opacity:0;transform:translateY(20px)}}
+.toast .av{width:32px;height:32px;font-size:12px}
+.demo{position:fixed;top:62px;left:14px;z-index:5;font-size:12px;color:var(--dim);padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(3,7,13,.7)}
 
 /* modal */
-.modal{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(1,4,8,.75);backdrop-filter:blur(6px);padding:16px}
+.modal{position:fixed;inset:0;z-index:30;display:none;place-items:center;background:rgba(1,4,8,.78);backdrop-filter:blur(6px);padding:16px;overflow:auto}
 .modal.open{display:grid}
-.sheet{width:min(560px,100%);border:1px solid var(--line-strong);border-radius:22px;background:linear-gradient(180deg,#0b2333,#06121c);padding:28px;box-shadow:0 30px 80px -20px rgba(94,234,255,.35);animation:in .3s both;position:relative}
+.sheet{width:min(580px,100%);border:1px solid var(--line-strong);border-radius:22px;background:linear-gradient(180deg,#0b2333,#06121c);padding:28px;box-shadow:0 30px 80px -20px rgba(94,234,255,.35);animation:in .3s both;position:relative}
 .sheet .x{position:absolute;left:16px;top:16px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--muted);font-size:18px;cursor:pointer}
 .sheet h2{font-size:28px;font-weight:900}
 .sheet .idea{color:var(--muted);margin:6px 0 18px;line-height:1.6}
@@ -129,237 +271,417 @@ aside{display:flex;flex-direction:column;gap:16px}
 .meta div{padding:12px;border-radius:12px;border:1px solid var(--line);text-align:center}
 .meta small{color:var(--dim);font-size:11px;display:block}
 .meta b{font-size:14px}
+form{display:grid;gap:12px;margin-top:16px}
+form label{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+form input,form select{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(3,7,13,.6);color:var(--text);font:inherit;font-size:15px;outline:0}
+form input:focus,form select:focus{border-color:var(--cyan);box-shadow:var(--glow)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-.demo{position:fixed;bottom:14px;left:14px;z-index:5;font-size:12px;color:var(--dim);padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(3,7,13,.7)}
-footer{margin-top:40px;text-align:center;color:var(--dim);font-size:13px}
+/* kiosk */
+body.kiosk .urgent,body.kiosk .hdr-actions .ghost:not(#kioskBtn),body.kiosk .toolbar,body.kiosk .chips,body.kiosk .fab,body.kiosk .hide-kiosk{display:none!important}
+body.kiosk .wrap{max-width:none}
 
-@media (max-width:1000px){.hero,.main{grid-template-columns:1fr}}
-@media (max-width:560px){.wrap{padding:18px 16px 70px}.title{padding:24px}.kpi .val{font-size:34px}.cd{min-width:58px}.orow{grid-template-columns:80px 1fr 22px}}
+@media (max-width:1100px){.hero,.main,.share{grid-template-columns:1fr}.judges{grid-template-columns:repeat(3,1fr)}.why,.extras{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:repeat(3,1fr);row-gap:26px}.timeline:before{display:none}}
+@media (max-width:640px){.wrap{padding:0 16px 120px}.urgent{margin:0 -16px;padding:8px 16px;font-size:13px}.marquee{margin-inline:-16px}.title{padding:24px}.cd{min-width:62px}.cd b{font-size:26px}
+ .prizes{grid-template-columns:1fr}.prize.first{order:-1}.why,.extras,.row2{grid-template-columns:1fr}.judges{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:1fr 1fr}
+ .spot{grid-template-columns:1fr;text-align:center}.spot .av{margin:0 auto}.spot-dots{justify-content:center}.kpi .val{font-size:32px}.orow{grid-template-columns:18px 76px 1fr 22px}.demo{top:auto;bottom:84px}.toast-zone{bottom:84px;right:16px;left:16px;max-width:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<canvas id="net"></canvas>
+<canvas id="net"></canvas><canvas id="confetti"></canvas>
 <div class="aurora"></div>
 
 <div class="wrap">
+  <!-- urgency strip -->
+  <div class="urgent" id="urgent">
+    <span>🔥 <b>ההרשמה נסגרת בעוד</b></span><span class="mini" id="regMini">--</span>
+    <span>· נשארו <b id="spotsMini">--</b> מקומות</span>
+    <button class="go" data-open-reg>שריינו מקום</button>
+  </div>
+
   <header>
     <div class="brand">
       <div class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 11 21 3l-8 18-2-8-8-2Z" fill="#5eeaff" opacity=".9"/><path d="M11 13 21 3" stroke="#03070d" stroke-width="1.4"/></svg></div>
       <div><small>מחדשים היום · מובילים את המחר</small><b>ועדת <span>חדשנות</span> · מערך ספיר</b></div>
     </div>
-    <div class="live"><span class="dot"></span><span>הרשמה פתוחה · מתעדכן בזמן אמת</span></div>
+    <div class="hdr-actions">
+      <div class="live"><span class="dot"></span><span id="liveTxt">מתעדכן בזמן אמת</span></div>
+      <button class="ghost" id="calBtn">📅 הוסף ליומן</button>
+      <button class="ghost" id="kioskBtn" title="מצב מסך גדול להקרנה בלובי">📺 מצב הקרנה</button>
+    </div>
   </header>
 
+  <!-- HERO -->
   <section class="hero">
     <div class="title">
-      <div class="eyebrow">חמ"ל הרשמה · מסך צוותים</div>
+      <div class="eyebrow">חמ"ל הרשמה · כל הצוותים בזמן אמת</div>
       <h1>האקתון בסימן<span class="en">AI Agents</span></h1>
-      <p>כל הצוותים שכבר בפנים: מי מוביל, מאיפה הגיעו ומה הם הולכים לבנות. כרטיס נפתח בלחיצה ומציג את כל חברי הצוות.</p>
+      <p>24 שעות. צוותים מכל הנגב. סוכני AI אמיתיים שפותרים בעיות אמיתיות. כל מי שכבר בפנים מופיע כאן, ואתם יכולים להיות הבאים.</p>
+      <div class="cd-label" id="cdLabel">⏱ ההאקתון מתחיל בעוד</div>
       <div class="countdown" id="cd"></div>
+      <div class="hero-cta">
+        <button class="cta" data-open-reg>🚀 רושמים צוות עכשיו</button>
+        <a class="ghost" href="#board" style="text-decoration:none;padding:13px 18px">לצפייה בצוותים ↓</a>
+      </div>
+      <div class="facts"><span>📍 קמפוס מכללת ספיר</span><span>🍕 אוכל ושתייה כל הלילה</span><span>🎓 פתוח לסטודנטים, תלמידים ויזמים</span></div>
     </div>
-    <div class="kpis">
-      <div class="kpi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M15 14.5c3 0 5 1.6 5 4"/></svg>
-        <div class="lbl">צוותים רשומים</div><div class="val" id="kTeams">0</div><div class="sub" id="kTeamsSub">+0 היום</div></div>
-      <div class="kpi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><circle cx="12" cy="7" r="3.5"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg>
-        <div class="lbl">משתתפים</div><div class="val" id="kPeople">0</div><div class="sub" id="kAvg">ממוצע 0 לצוות</div></div>
-      <div class="kpi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.4"/></svg>
-        <div class="lbl">ערים ומוסדות</div><div class="val" id="kPlaces">0</div><div class="sub" id="kTop">—</div></div>
-      <div class="kpi goal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="#5eeaff"/></svg>
-        <div class="lbl">יעד: 40 צוותים</div><div class="val" id="kGoal">0%</div><div class="bar"><i id="kBar" style="width:0"></i></div></div>
+    <div class="side-hero">
+      <div class="kpi spots">
+        <div class="ring"><svg width="110" height="110"><circle cx="55" cy="55" r="46" stroke="rgba(94,234,255,.12)" stroke-width="10" fill="none"/><circle id="ringArc" cx="55" cy="55" r="46" stroke="url(#rg)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289" style="transition:stroke-dashoffset 1s"/><defs><linearGradient id="rg"><stop offset="0" stop-color="#5eeaff"/><stop offset="1" stop-color="#ff5d73"/></linearGradient></defs></svg><b><span id="spotsLeft">--</span><small>מקומות</small></b></div>
+        <div><h3>המקומות נגמרים</h3><p><span id="spotsTxt">--</span><br><span class="hotline" id="spotsHot"></span></p></div>
+      </div>
+      <div class="kpi"><div class="lbl">צוותים רשומים</div><div class="val" id="kTeams">0</div><div class="sub" id="kTeamsSub"></div></div>
+      <div class="kpi"><div class="lbl">משתתפים</div><div class="val" id="kPeople">0</div><div class="sub" id="kAvg"></div></div>
+      <div class="kpi"><div class="lbl">ערים ומוסדות</div><div class="val" id="kPlaces">0</div><div class="sub" id="kTop"></div></div>
+      <div class="kpi"><div class="lbl">צופים עכשיו בדף</div><div class="val" id="kView">0</div><div class="sub" style="color:var(--new)">● בזמן אמת</div></div>
     </div>
   </section>
 
-  <section class="main">
+  <!-- partners marquee -->
+  <div class="marquee hide-kiosk"><div class="mtrack" id="marq"></div></div>
+
+  <!-- prizes -->
+  <div class="sec-h"><div><h2>על מה <span>מתחרים</span></h2><p>סכומים לדוגמה, לעדכון לפי התקציב בפועל</p></div></div>
+  <div class="prizes">
+    <div class="prize"><div class="medal">🥈</div><div class="amt en" data-count="5000">₪0</div><p>מקום שני</p></div>
+    <div class="prize first"><div class="medal">🏆</div><div class="amt en" data-count="10000">₪0</div><p>מקום ראשון + ליווי של 3 חודשים במעבדת היזמות</p></div>
+    <div class="prize"><div class="medal">🥉</div><div class="amt en" data-count="2500">₪0</div><p>מקום שלישי</p></div>
+  </div>
+  <div class="pool">סך כל הפרסים: <b class="en" id="pool">₪17,500</b> · ועוד פרסי מסלול</div>
+  <div class="extras">
+    <div>🎯<span><b>פרס לכל מסלול</b>הצוות הטוב בכל אחד מ-6 המסלולים</span></div>
+    <div>❤️<span><b>פרס הקהל</b>הצבעה חיה בדף הזה בזמן ההצגות</span></div>
+    <div>💼<span><b>ראיונות עבודה</b>מהירים אצל השותפים</span></div>
+    <div>📜<span><b>תעודת השתתפות</b>לכל משתתף, ללינקדאין</span></div>
+  </div>
+
+  <!-- spotlight -->
+  <div class="sec-h"><div><h2>צוות <span>בזרקור</span></h2><p>מתחלף כל כמה שניות</p></div><div class="spot-dots" id="spotDots"></div></div>
+  <div class="spot" id="spot"></div>
+
+  <!-- board -->
+  <div class="sec-h" id="board"><div><h2>כל <span>הצוותים</span></h2><p>לחיצה על כרטיס פותחת את כל חברי הצוות</p></div></div>
+  <section class="main" style="margin-top:0">
     <div>
       <div class="toolbar">
         <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86a9b6" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input id="q" placeholder="חיפוש צוות, ראש צוות, עיר או רעיון…"></label>
       </div>
-      <div class="chips" id="tracks" style="margin-bottom:16px"></div>
+      <div class="chips" id="tracks"></div>
       <div class="teams" id="grid"></div>
     </div>
-
     <aside>
-      <div class="panel">
-        <h4>מפת המשתתפים <span>לפי עיר מגורים</span></h4>
-        <div class="mapbox" id="map"></div>
-      </div>
-      <div class="panel">
-        <h4>מאיפה הצוותים <span>לחיצה מסננת</span></h4>
-        <div class="orig" id="orig"></div>
-      </div>
-      <div class="panel">
-        <h4>נרשמו עכשיו <span id="clock"></span></h4>
-        <div class="feed" id="feed"></div>
-      </div>
+      <div class="panel"><h4>🏁 קרב הערים <span>מי מביאה הכי הרבה צוותים?</span></h4><div class="orig" id="orig"></div></div>
+      <div class="panel"><h4>מפת המשתתפים <span>לפי עיר</span></h4><div class="mapbox" id="map"></div></div>
+      <div class="panel"><h4>נרשמו עכשיו <span id="clock"></span></h4><div class="feed" id="feed"></div></div>
+      <div class="panel"><h4>הרכב המשתתפים <span>לפי תפקיד</span></h4><div class="stack" id="stack"></div><div class="roles" id="roles"></div></div>
     </aside>
   </section>
 
-  <footer>ועדת חדשנות · מערך ספיר · מסך הדמיה לתצוגה</footer>
+  <!-- looking for team -->
+  <div class="hide-kiosk">
+  <div class="sec-h"><div><h2>מחפשים <span>צוות?</span></h2><p>אין לכם צוות? אלה כבר מחכים לשותפים</p></div></div>
+  <div class="lft" id="lft"></div>
+  </div>
+
+  <!-- timeline -->
+  <div class="sec-h"><div><h2>לוח <span>הזמנים</span></h2><p>24 שעות מהרעיון ועד הבמה</p></div></div>
+  <div class="timeline" id="tl"></div>
+
+  <!-- why -->
+  <div class="sec-h hide-kiosk"><div><h2>למה <span>להשתתף</span></h2></div></div>
+  <div class="why hide-kiosk">
+    <div><i>🤖</i><b>בונים סוכן אמיתי</b><p>לא מצגת, אלא מוצר שעובד. יוצאים עם פרויקט לתיק העבודות.</p></div>
+    <div><i>🧠</i><b>מנטורים מהתעשייה</b><p>אנשי AI, מוצר ויזמות עוברים בין השולחנות כל הלילה.</p></div>
+    <div><i>🤝</i><b>נטוורקינג</b><p>פוגשים חברות, משקיעים וסטודנטים מכל הנגב.</p></div>
+    <div><i>🎁</i><b>פרסים וחוויה</b><p>פרסים כספיים, ליווי, אוכל, מוזיקה ולילה שלא שוכחים.</p></div>
+  </div>
+
+  <!-- judges -->
+  <div class="sec-h hide-kiosk"><div><h2>השופטים <span>והמנטורים</span></h2><p>מקומות שמורים, השמות ייחשפו בקרוב</p></div></div>
+  <div class="judges hide-kiosk" id="judges"></div>
+
+  <!-- share -->
+  <div class="sec-h hide-kiosk"><div><h2>תביאו את <span>החברים</span></h2></div></div>
+  <div class="share">
+    <div>
+      <h2>צוות של 3 עד 5.<br>חסר לכם אחד? תשלחו לו.</h2>
+      <p>כל שיתוף מקרב את העיר שלכם לראש קרב הערים. מי שמביא את הכי הרבה חברים מקבל חולצת האקתון מיוחדת.</p>
+      <div class="sbtns">
+        <a class="sbtn wa" id="waShare" target="_blank" rel="noopener">💬 שליחה בוואטסאפ</a>
+        <button class="sbtn" id="copyLink">🔗 העתקת קישור</button>
+        <button class="sbtn" id="nativeShare">📤 שיתוף</button>
+      </div>
+    </div>
+    <div class="qrbox"><div id="qr"></div><small>סורקים ונרשמים</small></div>
+  </div>
+
+  <!-- faq -->
+  <div class="sec-h hide-kiosk"><div><h2>שאלות <span>נפוצות</span></h2></div></div>
+  <div class="faq hide-kiosk">
+    <details><summary>צריך לדעת לתכנת?</summary><p>לא חובה. צוות טוב כולל גם מעצבים, אנשי שיווק ואנשי תוכן. כלי ה-AI של היום מאפשרים לבנות סוכן גם בלי רקע עמוק בקוד.</p></details>
+    <details><summary>כמה אנשים בצוות?</summary><p>בין 3 ל-5. אין צוות? הירשמו לבד, ונחבר אתכם לצוות דרך "מחפשים צוות".</p></details>
+    <details><summary>כמה זה עולה?</summary><p>ההשתתפות חינמית, כולל אוכל ושתייה לאורך כל האירוע.</p></details>
+    <details><summary>מה מביאים?</summary><p>מחשב נייד, מטען, רעיון (או סקרנות) ואנרגיה ל-24 שעות.</p></details>
+    <details><summary>מי יכול להשתתף?</summary><p>סטודנטים, תלמידי תיכון, בוגרים ויזמים מכל הארץ, ובמיוחד מהנגב המערבי.</p></details>
+  </div>
+
+  <div class="contacts hide-kiosk">
+    <a class="sbtn" href="https://wa.me/972504331633" target="_blank" rel="noopener">💬 גיא עמוס · 050-4331633</a>
+    <a class="sbtn" href="https://wa.me/972548784433" target="_blank" rel="noopener">💬 יובל פרימן · 054-8784433</a>
+  </div>
+  <footer>ועדת חדשנות · מערך ספיר · מסך הדמיה</footer>
 </div>
 
-<div class="demo">⚡ נתוני הדמיה, לא רישום אמיתי</div>
-
+<div class="fab"><button class="cta" data-open-reg>🚀 להרשמה</button></div>
+<div class="toast-zone" id="toasts"></div>
+<div class="demo">⚡ נתוני הדמיה</div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
 <script>
-// ---- demo data (fictional) ----
-const PALETTE=["#5eeaff","#7dd3fc","#a5f3fc","#67e8f9","#99f6e4","#c4b5fd","#f9a8d4","#fde68a"];
-const CITIES={ // rough relative positions on a mini map of the south (x,y in 0..100)
- "שדרות":[42,30],"נתיבות":[48,46],"אופקים":[56,58],"באר שבע":[70,62],"אשקלון":[30,14],"קיבוץ ניר עם":[38,26],
- "תל אביב":[40,-2],"ירוחם":[78,82],"דימונה":[86,76],"רהט":[66,50]
+/* ================= CONFIG: לעדכן לפני פרסום ================= */
+const CONFIG={
+  eventStart:(()=>{const d=new Date();d.setDate(d.getDate()+12);d.setHours(9,0,0,0);return d})(),   // תחילת ההאקתון
+  eventHours:24,
+  regClose:(()=>{const d=new Date();d.setDate(d.getDate()+5);d.setHours(23,59,0,0);return d})(),   // סגירת ההרשמה
+  maxTeams:40,
+  regUrl:location.href.split("#")[0],   // קישור ההרשמה (הקוד בפוסטר)
+  shareText:"נרשמתי להאקתון בסימן AI Agents בספיר! חסר לנו עוד אחד בצוות 👇"
 };
+/* ============================================================= */
+
+const PALETTE=["#5eeaff","#7dd3fc","#a5f3fc","#67e8f9","#99f6e4","#c4b5fd","#f9a8d4","#fde68a"];
+const CITIES={"שדרות":[42,30],"נתיבות":[48,46],"אופקים":[56,58],"באר שבע":[70,62],"אשקלון":[30,14],"קיבוץ ניר עם":[38,26],"תל אביב":[40,-2],"ירוחם":[78,82],"דימונה":[86,76],"רהט":[66,50]};
 const TRACKS=["חינוך","בריאות","עסקים קטנים","חקלאות","קהילה וחוסן","נגישות"];
+const ROLES=[["מפתחים","#5eeaff",.46],["מעצבים","#c4b5fd",.18],["מוצר ועסקים","#fde68a",.2],["תוכן ושיווק","#f9a8d4",.16]];
 const seed=[
- ["NegevMind","סוכן שמלווה תלמידי תיכון בהכנה לבגרות ומתאים תרגול לכל תלמיד","חינוך","נועה לוי","שדרות","ספיר · הנדסת תוכנה",["עומר","שירה","דניאל","מאיה"],"ok"],
- ["Shift+Agent","סוכן שמשבץ משמרות לעסקים קטנים ומטפל בהחלפות בוואטסאפ","עסקים קטנים","אביב כהן","נתיבות","ספיר · ניהול",["רון","טל","ליה"],"ok"],
- ["AgroSense","סוכן שקורא חיישני השקיה ומתריע לחקלאי לפני שהיבול נפגע","חקלאות","יונתן אזולאי","קיבוץ ניר עם","ספיר · מדעי הנתונים",["גל","אלון","הדר","נטע"],"ok"],
- ["Kav Ham","מוקד חוסן קהילתי: סוכן שמחבר מתנדבים לפניות בזמן חירום","קהילה וחוסן","מיכל פרץ","שדרות","ספיר · עבודה סוציאלית",["איתי","רוני","עדי"],"ok"],
- ["SeeFor.me","סוכן קולי שמתאר לעיוורים את מה שהמצלמה רואה, בעברית","נגישות","עידו ביטון","באר שבע","בן־גוריון · הנדסת חשמל",["יעל","אורי","נוי","שחר"],"ok"],
- ["DocTalk","סוכן שמסכם ביקור אצל רופא ושולח למטופל תזכורות לתרופות","בריאות","רותם אוחיון","אופקים","ספיר · סיעוד",["בן","ליאור","אגם"],"wait"],
- ["ClassPilot","סוכן למורה: בונה מערכי שיעור ובודק עבודות לפי מחוון","חינוך","דנה שושן","אשקלון","ספיר · חינוך",["מאור","עמית","שני","תמר"],"ok"],
- ["Tziporen","סוכן שמנהל את כל הניירת של עסק קטן: חשבוניות, ספקים, תשלומים","עסקים קטנים","אליה מזרחי","נתיבות","יזמים עצמאיים",["דור","אוריה"],"wait"],
- ["Hive Medic","סוכן טריאז' לקופת חולים שמכוון פונים לשירות הנכון","בריאות","שקד גבאי","באר שבע","סורוקה · צוות חדשנות",["נדב","ענבר","קרן","לביא"],"ok"],
- ["Orchard OS","תכנון קטיף ועובדים לפי תחזית מזג אוויר וזמינות","חקלאות","אסף דהן","אופקים","מושב · חקלאים צעירים",["יובל","אביטל","הלל"],"ok"],
- ["Bridge","סוכן תרגום עברית־ערבית־אמהרית לרשויות מקומיות","קהילה וחוסן","סלמאן אבו־קף","רהט","ספיר · תקשורת",["מוחמד","ריהאם","ספיר"],"ok"],
- ["StepUp","סוכן שמתאים מסלולי נגישות במבני ציבור ומדווח על חסמים","נגישות","הילה בן־שושן","ירוחם","ספיר · הנדסה",["אופיר","גאיה","זיו"],"wait"],
- ["Mentor360","סוכן חונך לסטודנטים בשנה א', מזהה נשירה מוקדם","חינוך","אור ששון","דימונה","ספיר · מדעי ההתנהגות",["אליאור","מעיין","רז","נגה"],"ok"],
- ["Kupa.ai","סוכן שעונה ללקוחות של מכולת שכונתית ומזמין מלאי לבד","עסקים קטנים","שי עמר","שדרות","תיכון שער הנגב",["אלה","עידן","יהב"],"ok"],
+ ["NegevMind","סוכן שמלווה תלמידי תיכון בהכנה לבגרות ומתאים תרגול לכל תלמיד","חינוך","נועה לוי","שדרות","ספיר · הנדסת תוכנה",["עומר","שירה","דניאל","מאיה"],"ok","רצינו שכל תלמיד בשדרות יקבל מורה פרטי"],
+ ["Shift+Agent","סוכן שמשבץ משמרות לעסקים קטנים ומטפל בהחלפות בוואטסאפ","עסקים קטנים","אביב כהן","נתיבות","ספיר · ניהול",["רון","טל","ליה"],"ok","אבא שלי מבזבז שעתיים ביום על סידור עבודה"],
+ ["AgroSense","סוכן שקורא חיישני השקיה ומתריע לחקלאי לפני שהיבול נפגע","חקלאות","יונתן אזולאי","קיבוץ ניר עם","ספיר · מדעי הנתונים",["גל","אלון","הדר","נטע"],"ok","הנגב יכול להיות עמק הסיליקון של החקלאות"],
+ ["Kav Ham","מוקד חוסן קהילתי: סוכן שמחבר מתנדבים לפניות בזמן חירום","קהילה וחוסן","מיכל פרץ","שדרות","ספיר · עבודה סוציאלית",["איתי","רוני","עדי"],"ok","ראינו מה קורה כשאין מי שעונה לטלפון"],
+ ["SeeFor.me","סוכן קולי שמתאר לעיוורים את מה שהמצלמה רואה, בעברית","נגישות","עידו ביטון","באר שבע","בן־גוריון · הנדסת חשמל",["יעל","אורי","נוי","שחר"],"ok","סבא שלי ביקש שמישהו יקריא לו את המכתבים"],
+ ["DocTalk","סוכן שמסכם ביקור אצל רופא ושולח תזכורות לתרופות","בריאות","רותם אוחיון","אופקים","ספיר · סיעוד",["בן","ליאור","אגם"],"wait","מטופלים שוכחים חצי ממה שהרופא אמר"],
+ ["ClassPilot","סוכן למורה: בונה מערכי שיעור ובודק עבודות לפי מחוון","חינוך","דנה שושן","אשקלון","ספיר · חינוך",["מאור","עמית","שני","תמר"],"ok","מורים צריכים זמן ללמד, לא לבדוק"],
+ ["Tziporen","סוכן שמנהל את הניירת של עסק קטן: חשבוניות, ספקים, תשלומים","עסקים קטנים","אליה מזרחי","נתיבות","יזמים עצמאיים",["דור","אוריה"],"wait","בעל עסק צריך למכור, לא לסדר קבלות"],
+ ["Hive Medic","סוכן טריאז' שמכוון פונים לשירות הרפואי הנכון","בריאות","שקד גבאי","באר שבע","סורוקה · צוות חדשנות",["נדב","ענבר","קרן","לביא"],"ok","חדר המיון מלא באנשים שלא צריכים להיות בו"],
+ ["Orchard OS","תכנון קטיף ועובדים לפי תחזית מזג אוויר וזמינות","חקלאות","אסף דהן","אופקים","מושב · חקלאים צעירים",["יובל","אביטל","הלל"],"ok","יום קטיף שהתפספס זה כסף שהלך"],
+ ["Bridge","סוכן תרגום עברית־ערבית־אמהרית לרשויות מקומיות","קהילה וחוסן","סלמאן אבו־קף","רהט","ספיר · תקשורת",["מוחמד","ריהאם","ספיר"],"ok","שפה לא צריכה להיות מחסום לשירות"],
+ ["StepUp","סוכן שממפה נגישות במבני ציבור ומדווח על חסמים","נגישות","הילה בן־שושן","ירוחם","ספיר · הנדסה",["אופיר","גאיה","זיו"],"wait","כל מדרגה בלי רמפה היא דלת סגורה"],
+ ["Mentor360","סוכן חונך לסטודנטים בשנה א', מזהה נשירה מוקדם","חינוך","אור ששון","דימונה","ספיר · מדעי ההתנהגות",["אליאור","מעיין","רז","נגה"],"ok","כמעט נשרתי בשנה א'. זה מה שהיה חסר לי"],
+ ["Kupa.ai","סוכן שעונה ללקוחות של מכולת שכונתית ומזמין מלאי לבד","עסקים קטנים","שי עמר","שדרות","תיכון שער הנגב",["אלה","עידן","יהב"],"ok","אנחנו בכיתה י\"א ורוצים לנצח את הסטודנטים"],
 ];
-const LATE=[ // will "register" live
- ["Pulse","סוכן שמנטר קשישים בודדים בשיחה יומית ומתריע למשפחה","בריאות","טליה רביבו","קיבוץ ניר עם","ספיר · גרונטולוגיה",["אריאל","צליל","יואב"]],
+const LATE=[
+ ["Pulse","סוכן שמשוחח כל יום עם קשישים בודדים ומתריע למשפחה","בריאות","טליה רביבו","קיבוץ ניר עם","ספיר · גרונטולוגיה",["אריאל","צליל","יואב"]],
  ["Sand Robots","סוכנים שמתאמים רחפני ריסוס בשדות","חקלאות","ניר חדד","נתיבות","הנדסאים · מכטרוניקה",["עדן","פלג","מור","רועי"]],
  ["Lomdim","סוכן שמסביר מתמטיקה בקול ובשפת סימנים","נגישות","קורל אלמוג","אשקלון","ספיר · חינוך מיוחד",["אוהד","ליבי"]],
  ["Kehila OS","סוכן לוועדי שכונה: סקרים, אירועים ותקציב","קהילה וחוסן","בר יוסף","באר שבע","בן־גוריון · מדיניות",["סתיו","אלמוג","נועם"]],
  ["Startupy","סוכן שהופך רעיון לתוכנית עסקית ומצגת למשקיעים","עסקים קטנים","ליאם גולן","תל אביב","בוגרי ספיר",["דין","שגיא","אנה","יאיר"]],
+ ["GreenBot","סוכן שמנהל חיסכון באנרגיה בבתי ספר","חינוך","מאיה אלון","שדרות","ספיר · הנדסת סביבה",["יונה","אלעד","תום"]],
 ];
+const LFT=[["רז","מפתח Python","אופקים"],["ליאן","מעצבת UX","באר שבע"],["עמרי","דאטה ו-ML","שדרות"],["נגה","שיווק דיגיטלי","נתיבות"],["אדם","Full-Stack","אשקלון"],["שיר","ניהול מוצר","שדרות"]];
+const PARTNERS=[["🎓","מכללת ספיר"],["🚀","מעבדת היזמות"],["🏛️","עיריית שדרות"],["💡","ועדת חדשנות"],["☁️","שותף ענן"],["🤖","שותף AI"],["🏦","קרן הון סיכון"],["📡","חברת סייבר"]];
+const JUDGES=[["שופט/ת אורח/ת","מנכ\"ל סטארט-אפ AI","AI"],["מנטור/ית","מהנדס/ת ML בחברת ענק","ML"],["שופט/ת","משקיע/ה בקרן הון סיכון","VC"],["מנטור/ית","מעצב/ת מוצר בכיר/ה","UX"],["שופט/ת","ראש/ת מערך החדשנות","ספיר"]];
+const TIMELINE=[["09:00","🎤","פתיחה","הרצאת השראה והצגת המסלולים"],["10:00","⌨️","יוצאים לדרך","הצוותים מתחילים לבנות"],["14:00","🧭","סבב מנטורים","מנטורים עוברים בין השולחנות"],["00:00","🍕","חצות","פיצה, מוזיקה ותחרות מיני-אתגרים"],["07:00","⏰","עצירת קוד","מגישים את הסוכן"],["09:00","🏆","הצגות וטקס","5 דקות לצוות, הכרזה על הזוכים"]];
+
 let teams=seed.map((t,i)=>mk(t,i,Date.now()-(seed.length-i)*37*60e3));
-function mk(t,i,ts){return{id:i+1,name:t[0],idea:t[1],track:t[2],leader:t[3],city:t[4],org:t[5],members:t[6],status:t[7]||"new",ts,color:PALETTE[i%PALETTE.length]}}
-const initials=n=>n.split(/[\s־]+/).map(w=>w[0]).slice(0,2).join("");
-
-// ---- state ----
-let fTrack="הכל", fCity=null, q="";
+function mk(t,i,ts){return{id:i+1,name:t[0],idea:t[1],track:t[2],leader:t[3],city:t[4],org:t[5],members:t[6],status:t[7]||"new",quote:t[8]||"",ts,color:PALETTE[i%PALETTE.length]}}
+// teams the viewer registered on this device
+try{(JSON.parse(localStorage.getItem("hk_mine")||"[]")).forEach(t=>teams.push({...t,id:teams.length+1,status:"mine"}))}catch(e){}
+const initials=n=>n.split(/[\s־]+/).filter(Boolean).map(w=>w[0]).slice(0,2).join("");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $=s=>document.querySelector(s);
+let fTrack="הכל",fCity=null,q="";
 
+/* ---------- board ---------- */
 function renderChips(){
-  $("#tracks").innerHTML=["הכל",...TRACKS].map(t=>{
-    const n=t==="הכל"?teams.length:teams.filter(x=>x.track===t).length;
-    return `<button class="chip ${t===fTrack?"on":""}" data-t="${t}">${t} · ${n}</button>`}).join("")+
-    (fCity?`<button class="chip on" data-c="x">📍 ${fCity} ✕</button>`:"");
+  $("#tracks").innerHTML=["הכל",...TRACKS].map(t=>{const n=t==="הכל"?teams.length:teams.filter(x=>x.track===t).length;
+    return `<button class="chip ${t===fTrack?"on":""}" data-t="${t}">${t} · ${n}</button>`}).join("")+(fCity?`<button class="chip on" data-c="x">📍 ${esc(fCity)} ✕</button>`:"");
 }
-function filtered(){
-  return teams.filter(t=>(fTrack==="הכל"||t.track===fTrack)&&(!fCity||t.city===fCity)&&
-   (!q||[t.name,t.leader,t.city,t.org,t.idea,...t.members].join(" ").includes(q)));
-}
+const filtered=()=>teams.filter(t=>(fTrack==="הכל"||t.track===fTrack)&&(!fCity||t.city===fCity)&&(!q||[t.name,t.leader,t.city,t.org,t.idea,...t.members].join(" ").includes(q)));
 function card(t){
-  const st={ok:["מאושר","ok"],wait:["ממתין לאישור","wait"],new:["חדש!","new"]}[t.status];
-  return `<article class="card ${t.status==="new"?"fresh":""}" data-id="${t.id}">
+  const st={ok:["מאושר","ok"],wait:["ממתין לאישור","wait"],new:["חדש!","new"],mine:["הצוות שלך ⭐","mine"]}[t.status];
+  const need=t.members.length<3;
+  return `<article class="card ${t.status==="new"?"fresh":t.status==="mine"?"mine":""}" data-id="${t.id}">
    <div class="top"><span class="num en">#${String(t.id).padStart(2,"0")}</span><span class="status ${st[1]}">${st[0]}</span></div>
-   <h3 class="en">${t.name}</h3><p class="idea">${t.idea}</p>
-   <span class="track">◆ ${t.track}</span>
-   <div class="leader">
-     <div class="av" style="background:${t.color}">${initials(t.leader)}</div>
-     <div class="who"><small>ראש צוות</small><b>${t.leader}</b><em>📍 ${t.city} · ${t.org}</em></div>
-     <div class="members">${t.members.slice(0,3).map((m,i)=>`<i style="background:${PALETTE[(t.id+i+2)%PALETTE.length]}">${m[0]}</i>`).join("")}${t.members.length>3?`<i style="background:#1e3a4a;color:#cfefff">+${t.members.length-3}</i>`:""}</div>
+   <h3 class="en">${esc(t.name)}</h3><p class="idea">${esc(t.idea)}</p>
+   <div class="tags"><span class="track">◆ ${esc(t.track)}</span>${need?`<span class="track need">מחפשים עוד ${3-t.members.length} חברים</span>`:""}</div>
+   <div class="leader"><div class="av" style="background:${t.color}">${esc(initials(t.leader))}</div>
+     <div class="who"><small>ראש צוות</small><b>${esc(t.leader)}</b><em>📍 ${esc(t.city)} · ${esc(t.org)}</em></div>
+     <div class="members">${t.members.slice(0,3).map((m,i)=>`<i style="background:${PALETTE[(t.id+i+2)%PALETTE.length]}">${esc(m[0]||"?")}</i>`).join("")}${t.members.length>3?`<i style="background:#1e3a4a;color:#cfefff">+${t.members.length-3}</i>`:""}</div>
    </div></article>`;
 }
-function renderGrid(){
-  const list=filtered().sort((a,b)=>b.ts-a.ts);
-  $("#grid").innerHTML=list.length?list.map(card).join(""):`<div class="empty">אין צוותים שמתאימים לחיפוש</div>`;
-}
-function countUp(el,to,suf=""){
-  const from=+el.dataset.v||0; el.dataset.v=to; const t0=performance.now();
-  const step=n=>{const p=Math.min(1,(n-t0)/700);el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-p,3)))+suf;if(p<1)requestAnimationFrame(step)};
+function renderGrid(){const l=filtered().sort((a,b)=>b.ts-a.ts);$("#grid").innerHTML=l.length?l.map(card).join(""):`<div class="empty">אין צוותים שמתאימים לחיפוש</div>`}
+function countUp(el,to,pre="",suf=""){
+  const from=+el.dataset.v||0;el.dataset.v=to;const t0=performance.now();
+  const step=n=>{const p=Math.min(1,(n-t0)/900);el.textContent=pre+Math.round(from+(to-from)*(1-Math.pow(1-p,3))).toLocaleString("he-IL")+suf;if(p<1)requestAnimationFrame(step)};
   requestAnimationFrame(step);
 }
-function renderKpis(){
-  const people=teams.reduce((s,t)=>s+t.members.length+1,0);
-  const places=new Set(teams.map(t=>t.city)).size;
-  const today=teams.filter(t=>Date.now()-t.ts<24*36e5).length;
-  countUp($("#kTeams"),teams.length); $("#kTeamsSub").textContent=`+${today} ב-24 השעות האחרונות`;
-  countUp($("#kPeople"),people); $("#kAvg").textContent=`ממוצע ${(people/teams.length).toFixed(1)} לצוות`;
-  countUp($("#kPlaces"),places);
-  const top=Object.entries(cityCounts()).sort((a,b)=>b[1]-a[1])[0]; $("#kTop").textContent=`הכי הרבה: ${top[0]} (${top[1]})`;
-  const g=Math.round(teams.length/40*100); countUp($("#kGoal"),g,"%"); $("#kBar").style.width=g+"%";
-}
 const cityCounts=()=>teams.reduce((m,t)=>(m[t.city]=(m[t.city]||0)+1,m),{});
+function renderKpis(){
+  const people=teams.reduce((s,t)=>s+t.members.length+1,0),places=new Set(teams.map(t=>t.city)).size;
+  const today=teams.filter(t=>Date.now()-t.ts<24*36e5).length;
+  countUp($("#kTeams"),teams.length);$("#kTeamsSub").textContent=`+${today} ב-24 השעות האחרונות`;
+  countUp($("#kPeople"),people);$("#kAvg").textContent=`ממוצע ${(people/teams.length).toFixed(1)} לצוות`;
+  countUp($("#kPlaces"),places);
+  const top=Object.entries(cityCounts()).sort((a,b)=>b[1]-a[1])[0];$("#kTop").textContent=`מובילה: ${top[0]}`;
+  const left=Math.max(0,CONFIG.maxTeams-teams.length),pct=teams.length/CONFIG.maxTeams;
+  $("#spotsLeft").textContent=left;$("#spotsMini").textContent=left;
+  $("#ringArc").style.strokeDashoffset=289*(1-Math.min(1,pct));
+  $("#spotsTxt").textContent=`${teams.length} מתוך ${CONFIG.maxTeams} מקומות כבר תפוסים (${Math.round(pct*100)}%).`;
+  $("#spotsHot").textContent=left<=10?"🔥 נשארו פחות מ-10. אחרי זה רשימת המתנה.":left<=25?"⚡ קצב ההרשמה עולה. כדאי לא לחכות.":"";
+  [20,25,30,35,40].forEach(m=>{if(teams.length>=m&&!milestones.has(m)){milestones.add(m);if(booted){confetti();toast(null,`🎉 עברנו ${m} צוותים!`)}}});
+}
+const milestones=new Set();let booted=false;
 function renderOrig(){
-  const c=Object.entries(cityCounts()).sort((a,b)=>b[1]-a[1]); const max=c[0][1];
-  $("#orig").innerHTML=c.map(([k,v])=>`<div class="orow" data-city="${k}"><span>${k}</span><div class="otrack"><i style="width:${v/max*100}%"></i></div><b>${v}</b></div>`).join("");
+  const c=Object.entries(cityCounts()).sort((a,b)=>b[1]-a[1]),max=c[0][1];
+  $("#orig").innerHTML=c.map(([k,v],i)=>`<div class="orow" data-city="${esc(k)}"><span class="rk">${i===0?"👑":i+1}</span><span>${esc(k)}</span><div class="otrack"><i style="width:${v/max*100}%"></i></div><b>${v}</b></div>`).join("");
 }
 function renderMap(){
-  const c=cityCounts();
-  let s=`<svg viewBox="-5 -10 110 105" preserveAspectRatio="xMidYMid meet">
-   <path d="M30 -8 L52 -6 L62 20 L80 40 L96 70 L92 92 L70 95 L60 80 L46 62 L34 40 L24 18 Z" fill="rgba(94,234,255,.05)" stroke="rgba(94,234,255,.25)" stroke-width=".5" stroke-dasharray="1.5 1.5"/>
-   <text x="2" y="10" fill="#4f6f7c" font-size="4" font-family="Heebo">הים התיכון</text>`;
-  const keys=Object.keys(c);
+  const c=cityCounts(),keys=Object.keys(c);
+  let s=`<svg viewBox="-5 -10 110 105" preserveAspectRatio="xMidYMid meet"><path d="M30 -8 L52 -6 L62 20 L80 40 L96 70 L92 92 L70 95 L60 80 L46 62 L34 40 L24 18 Z" fill="rgba(94,234,255,.05)" stroke="rgba(94,234,255,.25)" stroke-width=".5" stroke-dasharray="1.5 1.5"/><text x="0" y="10" fill="#4f6f7c" font-size="4.4" font-family="Heebo">הים התיכון</text>`;
   keys.forEach((k,i)=>{const [x,y]=CITIES[k]||[50,50];keys.slice(i+1).forEach(k2=>{const [x2,y2]=CITIES[k2]||[50,50];if(Math.hypot(x-x2,y-y2)<30)s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="rgba(94,234,255,.15)" stroke-width=".4"/>`})});
-  keys.forEach(k=>{const [x,y]=CITIES[k]||[50,50];const r=2+c[k]*1.1;
-    s+=`<circle class="pin" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#5eeaff" stroke-width=".5"/>
-        <circle cx="${x}" cy="${y}" r="${r*.55}" fill="#5eeaff" opacity=".85"/>
-        <text x="${x-r-1}" y="${y+1.4}" fill="#cfefff" font-size="4.6" font-family="Heebo" text-anchor="start">${k} · ${c[k]}</text>`});
+  keys.forEach(k=>{const [x,y]=CITIES[k]||[50,50],r=2+c[k]*1.1;s+=`<circle class="pin" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#5eeaff" stroke-width=".5"/><circle cx="${x}" cy="${y}" r="${r*.55}" fill="#5eeaff" opacity=".85"/><text x="${x-r-1}" y="${y+1.5}" fill="#cfefff" font-size="4.6" font-family="Heebo">${esc(k)} · ${c[k]}</text>`});
   $("#map").innerHTML=s+"</svg>";
 }
 function ago(ts){const m=Math.round((Date.now()-ts)/6e4);return m<1?"עכשיו":m<60?`לפני ${m} דק'`:`לפני ${Math.round(m/60)} שע'`}
-function renderFeed(){
-  $("#feed").innerHTML=[...teams].sort((a,b)=>b.ts-a.ts).slice(0,5).map(t=>`<div class="fi"><div class="av" style="width:30px;height:30px;font-size:11px;background:${t.color}">${initials(t.leader)}</div><div><b class="en">${t.name}</b> · ${t.leader}<br><span style="color:var(--muted)">${t.city}</span></div><span class="t">${ago(t.ts)}</span></div>`).join("");
+function renderFeed(){$("#feed").innerHTML=[...teams].sort((a,b)=>b.ts-a.ts).slice(0,5).map(t=>`<div class="fi"><div class="av" style="width:30px;height:30px;font-size:11px;background:${t.color}">${esc(initials(t.leader))}</div><div><b class="en">${esc(t.name)}</b> · ${esc(t.leader)}<br><span style="color:var(--muted)">${esc(t.city)}</span></div><span class="t">${ago(t.ts)}</span></div>`).join("")}
+function renderRoles(){
+  const people=teams.reduce((s,t)=>s+t.members.length+1,0);
+  $("#stack").innerHTML=ROLES.map(r=>`<i style="width:${r[2]*100}%;background:${r[1]}"></i>`).join("");
+  $("#roles").innerHTML=ROLES.map(r=>`<div><span><span style="color:${r[1]}">●</span> ${r[0]}</span><b>${Math.round(people*r[2])}</b></div>`).join("");
 }
-function renderAll(){renderChips();renderGrid();renderKpis();renderOrig();renderMap();renderFeed()}
+function renderAll(){renderChips();renderGrid();renderKpis();renderOrig();renderMap();renderFeed();renderRoles()}
 
-// modal
-function openTeam(id){
-  const t=teams.find(x=>x.id==id);
-  $("#sheet").innerHTML=`<button class="x" aria-label="סגור">✕</button>
-   <span class="track">◆ מסלול ${t.track}</span><h2 class="en" style="margin-top:10px">${t.name}</h2><p class="idea">${t.idea}</p>
-   <div class="meta"><div><small>עיר</small><b>${t.city}</b></div><div><small>מוסד</small><b>${t.org}</b></div><div><small>חברים</small><b>${t.members.length+1}</b></div></div>
-   <div class="mlist">
-    <div class="mrow"><div class="av" style="background:${t.color}">${initials(t.leader)}</div><div><b>${t.leader}</b><small>${t.org}</small></div><span class="crown">ראש צוות</span></div>
-    ${t.members.map((m,i)=>`<div class="mrow"><div class="av" style="background:${PALETTE[(t.id+i+2)%PALETTE.length]}">${m[0]}</div><div><b>${m}</b><small>חבר/ת צוות</small></div></div>`).join("")}
-   </div>`;
-  $("#modal").classList.add("open");
+/* ---------- spotlight ---------- */
+let si=0;
+function renderSpot(){
+  const pool=teams.filter(t=>t.quote||t.status==="mine");const t=pool[si%pool.length];
+  $("#spot").innerHTML=`<span class="badge">★ SPOTLIGHT</span><div class="av" style="background:${t.color}">${esc(initials(t.leader))}</div>
+   <div><h3 class="en">${esc(t.name)}</h3><p>${esc(t.leader)}, ראש הצוות · 📍 ${esc(t.city)} · ${esc(t.org)}</p><div class="q">“${esc(t.quote||t.idea)}”</div></div>
+   <button class="ghost" data-id="${t.id}">לכל הצוות ←</button>`;
+  $("#spotDots").innerHTML=pool.slice(0,10).map((_,i)=>`<i class="${i===si%Math.min(10,pool.length)?"on":""}"></i>`).join("");
 }
-document.addEventListener("click",e=>{
-  const c=e.target.closest(".card"); if(c) return openTeam(c.dataset.id);
-  const ch=e.target.closest(".chip"); if(ch){ if(ch.dataset.c) fCity=null; else fTrack=ch.dataset.t; renderChips();renderGrid();return }
-  const o=e.target.closest(".orow"); if(o){ fCity=fCity===o.dataset.city?null:o.dataset.city; renderChips();renderGrid();return }
-  if(e.target.id==="modal"||e.target.closest(".x")) $("#modal").classList.remove("open");
-});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#modal").classList.remove("open")});
-$("#q").addEventListener("input",e=>{q=e.target.value.trim();renderGrid()});
+setInterval(()=>{si++;renderSpot()},6000);
 
-// live simulation
-let li=0;
-setInterval(()=>{
-  if(li>=LATE.length) return;
-  teams.forEach(t=>{if(t.status==="new")t.status="wait"});
-  teams.push(mk(LATE[li],teams.length,Date.now())); li++;
-  renderAll();
-},9000);
+/* ---------- static sections ---------- */
+$("#marq").innerHTML=[...PARTNERS,...PARTNERS].map(p=>`<span><i>${p[0]}</i>${p[1]}</span>`).join("");
+$("#judges").innerHTML=JUDGES.map((j,i)=>`<div class="judge"><div class="av" style="background:${PALETTE[(i+3)%8]}">?</div><b>${j[0]}</b><small>${j[1]}</small><br><span class="tag">${j[2]}</span></div>`).join("");
+$("#tl").innerHTML=TIMELINE.map(s=>`<div class="step"><i>${s[1]}</i><b>${s[0]}</b><span>${s[2]}</span><small>${s[3]}</small></div>`).join("");
+$("#lft").innerHTML=LFT.map((p,i)=>`<div class="lf"><div class="av" style="width:40px;height:40px;font-size:14px;background:${PALETTE[(i+5)%8]}">${p[0][0]}</div><div><b>${p[0]}</b><small>${p[1]} · ${p[2]}</small></div><button data-open-reg>לצרף</button></div>`).join("");
+new IntersectionObserver((e,o)=>{if(e.some(x=>x.isIntersecting)){document.querySelectorAll("[data-count]").forEach(el=>countUp(el,+el.dataset.count,"₪"));o.disconnect()}},{threshold:.2}).observe(document.querySelector(".prizes"));
 
-// countdown to event (demo date)
-const EVENT=new Date(); EVENT.setDate(EVENT.getDate()+12); EVENT.setHours(9,0,0,0);
+/* ---------- countdowns ---------- */
+let prev=[];
 function tick(){
-  let d=Math.max(0,EVENT-Date.now());const u=[["ימים",864e5],["שעות",36e5],["דקות",6e4],["שניות",1e3]];
-  $("#cd").innerHTML=u.map(([l,ms])=>{const v=Math.floor(d/ms);d-=v*ms;return `<div class="cd"><b>${String(v).padStart(2,"0")}</b><span>${l}</span></div>`}).join("");
+  const now=Date.now(),start=+CONFIG.eventStart,end=start+CONFIG.eventHours*36e5;
+  let target=start,label="⏱ ההאקתון מתחיל בעוד";
+  if(now>=start&&now<end){target=end;label="🔴 ההאקתון בעיצומו · נשאר עד עצירת הקוד"}
+  else if(now>=end){target=now;label="🏆 ההאקתון הסתיים. תודה לכל הצוותים!"}
+  let d=Math.max(0,target-now);const u=[["ימים",864e5],["שעות",36e5],["דקות",6e4],["שניות",1e3]];
+  const vals=u.map(([,ms])=>{const v=Math.floor(d/ms);d-=v*ms;return v});
+  $("#cdLabel").textContent=label;
+  const cd=$("#cd");cd.classList.toggle("final",target-now<864e5&&target>now);
+  cd.innerHTML=u.map(([l],i)=>`<div class="cd ${vals[i]!==prev[i]?"flip":""}"><b class="en">${String(vals[i]).padStart(2,"0")}</b><span>${l}</span></div>`).join("");prev=vals;
+  // registration
+  let r=Math.max(0,CONFIG.regClose-now);const rd=Math.floor(r/864e5);r-=rd*864e5;const rh=Math.floor(r/36e5);r-=rh*36e5;const rm=Math.floor(r/6e4);const rs=Math.floor((r-rm*6e4)/1e3);
+  $("#regMini").textContent=CONFIG.regClose>now?`${rd} ימים ${String(rh).padStart(2,"0")}:${String(rm).padStart(2,"0")}:${String(rs).padStart(2,"0")}`:"ההרשמה נסגרה";
   $("#clock").textContent=new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
 }
 setInterval(tick,1000);tick();setInterval(renderFeed,30000);
 
-// neural network background
-const cv=$("#net"),cx=cv.getContext("2d");let P=[];
-function size(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio;
-  P=Array.from({length:Math.min(90,Math.round(innerWidth/16))},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25}))}
-function draw(){
-  cx.clearRect(0,0,cv.width,cv.height);const D=140*devicePixelRatio;
-  for(const p of P){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>cv.width)p.vx*=-1;if(p.y<0||p.y>cv.height)p.vy*=-1}
-  for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],b=P[j],d=Math.hypot(a.x-b.x,a.y-b.y);
-    if(d<D){cx.strokeStyle=`rgba(94,234,255,${.14*(1-d/D)})`;cx.lineWidth=devicePixelRatio*.7;cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke()}}
-  for(const p of P){cx.fillStyle="rgba(94,234,255,.7)";cx.beginPath();cx.arc(p.x,p.y,1.4*devicePixelRatio,0,7);cx.fill()}
-  if(!matchMedia("(prefers-reduced-motion: reduce)").matches)requestAnimationFrame(draw);
+/* ---------- live viewers (demo) ---------- */
+let viewers=37;setInterval(()=>{viewers=Math.max(12,viewers+Math.round((Math.random()-.45)*4));countUp($("#kView"),viewers)},4000);
+
+/* ---------- toasts ---------- */
+function toast(t,msg){
+  const el=document.createElement("div");el.className="toast";
+  el.innerHTML=t?`<div class="av" style="background:${t.color}">${esc(initials(t.leader))}</div><div><b>${esc(t.leader)}</b> מ${esc(t.city)} רשם/ה את <b class="en">${esc(t.name)}</b><br><span style="color:var(--muted)">עכשיו · נשארו ${Math.max(0,CONFIG.maxTeams-teams.length)} מקומות</span></div>`:`<div>${msg}</div>`;
+  $("#toasts").prepend(el);setTimeout(()=>{el.classList.add("out");setTimeout(()=>el.remove(),400)},5200);
 }
+
+/* ---------- live simulation ---------- */
+let li=0;
+setInterval(()=>{
+  if(li>=LATE.length)return;
+  teams.forEach(t=>{if(t.status==="new")t.status="wait"});
+  const t=mk(LATE[li],teams.length,Date.now());teams.push(t);li++;
+  renderAll();toast(t);$("#liveTxt").textContent="צוות חדש נרשם עכשיו!";setTimeout(()=>$("#liveTxt").textContent="מתעדכן בזמן אמת",3000);
+},11000);
+
+/* ---------- modal: team ---------- */
+function openTeam(id){
+  const t=teams.find(x=>x.id==id);if(!t)return;
+  $("#sheet").innerHTML=`<button class="x" aria-label="סגור">✕</button><span class="track">◆ מסלול ${esc(t.track)}</span><h2 class="en" style="margin-top:10px">${esc(t.name)}</h2><p class="idea">${esc(t.idea)}</p>
+   <div class="meta"><div><small>עיר</small><b>${esc(t.city)}</b></div><div><small>מוסד</small><b>${esc(t.org)}</b></div><div><small>חברים</small><b>${t.members.length+1}</b></div></div>
+   <div class="mlist"><div class="mrow"><div class="av" style="background:${t.color}">${esc(initials(t.leader))}</div><div><b>${esc(t.leader)}</b><small>${esc(t.org)}</small></div><span class="crown">ראש צוות</span></div>
+   ${t.members.map((m,i)=>`<div class="mrow"><div class="av" style="background:${PALETTE[(t.id+i+2)%8]}">${esc(m[0]||"?")}</div><div><b>${esc(m)}</b><small>חבר/ת צוות</small></div></div>`).join("")}</div>`;
+  $("#modal").classList.add("open");
+}
+/* ---------- modal: register ---------- */
+function openReg(){
+  $("#sheet").innerHTML=`<button class="x" aria-label="סגור">✕</button><span class="track">נשארו ${Math.max(0,CONFIG.maxTeams-teams.length)} מקומות</span>
+   <h2 style="margin-top:10px">רישום צוות 🚀</h2><p class="idea" style="margin-bottom:0">שתי דקות, והצוות שלכם מופיע על המסך.</p>
+   <form id="regForm">
+    <label>שם הצוות<input name="name" required maxlength="24" placeholder="למשל NegevBots"></label>
+    <div class="row2"><label>ראש הצוות<input name="leader" required maxlength="30" placeholder="שם מלא"></label>
+    <label>עיר<input name="city" required maxlength="20" list="cityList" placeholder="שדרות"></label></div>
+    <datalist id="cityList">${Object.keys(CITIES).map(c=>`<option value="${c}">`).join("")}</datalist>
+    <div class="row2"><label>מוסד / מחלקה<input name="org" maxlength="30" placeholder="ספיר · הנדסת תוכנה"></label>
+    <label>מסלול<select name="track">${TRACKS.map(t=>`<option>${t}</option>`).join("")}</select></label></div>
+    <label>הרעיון במשפט<input name="idea" required maxlength="90" placeholder="סוכן ש..."></label>
+    <label>חברי הצוות (שמות, מופרדים בפסיק)<input name="members" maxlength="80" placeholder="דנה, עומר, ליה"></label>
+    <button class="cta" style="justify-content:center">שריינו לנו מקום</button>
+   </form>`;
+  $("#modal").classList.add("open");
+  $("#regForm").addEventListener("submit",e=>{
+    e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+    const t={name:f.name,idea:f.idea,track:f.track,leader:f.leader,city:f.city,org:f.org||"עצמאי",members:(f.members||"").split(/[,،]/).map(s=>s.trim()).filter(Boolean),status:"mine",quote:f.idea,ts:Date.now(),color:"#fcd34d",id:teams.length+1};
+    teams.push(t);try{const m=JSON.parse(localStorage.getItem("hk_mine")||"[]");m.push(t);localStorage.setItem("hk_mine",JSON.stringify(m))}catch(err){}
+    $("#sheet").innerHTML=`<button class="x" aria-label="סגור">✕</button><div style="text-align:center;padding:10px 0"><div style="font-size:60px">🎉</div><h2>אתם בפנים!</h2><p class="idea">הצוות <b class="en">${esc(t.name)}</b> כבר על המסך, מסומן בזהב. עכשיו תשלחו לחברים:</p>
+     <a class="sbtn wa" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`הצוות שלנו ${t.name} נרשם להאקתון בסימן AI Agents! 🚀 תצטרפו: ${CONFIG.regUrl}`)}">💬 לשתף בוואטסאפ</a></div>`;
+    renderAll();confetti();toast(t);
+  });
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-open-reg]"))return openReg();
+  const c=e.target.closest(".card,[data-id]");if(c&&!e.target.closest(".sheet"))return openTeam(c.dataset.id);
+  const ch=e.target.closest(".chip");if(ch){if(ch.dataset.c)fCity=null;else fTrack=ch.dataset.t;renderChips();renderGrid();return}
+  const o=e.target.closest(".orow");if(o){fCity=fCity===o.dataset.city?null:o.dataset.city;renderChips();renderGrid();$("#board").scrollIntoView();return}
+  if(e.target.id==="modal"||e.target.closest(".x"))$("#modal").classList.remove("open");
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#modal").classList.remove("open")});
+$("#q").addEventListener("input",e=>{q=e.target.value.trim();renderGrid()});
+
+/* ---------- share / calendar / kiosk ---------- */
+$("#waShare").href="https://wa.me/?text="+encodeURIComponent(CONFIG.shareText+" "+CONFIG.regUrl);
+$("#copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(CONFIG.regUrl);toast(null,"🔗 הקישור הועתק")}catch(e){toast(null,CONFIG.regUrl)}};
+$("#nativeShare").onclick=()=>navigator.share?navigator.share({title:"האקתון AI Agents",text:CONFIG.shareText,url:CONFIG.regUrl}).catch(()=>{}):$("#copyLink").click();
+try{new QRCode($("#qr"),{text:CONFIG.regUrl,width:150,height:150,colorDark:"#03070d",colorLight:"#ffffff"})}catch(e){$("#qr").textContent="QR"}
+$("#calBtn").onclick=()=>{
+  const f=d=>d.toISOString().replace(/[-:]/g,"").split(".")[0]+"Z",end=new Date(+CONFIG.eventStart+CONFIG.eventHours*36e5);
+  const ics=`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//hackathon//he\r\nBEGIN:VEVENT\r\nUID:${Date.now()}@hackathon\r\nDTSTAMP:${f(new Date())}\r\nDTSTART:${f(CONFIG.eventStart)}\r\nDTEND:${f(end)}\r\nSUMMARY:האקתון בסימן AI Agents\r\nLOCATION:מכללת ספיר\r\nDESCRIPTION:${CONFIG.regUrl}\r\nBEGIN:VALARM\r\nTRIGGER:-P1D\r\nACTION:DISPLAY\r\nDESCRIPTION:מחר האקתון!\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR`;
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="hackathon-ai-agents.ics";a.click();
+};
+$("#kioskBtn").onclick=()=>{document.body.classList.toggle("kiosk");if(document.body.classList.contains("kiosk"))document.documentElement.requestFullscreen?.().catch(()=>{});else document.exitFullscreen?.().catch(()=>{})};
+let kdir=1;setInterval(()=>{if(!document.body.classList.contains("kiosk"))return;const max=document.body.scrollHeight-innerHeight;if(scrollY>=max-2)kdir=-1;if(scrollY<=0)kdir=1;scrollBy({top:kdir*innerHeight*.7,behavior:"smooth"})},7000);
+
+/* ---------- confetti ---------- */
+const cf=$("#confetti"),cc=cf.getContext("2d");let parts=[];
+function confetti(){cf.width=innerWidth;cf.height=innerHeight;for(let i=0;i<160;i++)parts.push({x:innerWidth/2,y:innerHeight/3,vx:(Math.random()-.5)*14,vy:Math.random()*-12-3,s:Math.random()*6+3,c:["#5eeaff","#fcd34d","#f472b6","#4ade80","#fff"][i%5],r:Math.random()*6,l:1});if(parts.length===160)requestAnimationFrame(cfLoop)}
+function cfLoop(){cc.clearRect(0,0,cf.width,cf.height);parts.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.vx*=.99;p.r+=.1;p.l-=.008;cc.save();cc.globalAlpha=Math.max(0,p.l);cc.translate(p.x,p.y);cc.rotate(p.r);cc.fillStyle=p.c;cc.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cc.restore()});parts=parts.filter(p=>p.l>0&&p.y<cf.height+20);if(parts.length)requestAnimationFrame(cfLoop);else cc.clearRect(0,0,cf.width,cf.height)}
+
+/* ---------- network background ---------- */
+const cv=$("#net"),cx=cv.getContext("2d");let P=[];
+function size(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio;P=Array.from({length:Math.min(90,Math.round(innerWidth/16))},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25}))}
+function draw(){cx.clearRect(0,0,cv.width,cv.height);const D=140*devicePixelRatio;
+  for(const p of P){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>cv.width)p.vx*=-1;if(p.y<0||p.y>cv.height)p.vy*=-1}
+  for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){const a=P[i],b=P[j],d=Math.hypot(a.x-b.x,a.y-b.y);if(d<D){cx.strokeStyle=`rgba(94,234,255,${.14*(1-d/D)})`;cx.lineWidth=devicePixelRatio*.7;cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke()}}
+  for(const p of P){cx.fillStyle="rgba(94,234,255,.7)";cx.beginPath();cx.arc(p.x,p.y,1.4*devicePixelRatio,0,7);cx.fill()}
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches)requestAnimationFrame(draw)}
 addEventListener("resize",size);size();draw();
-renderAll();
+
+renderAll();renderSpot();booted=true;countUp($("#kView"),viewers);
 </script>
 </body>
 </html>
