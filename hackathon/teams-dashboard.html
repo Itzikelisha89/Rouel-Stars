@@ -1,9 +1,5 @@
-<!doctype html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>חמ"ל צוותי ההאקתון</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="האקתון בסימן AI Agents: כל הצוותים שנרשמו, ספירה לאחור, פרסים ומקומות אחרונים">
 <meta property="og:title" content="האקתון בסימן AI Agents: הצוותים כבר כאן">
 <meta property="og:description" content="נשארו מקומות אחרונים. תראו מי כבר נרשם ותצטרפו">
@@ -17,18 +13,18 @@
   --cyan:#5eeaff; --cyan-deep:#0e7490; --glow:0 0 24px rgba(94,234,255,.35);
   --text:#e6fbff; --muted:#86a9b6; --dim:#4f6f7c;
   --ok:#4ade80; --wait:#fbbf24; --new:#f472b6; --hot:#ff5d73; --gold:#fcd34d;
-  --r:18px;
+  --r:18px;color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-html,body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif}
+html,body{background:var(--bg);color:var(--text);font-family:Heebo,system-ui,sans-serif;direction:rtl}
 body{overflow-x:hidden}
 button{font:inherit}
 #net,#confetti{position:fixed;inset:0;pointer-events:none}
 #net{z-index:0}#confetti{z-index:40}
 .aurora{position:fixed;inset:-20% -10% auto;height:70vh;z-index:0;pointer-events:none;
   background:radial-gradient(60% 60% at 70% 20%,rgba(34,195,230,.22),transparent 70%),radial-gradient(40% 50% at 15% 10%,rgba(14,116,144,.25),transparent 70%)}
-.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:0 24px 110px}
+.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding-block:0 110px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
 .en{font-family:"Space Grotesk",Heebo,sans-serif;letter-spacing:.02em}
 section{margin-top:22px}
 .sec-h{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:46px 0 18px}
@@ -38,7 +34,7 @@ section{margin-top:22px}
 .panel{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);backdrop-filter:blur(10px)}
 
 /* urgency bar */
-.urgent{position:sticky;top:0;z-index:15;margin:0 -24px;padding:10px 24px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+.urgent{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;margin:0 -24px;padding:10px 24px;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   background:linear-gradient(90deg,rgba(255,93,115,.18),rgba(14,116,144,.35),rgba(255,93,115,.18));border-bottom:1px solid rgba(255,93,115,.35);backdrop-filter:blur(12px);font-size:14px}
 .urgent b{color:#fff}
 .urgent .mini{font-family:"Space Grotesk";color:var(--hot);font-weight:700;letter-spacing:.04em}
@@ -246,8 +242,8 @@ details p{color:var(--muted);margin-top:10px;line-height:1.6}
 footer{margin-top:30px;text-align:center;color:var(--dim);font-size:13px}
 
 /* floating */
-.fab{position:fixed;bottom:18px;right:18px;z-index:16}
-.toast-zone{position:fixed;bottom:18px;left:18px;z-index:16;display:grid;gap:8px;max-width:320px}
+.fab{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));right:calc(18px + env(safe-area-inset-right,0px));z-index:16}
+.toast-zone{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:calc(18px + env(safe-area-inset-left,0px));z-index:16;display:grid;gap:8px;max-width:320px}
 .toast{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(10,28,41,.95);border:1px solid var(--line-strong);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13px;animation:tin .4s both}
 .toast.out{animation:tout .4s both}
 @keyframes tin{from{opacity:0;transform:translateY(20px)}}
@@ -282,13 +278,11 @@ body.kiosk .urgent,body.kiosk .hdr-actions .ghost:not(#kioskBtn),body.kiosk .too
 body.kiosk .wrap{max-width:none}
 
 @media (max-width:1100px){.hero,.main,.share{grid-template-columns:1fr}.judges{grid-template-columns:repeat(3,1fr)}.why,.extras{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:repeat(3,1fr);row-gap:26px}.timeline:before{display:none}}
-@media (max-width:640px){.wrap{padding:0 16px 120px}.urgent{margin:0 -16px;padding:8px 16px;font-size:13px}.marquee{margin-inline:-16px}.title{padding:24px}.cd{min-width:62px}.cd b{font-size:26px}
+@media (max-width:640px){.wrap{padding-block:0 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}.urgent{margin:0 -16px;padding:8px 16px;font-size:13px}.marquee{margin-inline:-16px}.title{padding:24px}.cd{min-width:62px}.cd b{font-size:26px}
  .prizes{grid-template-columns:1fr}.prize.first{order:-1}.why,.extras,.row2{grid-template-columns:1fr}.judges{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:1fr 1fr}
  .spot{grid-template-columns:1fr;text-align:center}.spot .av{margin:0 auto}.spot-dots{justify-content:center}.kpi .val{font-size:32px}.orow{grid-template-columns:18px 76px 1fr 22px}.demo{top:auto;bottom:84px}.toast-zone{bottom:84px;right:16px;left:16px;max-width:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
-</head>
-<body>
 <canvas id="net"></canvas><canvas id="confetti"></canvas>
 <div class="aurora"></div>
 
@@ -307,7 +301,7 @@ body.kiosk .wrap{max-width:none}
     </div>
     <div class="hdr-actions">
       <div class="live"><span class="dot"></span><span id="liveTxt">מתעדכן בזמן אמת</span></div>
-      <button class="ghost" id="calBtn">📅 הוסף ליומן</button>
+      <a class="ghost" id="calBtn" target="_blank" rel="noopener" style="text-decoration:none">📅 הוסף ליומן</a>
       <button class="ghost" id="kioskBtn" title="מצב מסך גדול להקרנה בלובי">📺 מצב הקרנה</button>
     </div>
   </header>
@@ -431,12 +425,11 @@ body.kiosk .wrap{max-width:none}
     <a class="sbtn" href="https://wa.me/972504331633" target="_blank" rel="noopener">💬 גיא עמוס · 050-4331633</a>
     <a class="sbtn" href="https://wa.me/972548784433" target="_blank" rel="noopener">💬 יובל פרימן · 054-8784433</a>
   </div>
-  <footer>ועדת חדשנות · מערך ספיר · מסך הדמיה</footer>
+  <footer>ועדת חדשנות · מערך ספיר · האקתון AI Agents<br><span style="opacity:.7">הצוותים והנתונים במסך זה הם הדמיה לצורך תצוגה</span></footer>
 </div>
 
 <div class="fab"><button class="cta" data-open-reg>🚀 להרשמה</button></div>
 <div class="toast-zone" id="toasts"></div>
-<div class="demo">⚡ נתוני הדמיה</div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
 <script>
@@ -445,8 +438,8 @@ const CONFIG={
   eventStart:(()=>{const d=new Date();d.setDate(d.getDate()+12);d.setHours(9,0,0,0);return d})(),   // תחילת ההאקתון
   eventHours:24,
   regClose:(()=>{const d=new Date();d.setDate(d.getDate()+5);d.setHours(23,59,0,0);return d})(),   // סגירת ההרשמה
-  maxTeams:40,
-  regUrl:location.href.split("#")[0],   // קישור ההרשמה (הקוד בפוסטר)
+  maxTeams:48,
+  regUrl:"https://claude.ai/artifact/SVXVHksKCWhZFTmJx9vhsk",   // קישור ההרשמה (הקוד בפוסטר)
   shareText:"נרשמתי להאקתון בסימן AI Agents בספיר! חסר לנו עוד אחד בצוות 👇"
 };
 /* ============================================================= */
@@ -469,6 +462,14 @@ const seed=[
  ["Bridge","סוכן תרגום עברית־ערבית־אמהרית לרשויות מקומיות","קהילה וחוסן","סלמאן אבו־קף","רהט","ספיר · תקשורת",["מוחמד","ריהאם","ספיר"],"ok","שפה לא צריכה להיות מחסום לשירות"],
  ["StepUp","סוכן שממפה נגישות במבני ציבור ומדווח על חסמים","נגישות","הילה בן־שושן","ירוחם","ספיר · הנדסה",["אופיר","גאיה","זיו"],"wait","כל מדרגה בלי רמפה היא דלת סגורה"],
  ["Mentor360","סוכן חונך לסטודנטים בשנה א', מזהה נשירה מוקדם","חינוך","אור ששון","דימונה","ספיר · מדעי ההתנהגות",["אליאור","מעיין","רז","נגה"],"ok","כמעט נשרתי בשנה א'. זה מה שהיה חסר לי"],
+ ["Moked360","סוכן שמנהל את מוקד העירייה: מקבל פניות, פותח קריאות ומעדכן את התושב","קהילה וחוסן","יואב קדוש","שדרות","עיריית שדרות · דיגיטל",["חן","נטלי","עומרי","שקד"],"ok","תושב צריך לדעת שמישהו מטפל בפנייה שלו"],
+ ["LabMate","סוכן מעבדה לסטודנטים: מסביר ניסויים, בודק דוחות ומזהה טעויות חישוב","חינוך","שירן אלמקייס","באר שבע","בן־גוריון · כימיה",["אסף","מיה","דורון"],"ok","דוח מעבדה לא צריך לקחת לילה שלם"],
+ ["Hagit","סוכן קולי לקשישים: תורים לרופא, תרופות ושיחה יומית, בעברית ורוסית","בריאות","אלכסנדר פרידמן","אשקלון","ספיר · מערכות מידע",["יאנה","מקסים","אורטל"],"ok","סבתא שלי מדברת רק רוסית ולא מסתדרת עם אפליקציות"],
+ ["FieldEye","סוכן שמזהה מחלות בעלים מתמונה ושולח המלצת טיפול לחקלאי","חקלאות","עדי ויצמן","נתיבות","ספיר · ביוטכנולוגיה",["רועי","הדס","אביב","גל"],"wait","הפסדנו חלקה שלמה בגלל מחלה שזיהינו מאוחר"],
+ ["Shuk.ai","סוכן שבונה לבעלי דוכנים בשוק חנות אונליין ומנהל הזמנות בוואטסאפ","עסקים קטנים","מורן אטיאס","באר שבע","ספיר · שיווק דיגיטלי",["אליעד","רתם","ספיר"],"ok","השוק של באר שבע צריך להיות גם באינטרנט"],
+ ["Signly","סוכן שמתרגם וידאו לשפת הסימנים הישראלית בזמן אמת","נגישות","תמר גרינברג","תל אביב","שנקר · עיצוב אינטראקציה",["נעמה","אורן","יעלי","טום"],"ok","אחי חירש ורוב התוכן ברשת לא נגיש לו"],
+ ["SafeRoute","סוכן שמחשב לתלמידים מסלול בטוח הביתה ומתריע להורים בזמן אמת","קהילה וחוסן","רון מלכה","אופקים","תיכון אופקים · מגמת מחשבים",["עדן","ליאל","איתמר"],"ok","בכיתה י\"ב ובונים משהו שההורים שלנו באמת צריכים"],
+ ["Tutor.he","סוכן שמלמד אנגלית בשיחה קולית, מותאם לרמה ולתחומי עניין","חינוך","ליאת חזן","דימונה","ספיר · אנגלית",["אריאל","שובל","דניאל","עמית"],"wait","אנגלית היא הכרטיס החוצה מהפריפריה"],
  ["Kupa.ai","סוכן שעונה ללקוחות של מכולת שכונתית ומזמין מלאי לבד","עסקים קטנים","שי עמר","שדרות","תיכון שער הנגב",["אלה","עידן","יהב"],"ok","אנחנו בכיתה י\"א ורוצים לנצח את הסטודנטים"],
 ];
 const LATE=[
@@ -530,7 +531,7 @@ function renderKpis(){
   $("#ringArc").style.strokeDashoffset=289*(1-Math.min(1,pct));
   $("#spotsTxt").textContent=`${teams.length} מתוך ${CONFIG.maxTeams} מקומות כבר תפוסים (${Math.round(pct*100)}%).`;
   $("#spotsHot").textContent=left<=10?"🔥 נשארו פחות מ-10. אחרי זה רשימת המתנה.":left<=25?"⚡ קצב ההרשמה עולה. כדאי לא לחכות.":"";
-  [20,25,30,35,40].forEach(m=>{if(teams.length>=m&&!milestones.has(m)){milestones.add(m);if(booted){confetti();toast(null,`🎉 עברנו ${m} צוותים!`)}}});
+  [25,30,35,40,45,48].forEach(m=>{if(teams.length>=m&&!milestones.has(m)){milestones.add(m);if(booted){confetti();toast(null,`🎉 עברנו ${m} צוותים!`)}}});
 }
 const milestones=new Set();let booted=false;
 function renderOrig(){
@@ -607,7 +608,7 @@ setInterval(()=>{
   teams.forEach(t=>{if(t.status==="new")t.status="wait"});
   const t=mk(LATE[li],teams.length,Date.now());teams.push(t);li++;
   renderAll();toast(t);$("#liveTxt").textContent="צוות חדש נרשם עכשיו!";setTimeout(()=>$("#liveTxt").textContent="מתעדכן בזמן אמת",3000);
-},11000);
+},26000);
 
 /* ---------- modal: team ---------- */
 function openTeam(id){
@@ -655,14 +656,11 @@ $("#q").addEventListener("input",e=>{q=e.target.value.trim();renderGrid()});
 
 /* ---------- share / calendar / kiosk ---------- */
 $("#waShare").href="https://wa.me/?text="+encodeURIComponent(CONFIG.shareText+" "+CONFIG.regUrl);
-$("#copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(CONFIG.regUrl);toast(null,"🔗 הקישור הועתק")}catch(e){toast(null,CONFIG.regUrl)}};
-$("#nativeShare").onclick=()=>navigator.share?navigator.share({title:"האקתון AI Agents",text:CONFIG.shareText,url:CONFIG.regUrl}).catch(()=>{}):$("#copyLink").click();
+$("#copyLink").onclick=()=>{navigator.clipboard.writeText(CONFIG.regUrl).then(()=>toast(null,"🔗 הקישור הועתק")).catch(()=>toast(null,"הקישור: "+CONFIG.regUrl))};
+$("#nativeShare").onclick=()=>{if(navigator.share)navigator.share({title:"האקתון AI Agents",text:CONFIG.shareText,url:CONFIG.regUrl}).catch(()=>$("#copyLink").click());else $("#copyLink").click()};
 try{new QRCode($("#qr"),{text:CONFIG.regUrl,width:150,height:150,colorDark:"#03070d",colorLight:"#ffffff"})}catch(e){$("#qr").textContent="QR"}
-$("#calBtn").onclick=()=>{
-  const f=d=>d.toISOString().replace(/[-:]/g,"").split(".")[0]+"Z",end=new Date(+CONFIG.eventStart+CONFIG.eventHours*36e5);
-  const ics=`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//hackathon//he\r\nBEGIN:VEVENT\r\nUID:${Date.now()}@hackathon\r\nDTSTAMP:${f(new Date())}\r\nDTSTART:${f(CONFIG.eventStart)}\r\nDTEND:${f(end)}\r\nSUMMARY:האקתון בסימן AI Agents\r\nLOCATION:מכללת ספיר\r\nDESCRIPTION:${CONFIG.regUrl}\r\nBEGIN:VALARM\r\nTRIGGER:-P1D\r\nACTION:DISPLAY\r\nDESCRIPTION:מחר האקתון!\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR`;
-  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="hackathon-ai-agents.ics";a.click();
-};
+{const f=d=>d.toISOString().replace(/[-:]/g,"").split(".")[0]+"Z",end=new Date(+CONFIG.eventStart+CONFIG.eventHours*36e5);
+ $("#calBtn").href="https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("האקתון בסימן AI Agents")+"&dates="+f(CONFIG.eventStart)+"/"+f(end)+"&location="+encodeURIComponent("מכללת ספיר")+"&details="+encodeURIComponent(CONFIG.regUrl);}
 $("#kioskBtn").onclick=()=>{document.body.classList.toggle("kiosk");if(document.body.classList.contains("kiosk"))document.documentElement.requestFullscreen?.().catch(()=>{});else document.exitFullscreen?.().catch(()=>{})};
 let kdir=1;setInterval(()=>{if(!document.body.classList.contains("kiosk"))return;const max=document.body.scrollHeight-innerHeight;if(scrollY>=max-2)kdir=-1;if(scrollY<=0)kdir=1;scrollBy({top:kdir*innerHeight*.7,behavior:"smooth"})},7000);
 
@@ -683,5 +681,3 @@ addEventListener("resize",size);size();draw();
 
 renderAll();renderSpot();booted=true;countUp($("#kView"),viewers);
 </script>
-</body>
-</html>
