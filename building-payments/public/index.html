@@ -86,6 +86,9 @@
         <button class="btn btn-gold admin-only" id="btnShare" title="שיתוף עם הקבלן והדיירים">
           <svg viewBox="0 0 24 24"><path d="M16 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zm10 7a3 3 0 100-6 3 3 0 000 6zM8.6 13.5l4.8 2.9m0-8.8l-4.8 2.9"/></svg><span>שיתוף</span>
         </button>
+        <button class="btn btn-ghost no-resident" id="btnReceipts" title="פרטי קבלות">
+          <svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2zM9 7h6M9 11h6M9 15h4"/></svg><span>קבלות</span>
+        </button>
         <button class="btn btn-ghost no-resident" id="btnReport" title="דוח מסירה לקבלן">
           <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5M9 12h8M9 16h8M9 8h3"/></svg><span>דוח לקבלן</span>
         </button>
@@ -450,6 +453,25 @@
       <button type="submit" class="btn btn-primary">שמירת מסמך</button>
     </footer>
   </form>
+</div>
+
+<!-- ========================= RECEIPTS PAGE ========================= -->
+<div id="receiptsPage" class="modal page-modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card wide">
+    <header class="modal-head">
+      <div><div class="eyebrow">לקבלן</div><h2>פרטי קבלות</h2></div>
+      <div class="rp-actions">
+        <button class="btn btn-primary" id="rpExport"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/></svg><span>ייצוא לאקסל</span></button>
+        <button type="button" class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </header>
+    <div class="modal-body">
+      <div class="rp-summary" id="rpSummary"></div>
+      <div class="rp-table-wrap"><table class="rp-table" id="rpTable"></table></div>
+      <p class="muted small rp-hint">לחיצה על שורה פותחת את כרטיס הדירה לעריכה. את הפרטים ממלא כל דייר דרך הקישור האישי שלו.</p>
+    </div>
+  </div>
 </div>
 
 <!-- ========================= EXPORT MODAL ========================= -->

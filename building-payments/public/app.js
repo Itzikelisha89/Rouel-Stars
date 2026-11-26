@@ -176,6 +176,7 @@
   function setState(next) {
     S = next;
     render();
+    if (!$("#receiptsPage").hidden) renderReceipts();
     if (currentApt) renderDrawer();
   }
 
@@ -1026,6 +1027,7 @@
     $("#setModal").hidden = true;
     $("#shareModal").hidden = true;
     $("#docModal").hidden = true;
+    $("#receiptsPage").hidden = true;
     closeDrawer();
   }
   document.addEventListener("keydown", (e) => {
@@ -1036,7 +1038,51 @@
     else if (!$("#setModal").hidden) $("#setModal").hidden = true;
     else if (!$("#shareModal").hidden) $("#shareModal").hidden = true;
     else if (!$("#docModal").hidden) $("#docModal").hidden = true;
+    else if (!$("#receiptsPage").hidden) $("#receiptsPage").hidden = true;
     else if (!$("#drawer").hidden) closeDrawer();
+  });
+
+  /* -------------------------- receipts page -------------------------- */
+  async function openReceipts() {
+    if (isAdmin()) { try { access = await api("GET", "access"); } catch {} }
+    renderReceipts();
+    $("#receiptsPage").hidden = false;
+  }
+  function renderReceipts() {
+    const A = S.apartments;
+    const filled = A.filter((a) => a.receipt && a.receipt.name);
+    $("#rpSummary").innerHTML = `<span class="pill2 ok">✓ מילאו <b>${filled.length}</b>/${A.length}</span>` +
+      (filled.length < A.length ? `<span class="pill2 miss">חסרים <b>${A.length - filled.length}</b>: ${A.filter((a) => !(a.receipt && a.receipt.name)).map((a) => a.id).join(", ")}</span>` : "");
+    $("#rpTable").innerHTML = `<thead><tr><th>דירה</th><th>שם הדייר</th><th>קבלה לטובת</th><th>ת.ז. / ח.פ.</th><th>דוא״ל / טלפון</th><th>שולם</th><th>עודכן</th><th></th></tr></thead><tbody>` +
+      A.map((a) => {
+        const rc = a.receipt && a.receipt.name ? a.receipt : null;
+        const st = statusOf(a), paid = paidOf(a);
+        const code = isAdmin() && access.tenants ? access.tenants[a.id] : null;
+        const wa = waNumber(a.phone);
+        const remind = !rc && code
+          ? `<a class="btn btn-wa rm-btn" data-stop href="https://wa.me/${wa}?text=${encodeURIComponent(tenantMessage(a, code))}" target="_blank" rel="noopener">${svg(ICON.wa)}תזכורת</a>` : "";
+        return `<tr class="${rc ? "" : "miss"}" data-apt="${a.id}">
+          <td class="c-apt"><div class="apt-badge">${a.id}</div></td>
+          <td class="c-tenant">${esc(a.owner) || "—"}</td>
+          <td class="rc">${rc ? `<div class="rc-name">${esc(rc.name)}</div>` : "טרם מולא"}</td>
+          <td class="rc num">${rc ? esc(rc.idNo || "—") : ""}</td>
+          <td class="c-contact">${rc ? `<div class="num">${esc(rc.email || "")}</div><div class="rc-sub num">${esc(rc.phone || a.phone || "")}</div>` : `<span class="rc-sub num">${esc(a.phone || "")}</span>`}</td>
+          <td class="c-paid"><span class="st ${st === "ok" ? "ok" : st === "wait" ? "wait" : "no"}">${st === "ok" ? ils(paid) : st === "wait" ? "ממתין" : paid ? ils(paid) : "טרם"}</span></td>
+          <td class="c-by">${rc ? `<span class="by">${rc.updatedBy === "tenant" ? "ע״י הדייר" : "ע״י המנהל"}<br>${fmtTime(rc.updatedAt)}</span>` : ""}</td>
+          <td class="c-act">${remind}</td>
+        </tr>`;
+      }).join("") + "</tbody>";
+  }
+  $("#btnReceipts").addEventListener("click", openReceipts);
+  $("#rpExport").addEventListener("click", () => { try { exportReceipts(); } catch (e) { console.error(e); toast("הייצוא נכשל", true); } });
+  $("#receiptsPage").addEventListener("click", (e) => {
+    if (e.target.closest("[data-close]")) { $("#receiptsPage").hidden = true; return; }
+    if (e.target.closest("[data-stop]")) return;
+    const tr = e.target.closest("tr[data-apt]");
+    if (!tr) return;
+    $("#receiptsPage").hidden = true;
+    openApt(+tr.dataset.apt);
+    if (isAdmin()) setTab("info");
   });
 
   /* ------------------------ status at a glance ------------------------ */
@@ -1077,7 +1123,7 @@
     } catch {}
   }
   $("#glance").addEventListener("click", (e) => {
-    if (e.target.closest("#gEngage")) { $("#btnShare").click(); return; }
+    if (e.target.closest("#gEngage")) { openReceipts(); return; }
     const c = e.target.closest("[data-apt]");
     if (c) openApt(+c.dataset.apt);
   });
