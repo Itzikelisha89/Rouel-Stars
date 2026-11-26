@@ -176,11 +176,20 @@ const log = (s: State, text: string, apt?: number) =>
 
 /* ----------------------------- auth ------------------------------- */
 
+type Role = "admin" | "contractor" | "resident";
+type ViewerRole = "contractor" | "resident";
+
+interface ViewerAccess {
+  code: string; // read-only access code, kept retrievable so the manager can re-share it
+  v: number;
+}
+
 interface AuthRecord {
   secret: string;
   hash?: string; // scrypt hash of a password set from the UI
   salt?: string;
   pwVersion: number;
+  viewers?: Partial<Record<ViewerRole, ViewerAccess>>;
 }
 
 async function getAuth(): Promise<AuthRecord> {
@@ -217,24 +226,79 @@ function checkPassword(auth: AuthRecord, password: string) {
   );
 }
 
+function sameCode(auth: AuthRecord, a: string, b: string) {
+  const salt = Buffer.from(auth.secret, "hex");
+  return safeEqual(
+    createHmac("sha256", salt).update(a.toUpperCase()).digest("hex"),
+    createHmac("sha256", salt).update(b.toUpperCase()).digest("hex"),
+  );
+}
+
+/** Which role does this password unlock? */
+function roleFor(auth: AuthRecord, password: string): Role | null {
+  if (checkPassword(auth, password)) return "admin";
+  for (const r of ["contractor", "resident"] as ViewerRole[]) {
+    const v = auth.viewers?.[r];
+    if (v?.code && sameCode(auth, password, v.code)) return r;
+  }
+  return null;
+}
+
+const versionFor = (auth: AuthRecord, role: Role) =>
+  role === "admin" ? auth.pwVersion : auth.viewers?.[role]?.v ?? -1;
+
 function sign(auth: AuthRecord, payload: object) {
   const body = b64u(JSON.stringify(payload));
   const mac = createHmac("sha256", auth.secret).update(body).digest("base64url");
   return `${body}.${mac}`;
 }
 
-function verify(auth: AuthRecord, token: string | undefined) {
-  if (!token) return false;
+function verify(auth: AuthRecord, token: string | undefined): Role | null {
+  if (!token) return null;
   const [body, mac] = token.split(".");
-  if (!body || !mac) return false;
+  if (!body || !mac) return null;
   const expected = createHmac("sha256", auth.secret).update(body).digest("base64url");
-  if (!safeEqual(mac, expected)) return false;
+  if (!safeEqual(mac, expected)) return null;
   try {
     const p = JSON.parse(Buffer.from(body, "base64url").toString());
-    return p.exp > Date.now() && p.v === auth.pwVersion;
+    const role: Role = p.r === "contractor" || p.r === "resident" ? p.r : "admin";
+    if (p.exp > Date.now() && p.v === versionFor(auth, role) && true) {
+      if (role !== "admin" && !auth.viewers?.[role]?.code) return null;
+      return role;
+    }
+    return null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+const sessionFor = (auth: AuthRecord, role: Role) =>
+  sign(auth, { exp: Date.now() + SESSION_DAYS * 864e5, r: role, v: versionFor(auth, role), n: randomBytes(8).toString("hex") });
+
+/** Residents see the whole building's progress, but not bank details, documents or neighbours' contact info. */
+function view(state: State, role: Role) {
+  if (role !== "resident") return { ...state, role };
+  return {
+    ...state,
+    role,
+    apartments: state.apartments.map((a) => ({
+      ...a,
+      phone: "",
+      phone2: "",
+      email: "",
+      notes: "",
+      payments: a.payments.map((p) => ({
+        id: p.id, method: p.method, amount: p.amount, date: p.date, delivered: p.delivered, createdAt: p.createdAt, files: [],
+      })),
+      signature: { ...a.signature, files: [] },
+    })),
+  };
+}
+
+function newCode() {
+  const abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const pick = () => Array.from(randomBytes(4), (b) => abc[b % abc.length]).join("");
+  return `${pick()}-${pick()}-${pick()}`;
 }
 
 const cookieHeader = (value: string, maxAge: number) =>
@@ -278,10 +342,10 @@ async function route(req: Request, context: Context): Promise<Response> {
     }
     const body = await req.json().catch(() => ({}));
     const password = str(body.password, 200);
-    if (password && checkPassword(auth, password)) {
+    const role = password ? roleFor(auth, password) : null;
+    if (role) {
       await kv().delete(key);
-      const token = sign(auth, { exp: Date.now() + SESSION_DAYS * 864e5, v: auth.pwVersion, n: randomBytes(8).toString("hex") });
-      return json({ ok: true }, 200, { "set-cookie": cookieHeader(token, SESSION_DAYS * 86400) });
+      return json({ ok: true, role }, 200, { "set-cookie": cookieHeader(sessionFor(auth, role), SESSION_DAYS * 86400) });
     }
     rec.n += 1;
     if (rec.n >= LOCK_AFTER) {
@@ -298,13 +362,41 @@ async function route(req: Request, context: Context): Promise<Response> {
   }
 
   /* ---- everything below requires a session ---- */
-  if (!verify(auth, context.cookies.get(COOKIE))) return err("נדרשת התחברות", 401);
+  const role = verify(auth, context.cookies.get(COOKIE));
+  if (!role) return err("נדרשת התחברות", 401);
 
-  if (path === "session" && method === "GET") return json({ ok: true });
+  if (path === "session" && method === "GET") return json({ ok: true, role });
 
   if (path === "data" && method === "GET") {
     const { state } = await loadState();
-    return json(state);
+    return json(view(state, role));
+  }
+
+  /* ---- documents: manager + contractor only ---- */
+  if (parts[0] === "file" && parts[1] && method === "GET") {
+    if (role === "resident") return err("אין הרשאה", 403);
+    return serveFile(parts[1]);
+  }
+
+  /* ---- everything below changes data: manager only ---- */
+  if (role !== "admin") return err("הגישה שלך היא לצפייה בלבד", 403);
+
+  /* ---- viewer access codes ---- */
+  if (path === "access" && method === "GET") {
+    return json({ contractor: auth.viewers?.contractor?.code ?? null, resident: auth.viewers?.resident?.code ?? null });
+  }
+  if (parts[0] === "access" && (parts[1] === "contractor" || parts[1] === "resident")) {
+    const r = parts[1] as ViewerRole;
+    const viewers = { ...(auth.viewers ?? {}) };
+    const prevV = viewers[r]?.v ?? 0;
+    if (method === "POST") viewers[r] = { code: newCode(), v: prevV + 1 };
+    else if (method === "DELETE") viewers[r] = { code: "", v: prevV + 1 };
+    else return err("לא נמצא", 404);
+    await kv().setJSON("auth", { ...auth, viewers });
+    await mutate((s) => log(s, method === "POST"
+      ? `נוצר קוד צפייה חדש ל${r === "contractor" ? "קבלן" : "דיירים"}`
+      : `בוטלה גישת הצפייה של ה${r === "contractor" ? "קבלן" : "דיירים"}`));
+    return json({ code: viewers[r]!.code || null });
   }
 
   /* ---- project settings ---- */
@@ -327,7 +419,7 @@ async function route(req: Request, context: Context): Promise<Response> {
       }
       log(s, "עודכנו הגדרות הפרויקט");
     });
-    return json(s);
+    return json(view(s, "admin"));
   }
 
   /* ---- password change ---- */
@@ -345,7 +437,7 @@ async function route(req: Request, context: Context): Promise<Response> {
       pwVersion: auth.pwVersion + 1,
     };
     await kv().setJSON("auth", updated);
-    const token = sign(updated, { exp: Date.now() + SESSION_DAYS * 864e5, v: updated.pwVersion, n: randomBytes(8).toString("hex") });
+    const token = sessionFor(updated, "admin");
     return json({ ok: true }, 200, { "set-cookie": cookieHeader(token, SESSION_DAYS * 86400) });
   }
 
@@ -360,22 +452,6 @@ async function route(req: Request, context: Context): Promise<Response> {
     const name = str(decodeURIComponent(req.headers.get("x-file-name") || ""), 120);
     await files().set(key, buf, { metadata: { type, name, size: buf.byteLength, at: new Date().toISOString() } });
     return json({ key, type, name });
-  }
-
-  if (parts[0] === "file" && parts[1] && method === "GET") {
-    if (!FILE_KEY.test(parts[1])) return err("לא נמצא", 404);
-    const entry = await files().getWithMetadata(parts[1], { type: "arrayBuffer" });
-    if (entry === null) return err("לא נמצא", 404);
-    const type = String(entry.metadata?.type || "application/octet-stream");
-    return new Response(entry.data as ArrayBuffer, {
-      headers: {
-        "content-type": ALLOWED_TYPES.includes(type) ? type : "application/octet-stream",
-        "cache-control": "private, max-age=86400",
-        "x-content-type-options": "nosniff",
-        ...(type === "application/pdf" ? {} : { "content-security-policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" }),
-        "content-disposition": "inline",
-      },
-    });
   }
 
   /* ---- apartments ---- */
@@ -418,7 +494,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         else if (wasSigned && !a.signature.signed) log(s, `דירה ${id}: סימון החתימה בוטל`, id);
         else log(s, `דירה ${id}: עודכנו פרטים`, id);
       });
-      return json(s);
+      return json(view(s, "admin"));
     }
 
     const readPayment = (b: any, base?: Payment): Payment => {
@@ -456,7 +532,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         a.updatedAt = new Date().toISOString();
         log(s, `דירה ${id}: נרשם תשלום ${label[p.method]} ${money(p.amount)}`, id);
       });
-      return json(s);
+      return json(view(s, "admin"));
     }
 
     if (parts[2] === "payment" && parts[3]) {
@@ -471,7 +547,7 @@ async function route(req: Request, context: Context): Promise<Response> {
           a.updatedAt = new Date().toISOString();
           log(s, `דירה ${id}: עודכן תשלום ${label[a.payments[i].method]} ${money(a.payments[i].amount)}`, id);
         });
-        return json(s);
+        return json(view(s, "admin"));
       }
       if (method === "DELETE") {
         let removed: string[] = [];
@@ -485,12 +561,28 @@ async function route(req: Request, context: Context): Promise<Response> {
           log(s, `דירה ${id}: נמחק תשלום ${label[p.method]} ${money(p.amount)}`, id);
         });
         await Promise.all(removed.map((k) => files().delete(k).catch(() => {})));
-        return json(s);
+        return json(view(s, "admin"));
       }
     }
   }
 
   return err("לא נמצא", 404);
+}
+
+async function serveFile(key: string) {
+  if (!FILE_KEY.test(key)) return err("לא נמצא", 404);
+  const entry = await files().getWithMetadata(key, { type: "arrayBuffer" });
+  if (entry === null) return err("לא נמצא", 404);
+  const type = String(entry.metadata?.type || "application/octet-stream");
+  return new Response(entry.data as ArrayBuffer, {
+    headers: {
+      "content-type": ALLOWED_TYPES.includes(type) ? type : "application/octet-stream",
+      "cache-control": "private, max-age=86400",
+      "x-content-type-options": "nosniff",
+      ...(type === "application/pdf" ? {} : { "content-security-policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" }),
+      "content-disposition": "inline",
+    },
+  });
 }
 
 export const config: Config = {

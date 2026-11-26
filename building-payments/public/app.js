@@ -124,6 +124,7 @@
   $("#btnLogout").addEventListener("click", async () => {
     await api("POST", "logout").catch(() => {});
     S = null;
+    document.body.classList.remove("role-admin", "role-contractor", "role-resident");
     showLogin();
   });
 
@@ -136,7 +137,24 @@
     }
     $("#login").hidden = true;
     $("#app").hidden = false;
+    applyRole();
     render();
+  }
+
+  const isAdmin = () => S && S.role === "admin";
+  const ROLE_TXT = { contractor: "צפייה · קבלן", resident: "צפייה · דיירים" };
+  function applyRole() {
+    const r = S.role || "admin";
+    document.body.classList.remove("role-admin", "role-contractor", "role-resident");
+    document.body.classList.add("role-" + r);
+    const badge = $("#roleBadge"), banner = $("#viewerBanner");
+    if (r === "admin") { badge.hidden = true; banner.hidden = true; return; }
+    badge.hidden = false;
+    badge.innerHTML = svg('<path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 10a3 3 0 110-6 3 3 0 010 6z"/>') + `<span class="rb-txt">${ROLE_TXT[r]}</span>`;
+    banner.hidden = false;
+    banner.innerHTML = svg('<path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z"/>') + (r === "contractor"
+      ? `<div><strong>שלום${S.project.contractor ? " " + esc(S.project.contractor) : ""},</strong> כאן מוצג מצב הגבייה והחתימות של כל דירה, כולל צילומי הצ׳קים ודפי החתימה. הגישה היא לצפייה בלבד.</div>`
+      : `<div><strong>שלום לדיירי הבניין,</strong> כאן אפשר לעקוב אחרי התקדמות הגבייה והחתימות לקראת עבודות החיזוק. לחיצה על דירה מציגה את המצב שלה.</div>`);
   }
 
   /* ---------------------------- compute ---------------------------- */
@@ -362,7 +380,7 @@
           ${methods.map((m) => `<span class="tag">${svg(METHOD[m].icon)}${METHOD[m].label}</span>`).join("")}
           <span class="apt-actions">
             ${a.phone ? `<a href="tel:${esc(a.phone.replace(/[^\d+]/g, ""))}" title="חיוג" data-stop>${svg(ICON.phone)}</a>` : ""}
-            ${wa && st !== "ok" ? `<a href="https://wa.me/${wa}?text=${msg}" target="_blank" rel="noopener" title="תזכורת בוואטסאפ" data-stop>${svg(ICON.wa)}</a>` : ""}
+            ${wa && st !== "ok" && isAdmin() ? `<a href="https://wa.me/${wa}?text=${msg}" target="_blank" rel="noopener" title="תזכורת בוואטסאפ" data-stop>${svg(ICON.wa)}</a>` : ""}
           </span>
         </div>
       </article>`;
@@ -515,10 +533,26 @@
       <div><div class="lbl">שולם</div><div class="val" style="color:var(--ok)">${ils(paid)}</div></div>
       <div><div class="lbl">יתרה</div><div class="val" style="color:${due - paid > 0 ? "var(--none)" : "var(--ok)"}">${ils(Math.max(0, due - paid))}</div></div>`;
 
+    // read-only summary for viewers
+    const ro = $("#roInfo");
+    if (isAdmin()) ro.innerHTML = "";
+    else {
+      const sig = a.signature;
+      ro.innerHTML = `
+        <div class="ro-card">
+          <div class="ro-ic ${sig.signed ? "ok" : "warn"}">${svg(ICON.sign)}</div>
+          <div class="ro-txt"><strong>${sig.signed ? "דף החתימה התקבל" : "דף החתימה טרם התקבל"}</strong>
+            <span class="muted small">${sig.signed && sig.date ? "התקבל ב-" + fmtDate(sig.date) : ""}${sig.delivered ? " · נמסר לקבלן" : ""}</span></div>
+          ${sig.files.length ? `<div class="files">${sig.files.map((k) => thumbHTML(k)).join("")}</div>` : ""}
+        </div>
+        ${a.phone ? `<div class="ro-card"><div class="ro-ic info">${svg(ICON.phone)}</div><div class="ro-txt"><strong>${esc(a.owner || "דייר")}</strong><a href="tel:${esc(a.phone.replace(/[^\d+]/g, ""))}" dir="ltr">${esc(a.phone)}</a>${a.phone2 ? ` · <a href="tel:${esc(a.phone2.replace(/[^\d+]/g, ""))}" dir="ltr">${esc(a.phone2)}</a>` : ""}</div></div>` : ""}
+        ${a.notes ? `<div class="ro-card"><div class="ro-txt"><strong>הערות</strong><span class="small">${esc(a.notes)}</span></div></div>` : ""}`;
+    }
+
     // payments
     const pl = $("#payList");
     if (!a.payments.length) {
-      pl.innerHTML = `<div class="empty-state">${svg(ICON.wallet)}<div><strong>עדיין לא נרשמו תשלומים</strong></div><div class="small">הוסף צ׳ק, העברה או כל אמצעי אחר</div></div>`;
+      pl.innerHTML = `<div class="empty-state">${svg(ICON.wallet)}<div><strong>עדיין לא נרשמו תשלומים</strong></div>${isAdmin() ? '<div class="small">הוסף צ׳ק, העברה או כל אמצעי אחר</div>' : ""}</div>`;
     } else {
       pl.innerHTML = a.payments.map((p) => {
         const sub = [
@@ -544,7 +578,7 @@
       }).join("");
     }
 
-    if (fillForms) {
+    if (fillForms && isAdmin()) {
       // signature
       const sf = $("#signForm");
       sf.signed.checked = a.signature.signed;
@@ -667,7 +701,7 @@
   });
   $("#btnAddPay").addEventListener("click", () => openPay(null));
   $("#payList").addEventListener("click", (e) => {
-    if (e.target.closest(".thumb")) return;
+    if (e.target.closest(".thumb") || !isAdmin()) return;
     const el = e.target.closest(".pay");
     if (el) openPay(apt().payments.find((p) => p.id === el.dataset.pid));
   });
@@ -793,6 +827,7 @@
     $("#confirm").hidden = true;
     $("#payModal").hidden = true;
     $("#setModal").hidden = true;
+    $("#shareModal").hidden = true;
     closeDrawer();
   }
   document.addEventListener("keydown", (e) => {
@@ -801,10 +836,67 @@
     else if (!$("#confirm").hidden) $("#confirmNo").click();
     else if (!$("#payModal").hidden) $("#payModal").hidden = true;
     else if (!$("#setModal").hidden) $("#setModal").hidden = true;
+    else if (!$("#shareModal").hidden) $("#shareModal").hidden = true;
     else if (!$("#drawer").hidden) closeDrawer();
   });
 
+  /* ----------------------------- share ----------------------------- */
+  let access = { contractor: null, resident: null };
+  const loginLink = (code) => `${location.origin}/#k=${encodeURIComponent(code)}`;
+  function shareMessage(role, code) {
+    const P = S.project;
+    return role === "contractor"
+      ? `שלום${P.contractor ? " " + P.contractor : ""},\nזו הגישה למערכת המעקב של ${P.name} (${P.address}).\nכאן תוכל לראות את מצב התשלומים, צילומי הצ׳קים ודפי החתימה של כל הדירות.\n\nכניסה בלחיצה: ${loginLink(code)}\nקוד גישה: ${code}`
+      : `שלום לדיירי ${P.address},\nהקמנו מערכת מעקב לפרויקט החיזוק. כאן אפשר לראות בכל רגע מי שילם ומי מסר דף חתימה.\n\nכניסה בלחיצה: ${loginLink(code)}\nקוד גישה: ${code}`;
+  }
+  function renderShare() {
+    for (const role of ["contractor", "resident"]) {
+      const body = $(`.share-card[data-role=${role}] .share-body`);
+      const code = access[role];
+      body.innerHTML = code
+        ? `<div class="code-box"><span class="muted small">קוד גישה</span><code>${esc(code)}</code></div>
+           <div class="share-actions">
+             <a class="btn btn-wa" href="https://wa.me/?text=${encodeURIComponent(shareMessage(role, code))}" target="_blank" rel="noopener">${svg(ICON.wa)}שליחה בוואטסאפ</a>
+             <button class="btn btn-ghost" data-copy="${role}">${svg('<path d="M8 8h12v12H8zM4 16V4h12"/>')}העתקת הודעה</button>
+           </div>
+           <div class="share-links"><button class="link-btn" data-new="${role}">החלפת קוד</button><button class="link-btn danger" data-off="${role}">ביטול הגישה</button></div>`
+        : `<button class="btn btn-primary btn-block" data-new="${role}">${svg('<path d="M12 5v14M5 12h14"/>')}יצירת קישור גישה</button>`;
+    }
+  }
+  $("#btnShare").addEventListener("click", () => busy($("#btnShare"), async () => {
+    access = await api("GET", "access");
+    renderShare();
+    $("#shareModal").hidden = false;
+  }));
+  $("#shareModal").addEventListener("click", async (e) => {
+    if (e.target.closest("[data-close]")) { $("#shareModal").hidden = true; return; }
+    const nb = e.target.closest("[data-new]"), off = e.target.closest("[data-off]"), cp = e.target.closest("[data-copy]");
+    if (nb) {
+      const role = nb.dataset.new;
+      if (access[role] && !(await confirmBox("להחליף את הקוד? הקוד הישן יפסיק לעבוד ומי שנכנס איתו ינותק.", "החלפה"))) return;
+      busy(nb, async () => { access[role] = (await api("POST", `access/${role}`)).code; renderShare(); toast("נוצר קוד גישה חדש"); });
+    } else if (off) {
+      const role = off.dataset.off;
+      if (!(await confirmBox("לבטל את הגישה? מי שנכנס עם הקוד ינותק מיד.", "ביטול גישה"))) return;
+      busy(off, async () => { await api("DELETE", `access/${role}`); access[role] = null; renderShare(); toast("הגישה בוטלה"); });
+    } else if (cp) {
+      const role = cp.dataset.copy;
+      try { await navigator.clipboard.writeText(shareMessage(role, access[role])); toast("ההודעה הועתקה"); }
+      catch { toast("לא ניתן להעתיק בדפדפן זה", true); }
+    }
+  });
+
+  // one-tap login links: https://site/#k=CODE
+  const hashCode = new URLSearchParams(location.hash.slice(1)).get("k");
+  if (hashCode) {
+    history.replaceState(null, "", location.pathname);
+    api("POST", "login", { password: hashCode }).then(boot).catch((e) => {
+      showLogin();
+      $("#loginError").textContent = e.message === "סיסמה שגויה" ? "הקישור אינו בתוקף. בקש קישור חדש מנציג הבניין." : e.message;
+    });
+  }
+
   // initial skeleton then boot
   $("#grid").innerHTML = Array.from({ length: 6 }, () => '<div class="skeleton"></div>').join("");
-  boot();
+  if (!hashCode) boot();
 })();

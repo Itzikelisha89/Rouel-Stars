@@ -47,11 +47,11 @@
         </div>
       </div>
       <h1>כניסה מאובטחת</h1>
-      <p class="muted">הגישה מותרת למנהל הפרויקט בלבד.</p>
+      <p class="muted">הזן את קוד הגישה שקיבלת מנציג הבניין.</p>
       <label class="field">
-        <span>סיסמה</span>
+        <span>קוד גישה / סיסמה</span>
         <div class="pw-wrap">
-          <input id="password" type="password" name="password" autocomplete="current-password" required autofocus>
+          <input id="password" type="password" name="password" autocomplete="current-password" autocapitalize="characters" spellcheck="false" required autofocus>
           <button type="button" class="pw-toggle" id="pwToggle" aria-label="הצג סיסמה">
             <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 11a4 4 0 110-8 4 4 0 010 8z"/></svg>
           </button>
@@ -81,14 +81,18 @@
           <div class="brand-sub" id="projAddr">רחוב בית וגן 6, בת ים</div>
         </div>
       </div>
+      <span class="role-badge" id="roleBadge" hidden></span>
       <nav class="top-actions">
-        <button class="btn btn-ghost" id="btnReport" title="דוח מסירה לקבלן">
+        <button class="btn btn-gold admin-only" id="btnShare" title="שיתוף עם הקבלן והדיירים">
+          <svg viewBox="0 0 24 24"><path d="M16 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zm10 7a3 3 0 100-6 3 3 0 000 6zM8.6 13.5l4.8 2.9m0-8.8l-4.8 2.9"/></svg><span>שיתוף</span>
+        </button>
+        <button class="btn btn-ghost no-resident" id="btnReport" title="דוח מסירה לקבלן">
           <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5M9 12h8M9 16h8M9 8h3"/></svg><span>דוח לקבלן</span>
         </button>
-        <button class="btn btn-ghost" id="btnExport" title="ייצוא לאקסל">
+        <button class="btn btn-ghost no-resident" id="btnExport" title="ייצוא לאקסל">
           <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/></svg><span>ייצוא</span>
         </button>
-        <button class="btn btn-ghost" id="btnSettings" title="הגדרות">
+        <button class="btn btn-ghost admin-only" id="btnSettings" title="הגדרות">
           <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zm7.4-3a7.4 7.4 0 00-.1-1.3l2-1.6-2-3.4-2.4 1a7.5 7.5 0 00-2.2-1.3L14.3 3h-4l-.4 2.4a7.5 7.5 0 00-2.2 1.3l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 000 2.6l-2 1.6 2 3.4 2.4-1a7.5 7.5 0 002.2 1.3l.4 2.4h4l.4-2.4a7.5 7.5 0 002.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3z"/></svg><span>הגדרות</span>
         </button>
         <button class="btn btn-ghost" id="btnTheme" title="מצב תצוגה" aria-label="מצב כהה/בהיר">
@@ -102,6 +106,7 @@
   </header>
 
   <main class="container">
+    <div class="viewer-banner" id="viewerBanner" hidden></div>
     <!-- hero -->
     <section class="hero">
       <div class="hero-building card">
@@ -210,14 +215,15 @@
     <div class="drawer-summary" id="dSummary"></div>
     <nav class="tabs" id="dTabs">
       <button class="tab active" data-tab="pay">תשלומים</button>
-      <button class="tab" data-tab="sign">חתימה</button>
-      <button class="tab" data-tab="info">פרטי דייר</button>
+      <button class="tab admin-only" data-tab="sign">חתימה</button>
+      <button class="tab admin-only" data-tab="info">פרטי דייר</button>
     </nav>
     <div class="drawer-body">
       <!-- payments -->
       <div class="tab-pane" data-pane="pay">
+        <div id="roInfo" class="ro-info"></div>
         <div id="payList" class="pay-list"></div>
-        <button class="btn btn-primary btn-block" id="btnAddPay">
+        <button class="btn btn-primary btn-block admin-only" id="btnAddPay">
           <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>הוספת תשלום
         </button>
       </div>
@@ -368,6 +374,34 @@
         <label class="field"><span>סיסמה חדשה (לפחות 8 תווים)</span><input name="next" type="password" autocomplete="new-password" minlength="8" required></label>
         <button class="btn btn-ghost btn-block" type="submit">עדכון סיסמה</button>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================= SHARE MODAL ========================= -->
+<div id="shareModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2>שיתוף המערכת</h2>
+      <button type="button" class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <p class="muted share-intro">שלח קישור כניסה. מי שמקבל אותו יכול רק לצפות, ושום דבר לא ישתנה. אפשר להחליף או לבטל את הקוד בכל רגע.</p>
+      <div class="share-card" data-role="contractor">
+        <div class="share-head">
+          <div class="share-ic contractor"><svg viewBox="0 0 24 24"><path d="M3 18h18M5 18v-3a7 7 0 0114 0v3M12 8V5m-4 4l-1.5-2.5M16 9l1.5-2.5"/></svg></div>
+          <div class="share-title"><strong>הקבלן</strong><span>רואה הכל: דירות, תשלומים, צילומי צ׳קים ודפי חתימה</span></div>
+        </div>
+        <div class="share-body"></div>
+      </div>
+      <div class="share-card" data-role="resident">
+        <div class="share-head">
+          <div class="share-ic resident"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13M9 21v-6h6v6"/></svg></div>
+          <div class="share-title"><strong>הדיירים</strong><span>קוד אחד לכל הבניין: רואים מי שילם ומי חתם, בלי טלפונים, פרטי בנק וצילומים</span></div>
+        </div>
+        <div class="share-body"></div>
+      </div>
     </div>
   </div>
 </div>
