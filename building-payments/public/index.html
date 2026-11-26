@@ -115,14 +115,27 @@
             <div class="eyebrow">מבט על הבניין</div>
             <h2>בית וגן 6</h2>
           </div>
+          <div class="view-toggle" id="viewToggle" role="tablist">
+            <button class="active" data-v="plan">תרשים</button>
+            <button data-v="photo">תמונה</button>
+          </div>
+        </div>
+        <div class="b-pane" data-v="plan">
           <div class="legend">
             <span><i class="dot ok"></i>הושלם</span>
             <span><i class="dot partial"></i>בתהליך</span>
             <span><i class="dot none"></i>טרם החל</span>
           </div>
+          <div id="building" class="building-wrap"></div>
+          <p class="hint">לחיצה על דירה פותחת את הכרטיס שלה</p>
         </div>
-        <div id="building" class="building-wrap"></div>
-        <p class="hint">לחיצה על דירה פותחת את הכרטיס שלה</p>
+        <div class="b-pane" data-v="photo" hidden>
+          <div id="photoBox" class="photo-box"></div>
+        </div>
+        <a class="map-link" id="mapLink" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0114 0C19 14.8 12 21 12 21zm0-9a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
+          <span id="mapAddr">רחוב בית וגן 6, בת ים</span> · פתיחה במפה
+        </a>
       </div>
 
       <div class="hero-stats">
@@ -172,6 +185,14 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="card docs" id="docsSection">
+      <div class="card-head">
+        <div><div class="eyebrow">מסמכי הפרויקט</div><h2>הודעות ומסמכים רשמיים</h2></div>
+        <button class="btn btn-ghost admin-only" id="btnAddDoc"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>הוספת מסמך</button>
+      </div>
+      <div id="docsList" class="docs-list"></div>
     </section>
 
     <!-- toolbar -->
@@ -378,6 +399,43 @@
   </div>
 </div>
 
+<!-- ========================= DOC MODAL ========================= -->
+<div id="docModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <form class="modal-card" id="docForm">
+    <header class="modal-head">
+      <h2>מסמך חדש</h2>
+      <button type="button" class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <p class="muted" style="margin:0">המסמך יוצג לכל מי שיש לו גישה: לך, לקבלן ולדיירים.</p>
+      <label class="field"><span>כותרת</span><input name="title" list="docTitles" required></label>
+      <datalist id="docTitles">
+        <option value="הודעת העירייה – הכרזה על מבנה מסוכן">
+        <option value="צו לביצוע עבודות חיזוק">
+        <option value="חוות דעת מהנדס">
+        <option value="הצעת מחיר הקבלן">
+        <option value="פרוטוקול אסיפת דיירים">
+      </datalist>
+      <label class="field"><span>תאריך המסמך</span><input name="date" type="date"></label>
+      <div class="field">
+        <span>צילום / סריקה</span>
+        <div class="files" id="docFiles"></div>
+        <label class="upload">
+          <input type="file" accept="image/*,application/pdf" multiple data-target="doc">
+          <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z"/></svg>
+          <span>צלם או העלה קובץ</span>
+        </label>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-ghost" data-close>ביטול</button>
+      <button type="submit" class="btn btn-primary">שמירת מסמך</button>
+    </footer>
+  </form>
+</div>
+
 <!-- ========================= SHARE MODAL ========================= -->
 <div id="shareModal" class="modal" hidden>
   <div class="modal-backdrop" data-close></div>
@@ -409,6 +467,11 @@
 <!-- ========================== VIEWER ========================== -->
 <div id="viewer" class="viewer" hidden>
   <div class="viewer-bar">
+    <div class="viewer-nav" id="viewerNav" hidden>
+      <button class="icon-btn light" data-step="-1" aria-label="הקודם"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <span id="viewerCount">1 / 1</span>
+      <button class="icon-btn light" data-step="1" aria-label="הבא"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    </div>
     <a id="viewerOpen" class="btn btn-ghost light" target="_blank" rel="noopener">פתיחה בחלון</a>
     <button class="icon-btn light" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>

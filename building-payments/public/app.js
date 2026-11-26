@@ -229,9 +229,99 @@
     $("#cNoSign").textContent = counts.nosign;
 
     renderBuilding();
+    renderPhoto();
+    renderDocs();
     renderGrid();
     renderActivity();
+    $("#mapAddr").textContent = P.address || "";
+    $("#mapLink").href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(P.address || "בית וגן 6 בת ים");
   }
+
+  /* ---- building photo ---- */
+  $("#viewToggle").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    $$("button", $("#viewToggle")).forEach((x) => x.classList.toggle("active", x === b));
+    $$(".b-pane").forEach((p) => (p.hidden = p.dataset.v !== b.dataset.v));
+  });
+  const camIcon = '<path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z"/>';
+  function renderPhoto() {
+    const box = $("#photoBox"), key = S.project.photo;
+    if (key) {
+      box.innerHTML = `<img src="${fileUrl(key)}" alt="תמונת הבניין" data-photo="${esc(key)}">` + (isAdmin()
+        ? `<div class="photo-actions"><label class="btn upload-mini">${svg(camIcon)}<span>החלפה</span><input type="file" accept="image/*" data-target="photo"></label><button class="btn" id="btnPhotoDel">הסרה</button></div>`
+        : "");
+    } else {
+      box.innerHTML = isAdmin()
+        ? `<div class="photo-empty">${svg(camIcon)}<strong>הוסף תמונה של הבניין</strong><span class="small">צלם את חזית הבניין מהרחוב והעלה אותה כאן</span>
+             <label class="btn btn-primary upload-mini">${svg(camIcon)}<span>צילום / העלאה</span><input type="file" accept="image/*" data-target="photo"></label></div>`
+        : `<div class="photo-empty">${svg(camIcon)}<span>טרם הועלתה תמונה של הבניין</span></div>`;
+    }
+  }
+  $("#photoBox").addEventListener("click", async (e) => {
+    const img = e.target.closest("img[data-photo]");
+    if (img) { openViewer(img.dataset.photo); return; }
+    if (e.target.closest("#btnPhotoDel")) {
+      if (!(await confirmBox("להסיר את תמונת הבניין?", "הסרה"))) return;
+      busy(null, async () => { setState(await api("PUT", "photo", { key: "" })); toast("התמונה הוסרה"); });
+    }
+  });
+
+  /* ---- project documents ---- */
+  const isOfficial = (t) => /עירי|מסוכן|צו/.test(t);
+  function renderDocs() {
+    const docs = S.docs || [];
+    $("#docsSection").hidden = !docs.length && !isAdmin();
+    $("#docsList").innerHTML = docs.length ? docs.map((d) => `
+      <article class="doc ${isOfficial(d.title) ? "official" : ""}" data-doc="${d.id}">
+        <div class="doc-cover">
+          ${fileMeta.get(d.files[0]) === "application/pdf" ? `<div class="pdf">${svg(ICON.doc)}PDF</div>` : `<img src="${fileUrl(d.files[0])}" alt="" loading="lazy" data-key="${esc(d.files[0])}">`}
+          ${d.files.length > 1 ? `<span class="count">${d.files.length} עמודים</span>` : ""}
+        </div>
+        <div class="doc-body">
+          <div class="txt"><strong>${esc(d.title)}</strong><span class="muted">${d.date ? fmtDate(d.date) : "נוסף " + fmtTime(d.createdAt)}</span></div>
+          ${isAdmin() ? `<button class="doc-del" data-del="${d.id}" aria-label="מחיקה">${svg('<path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/>')}</button>` : ""}
+        </div>
+      </article>`).join("")
+      : `<div class="empty-state docs-empty">${svg(ICON.doc)}<div><strong>עדיין אין מסמכים</strong></div><div class="small">העלה את הודעת העירייה על המבנה המסוכן, והקבלן והדיירים יראו אותה</div></div>`;
+  }
+  $("#docsList").addEventListener("click", async (e) => {
+    const del = e.target.closest("[data-del]");
+    if (del) {
+      if (!(await confirmBox("למחוק את המסמך? הוא יוסר גם אצל הקבלן והדיירים."))) return;
+      busy(del, async () => { setState(await api("DELETE", `docs/${del.dataset.del}`)); toast("המסמך נמחק"); });
+      return;
+    }
+    const doc = e.target.closest(".doc");
+    if (doc) {
+      const d = (S.docs || []).find((x) => x.id === doc.dataset.doc);
+      if (d) openViewer(d.files[0], d.files);
+    }
+  });
+  let docFiles = [];
+  const renderDocFiles = () => ($("#docFiles").innerHTML = docFiles.map((k) => thumbHTML(k, true)).join(""));
+  $("#docFiles").addEventListener("click", (e) => {
+    const x = e.target.closest(".rm");
+    if (x) { docFiles = docFiles.filter((k) => k !== x.dataset.rm); renderDocFiles(); }
+  });
+  $("#btnAddDoc").addEventListener("click", () => {
+    $("#docForm").reset();
+    if (!(S.docs || []).length) $("#docForm").title.value = "הודעת העירייה – הכרזה על מבנה מסוכן";
+    docFiles = [];
+    renderDocFiles();
+    $("#docModal").hidden = false;
+  });
+  $("#docModal").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) $("#docModal").hidden = true; });
+  $("#docForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (!docFiles.length) { toast("יש לצרף צילום של המסמך", true); return; }
+    busy($("button[type=submit]", f), async () => {
+      setState(await api("POST", "docs", { title: f.title.value, date: f.date.value, files: docFiles }));
+      $("#docModal").hidden = true;
+      toast("המסמך נוסף ומוצג לכולם");
+    });
+  });
 
   /* ---- building illustration ---- */
   function renderBuilding() {
@@ -474,15 +564,30 @@
   }
 
   /* ---------------------------- viewer ---------------------------- */
-  function openViewer(key) {
+  let viewerList = [], viewerIdx = 0;
+  function openViewer(key, list) {
+    viewerList = list && list.length ? list : [key];
+    viewerIdx = Math.max(0, viewerList.indexOf(key));
+    showViewer(key);
+    $("#viewer").hidden = false;
+  }
+  function showViewer(key) {
+    $("#viewerNav").hidden = viewerList.length < 2;
+    $("#viewerCount").textContent = `${viewerIdx + 1} / ${viewerList.length}`;
     const isPdf = fileMeta.get(key) === "application/pdf";
     $("#viewerOpen").href = fileUrl(key);
     $("#viewerImg").hidden = isPdf;
     $("#viewerPdf").hidden = !isPdf;
     if (isPdf) $("#viewerPdf").src = fileUrl(key);
     else $("#viewerImg").src = fileUrl(key);
-    $("#viewer").hidden = false;
   }
+  $("#viewerNav").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-step]");
+    if (!b) return;
+    e.stopPropagation();
+    viewerIdx = (viewerIdx + Number(b.dataset.step) + viewerList.length) % viewerList.length;
+    showViewer(viewerList[viewerIdx]);
+  });
   $("#viewer").addEventListener("click", (e) => {
     if (e.target.closest("[data-close]") && !e.target.closest("img") && !e.target.closest("a")) {
       $("#viewer").hidden = true;
@@ -641,7 +746,7 @@
   document.addEventListener("change", (e) => {
     const inp = e.target;
     if (inp.type !== "file" || !inp.files.length) return;
-    const label = inp.closest(".upload");
+    const label = inp.closest(".upload, .upload-mini");
     const filesArr = [...inp.files];
     inp.value = "";
     if (inp.dataset.target === "sign") {
@@ -650,6 +755,12 @@
         renderSignFiles();
         const sf = $("#signForm");
         if (!sf.signed.checked) { sf.signed.checked = true; if (!sf.date.value) sf.date.value = today(); }
+      }, label);
+    } else if (inp.dataset.target === "doc") {
+      uploadFiles(filesArr, null, (k) => { docFiles.push(k); renderDocFiles(); }, label);
+    } else if (inp.dataset.target === "photo") {
+      uploadFiles(filesArr.slice(0, 1), null, async (k) => {
+        try { setState(await api("PUT", "photo", { key: k })); toast("תמונת הבניין עודכנה"); } catch (err) { toast(err.message, true); }
       }, label);
     } else {
       uploadFiles(filesArr, null, (k) => { payFiles.push(k); renderPayFiles(); }, label);
@@ -828,6 +939,7 @@
     $("#payModal").hidden = true;
     $("#setModal").hidden = true;
     $("#shareModal").hidden = true;
+    $("#docModal").hidden = true;
     closeDrawer();
   }
   document.addEventListener("keydown", (e) => {
@@ -837,6 +949,7 @@
     else if (!$("#payModal").hidden) $("#payModal").hidden = true;
     else if (!$("#setModal").hidden) $("#setModal").hidden = true;
     else if (!$("#shareModal").hidden) $("#shareModal").hidden = true;
+    else if (!$("#docModal").hidden) $("#docModal").hidden = true;
     else if (!$("#drawer").hidden) closeDrawer();
   });
 

@@ -445,3 +445,41 @@ body:not(.role-admin) .pay:hover { border-color: var(--line); }
 .link-btn { background: none; border: 0; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 4px; }
 .link-btn.danger { color: var(--none); }
 body:not(.role-admin) .tabs { display: none; }
+
+/* ---------------------- photo / docs ---------------------- */
+.view-toggle { display: inline-flex; background: var(--bg-2); border-radius: 11px; padding: 3px; gap: 3px; }
+.view-toggle button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
+.view-toggle button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.b-pane { flex: 1; display: flex; flex-direction: column; }
+.b-pane .legend { justify-content: center; margin-bottom: 4px; }
+.photo-box { flex: 1; min-height: 320px; border-radius: 14px; overflow: hidden; position: relative; background: var(--surface-2); display: grid; place-items: center; }
+.photo-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.photo-box .photo-actions { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 8px; }
+.photo-box .photo-actions .btn { background: rgba(15,27,51,.75); color: #fff; border: 0; backdrop-filter: blur(6px); padding: 8px 12px; font-size: 13px; }
+.photo-box .photo-actions label.btn input { display: none; }
+.photo-empty { text-align: center; color: var(--muted); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.photo-empty svg { width: 44px; height: 44px; color: var(--gold-2); }
+.map-link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; font-size: 13px; color: var(--muted); text-decoration: none; font-weight: 500; }
+.map-link:hover { color: var(--gold); }
+.map-link svg { width: 16px; height: 16px; }
+
+.docs { margin-top: 28px; padding: 20px; }
+.docs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.doc { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface-2); display: flex; flex-direction: column; position: relative; }
+.doc-cover { height: 150px; background: var(--bg-2); display: grid; place-items: center; cursor: zoom-in; position: relative; overflow: hidden; }
+.doc-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.doc-cover .pdf { font-weight: 800; color: var(--none); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.doc-cover .pdf svg { width: 34px; height: 34px; }
+.doc-cover .count { position: absolute; bottom: 8px; left: 8px; background: rgba(15,27,51,.75); color: #fff; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.doc-body { padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; }
+.doc-body strong { display: block; font-size: 15px; line-height: 1.35; }
+.doc-body .muted { font-size: 12.5px; }
+.doc-body .txt { flex: 1; min-width: 0; }
+.doc-del { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 8px; }
+.doc-del:hover { color: var(--none); background: var(--none-soft); }
+.doc.official::after { content: "רשמי"; position: absolute; top: 10px; right: 10px; background: var(--none); color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+.docs-empty { grid-column: 1 / -1; }
+
+.viewer-bar { align-items: center; gap: 10px; }
+.viewer-nav { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+.upload-mini input { display: none; }

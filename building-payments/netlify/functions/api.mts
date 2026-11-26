@@ -65,6 +65,15 @@ interface Project {
   deadline: string;
   floors: number;
   perFloor: number;
+  photo?: string; // building photo (file key)
+}
+
+interface ProjectDoc {
+  id: string;
+  title: string;
+  date: string;
+  files: string[];
+  createdAt: string;
 }
 
 interface Activity {
@@ -78,6 +87,7 @@ interface State {
   project: Project;
   apartments: Apartment[];
   activity: Activity[];
+  docs?: ProjectDoc[];
 }
 
 /* ---------------------------- helpers ----------------------------- */
@@ -374,7 +384,12 @@ async function route(req: Request, context: Context): Promise<Response> {
 
   /* ---- documents: manager + contractor only ---- */
   if (parts[0] === "file" && parts[1] && method === "GET") {
-    if (role === "resident") return err("אין הרשאה", 403);
+    if (role === "resident") {
+      // residents may open the building photo and the shared project documents only
+      const { state } = await loadState();
+      const shared = new Set([state.project.photo, ...(state.docs ?? []).flatMap((d) => d.files)].filter(Boolean));
+      if (!shared.has(parts[1])) return err("אין הרשאה", 403);
+    }
     return serveFile(parts[1]);
   }
 
@@ -397,6 +412,46 @@ async function route(req: Request, context: Context): Promise<Response> {
       ? `נוצר קוד צפייה חדש ל${r === "contractor" ? "קבלן" : "דיירים"}`
       : `בוטלה גישת הצפייה של ה${r === "contractor" ? "קבלן" : "דיירים"}`));
     return json({ code: viewers[r]!.code || null });
+  }
+
+  /* ---- building photo ---- */
+  if (path === "photo" && method === "PUT") {
+    const b = await req.json();
+    const key = typeof b.key === "string" && FILE_KEY.test(b.key) ? b.key : "";
+    const s = await mutate((s) => {
+      s.project.photo = key || undefined;
+      log(s, key ? "עודכנה תמונת הבניין" : "הוסרה תמונת הבניין");
+    });
+    return json(view(s, "admin"));
+  }
+
+  /* ---- project documents (shared with contractor + residents) ---- */
+  if (parts[0] === "docs") {
+    if (parts.length === 1 && method === "POST") {
+      const b = await req.json();
+      const title = str(b.title, 120);
+      const fl = Array.isArray(b.files) ? b.files.filter((k: unknown) => typeof k === "string" && FILE_KEY.test(k)).slice(0, 12) : [];
+      if (!title) return err("יש להזין כותרת למסמך");
+      if (!fl.length) return err("יש לצרף צילום או קובץ");
+      const s = await mutate((s) => {
+        s.docs = s.docs ?? [];
+        s.docs.unshift({ id: randomUUID(), title, date: dateStr(b.date), files: fl, createdAt: new Date().toISOString() });
+        log(s, `נוסף מסמך: ${title}`);
+      });
+      return json(view(s, "admin"));
+    }
+    if (parts[1] && method === "DELETE") {
+      let removed: string[] = [];
+      const s = await mutate((s) => {
+        const d = (s.docs ?? []).find((x) => x.id === parts[1]);
+        if (!d) return "המסמך לא נמצא";
+        removed = d.files;
+        s.docs = (s.docs ?? []).filter((x) => x.id !== parts[1]);
+        log(s, `נמחק מסמך: ${d.title}`);
+      });
+      await Promise.all(removed.map((k) => files().delete(k).catch(() => {})));
+      return json(view(s, "admin"));
+    }
   }
 
   /* ---- project settings ---- */
