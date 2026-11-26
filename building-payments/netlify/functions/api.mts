@@ -13,8 +13,8 @@ const COOKIE = "__Host-bv6";
 const SESSION_DAYS = 30;
 const MAX_UPLOAD = 4_200_000; // bytes (function payload limit is ~4.5MB binary)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
-const LOCK_AFTER = 6; // failed logins
-const LOCK_MINUTES = 15;
+const LOCK_AFTER = 5; // failed logins
+const LOCK_MINUTES = 30;
 
 const kv = () => getStore({ name: "bv6-data", consistency: "strong" });
 const files = () => getStore({ name: "bv6-files", consistency: "strong" });
@@ -555,7 +555,7 @@ async function route(req: Request, context: Context): Promise<Response> {
     const current = str(b.current, 200);
     const next = str(b.next, 200);
     if (!checkPassword(auth, current)) return err("הסיסמה הנוכחית שגויה", 401);
-    if (next.length < 8) return err("הסיסמה החדשה חייבת להכיל לפחות 8 תווים");
+    if (next.length < 6) return err("הסיסמה החדשה חייבת להכיל לפחות 6 תווים");
     const salt = randomBytes(16);
     const updated: AuthRecord = {
       ...auth,

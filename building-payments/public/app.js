@@ -164,7 +164,7 @@
   function statusOf(a) {
     const due = dueOf(a), paid = paidOf(a);
     const payDone = due > 0 ? paid >= due : paid > 0;
-    if (payDone && a.signature.signed) return "ok";
+    if (payDone) return "ok"; // דף החתימה לתיעוד בלבד, תשלום מלא = הושלם
     if (paid === 0 && !a.signature.signed) return "none";
     return "partial";
   }
@@ -188,7 +188,7 @@
     for (const a of A) {
       due += dueOf(a);
       paid += paidOf(a);
-      if (a.signature.signed) signed++; else counts.nosign++;
+      if (a.signature.signed) signed++; else if (statusOf(a) !== "ok") counts.nosign++;
       if (a.signature.delivered) sigDelivered++;
       const st = statusOf(a);
       counts[st]++;
@@ -429,7 +429,7 @@
     if (filter === "done" && st !== "ok") return false;
     if (filter === "partial" && st !== "partial") return false;
     if (filter === "none" && st !== "none") return false;
-    if (filter === "nosign" && a.signature.signed) return false;
+    if (filter === "nosign" && (a.signature.signed || statusOf(a) === "ok")) return false;
     if (!query) return true;
     const q = query.toLowerCase();
     const hay = [a.id, a.owner, a.phone, a.phone2, a.email, a.notes, ...a.payments.flatMap((p) => [p.chequeNo, p.reference, p.payer, p.bank])].join(" ").toLowerCase();
@@ -452,7 +452,7 @@
       const msg = encodeURIComponent(
         `שלום${a.owner ? " " + a.owner.split(" ")[0] : ""}, תזכורת לגבי פרויקט חיזוק הבניין בבית וגן 6:` +
         (remaining > 0 ? ` נותרה יתרה לתשלום של ${ils(remaining)}.` : "") +
-        (!a.signature.signed ? " בנוסף, נא להעביר את דף החתימה החתום." : "") + " תודה!"
+        (!a.signature.signed && remaining > 0 ? " בנוסף, נא להעביר את דף החתימה החתום." : "") + " תודה!"
       );
       return `<article class="card apt${a.id === S.myApt ? " mine" : ""}" data-st="${st}" data-apt="${a.id}" tabindex="0">
         <div class="apt-top">
@@ -468,7 +468,7 @@
           <div class="bar" style="margin-top:8px"><span style="width:${pct}%"></span></div>
         </div>
         <div class="apt-foot">
-          ${a.signature.signed ? `<span class="tag ok">${svg(ICON.sign)}חתם</span>` : `<span class="tag warn">${svg(ICON.sign)}חסרה חתימה</span>`}
+          ${a.signature.signed ? `<span class="tag ok">${svg(ICON.sign)}חתם</span>` : st === "ok" ? "" : `<span class="tag warn">${svg(ICON.sign)}חסרה חתימה</span>`}
           ${methods.map((m) => `<span class="tag">${svg(METHOD[m].icon)}${METHOD[m].label}</span>`).join("")}
           <span class="apt-actions">
             ${a.phone ? `<a href="tel:${esc(a.phone.replace(/[^\d+]/g, ""))}" title="חיוג" data-stop>${svg(ICON.phone)}</a>` : ""}
@@ -981,7 +981,7 @@
       <div class="my-stats">
         <div><div class="lbl">שולם</div><div class="val" style="color:var(--ok)">${ils(paid)}</div></div>
         <div><div class="lbl">יתרה</div><div class="val" style="color:${due - paid > 0 ? "var(--none)" : "var(--ok)"}">${ils(Math.max(0, due - paid))}</div></div>
-        <div><div class="lbl">דף חתימה</div><div class="val" style="color:${a.signature.signed ? "var(--ok)" : "var(--none)"}">${a.signature.signed ? "התקבל ✓" : "חסר"}</div></div>
+        <div><div class="lbl">דף חתימה</div><div class="val" style="color:${a.signature.signed || st === "ok" ? "var(--ok)" : "var(--none)"}">${a.signature.signed ? "התקבל ✓" : st === "ok" ? "לא נדרש" : "חסר"}</div></div>
       </div>
       ${rc.name && !editingReceipt
         ? `<div class="my-receipt done"><div class="receipt-view">
