@@ -963,7 +963,7 @@
       name: "פרטי קבלות", rows, freezeRow: 4, merges: ["A1:J1", "A2:J2"],
       widths: [7, 22, 26, 14, 30, 14, 13, 16, 46, 18], heights: { 0: 26, 3: 30 },
     }]);
-    download(blob, `בית-וגן-6-פרטי-קבלות-${today()}.xlsx`);
+    download(blob, `Beit-Vegan-6-receipts-${today()}.xlsx`);
     toast(filled < A.length ? `הקובץ ירד · ${A.length - filled} דירות עוד לא מילאו פרטים (מסומנות באדום)` : "הקובץ ירד · כל הדירות מילאו פרטים");
   }
 
@@ -978,7 +978,7 @@
     const money = new Set([4, 5, 6, 11]);
     const sheetRows = rows.map((r, i) => i === 0 ? r.map(H) : r.map((v, ci) => money.has(ci) && typeof v === "number" ? { v, s: 2 } : v ?? ""));
     const blob = makeXlsx([{ name: "כל הנתונים", rows: sheetRows, freezeRow: 1, widths: [6, 6, 20, 13, 12, 12, 11, 14, 7, 11, 13, 11, 11, 11, 14, 7, 11, 12, 14, 20, 9, 26, 22, 13, 26], heights: { 0: 30 } }]);
-    download(blob, `בית-וגן-6-כל-הנתונים-${today()}.xlsx`);
+    download(blob, `Beit-Vegan-6-all-data-${today()}.xlsx`);
     toast("הקובץ ירד");
   }
 
