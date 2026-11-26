@@ -615,3 +615,4 @@ body.role-tenant .no-resident { display: none !important; }
   .rp-table td.c-paid, .rp-table td.c-by { display: none; }
   .rp-table td.c-act { grid-column: 3; grid-row: 1 / span 3; }
 }
+@media (max-width: 700px) { .rp-table tr.miss td.rc.num { display: none; } }
