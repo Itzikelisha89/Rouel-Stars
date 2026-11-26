@@ -1,0 +1,13 @@
+{
+  "name": "beit-vegan-6-payments",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ניהול גבייה וחתימות – פרויקט מבנה מסוכן, בית וגן 6 בת ים",
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^5.0.0"
+  }
+}

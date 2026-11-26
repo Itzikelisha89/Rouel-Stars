@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0f1b33">
+  <title>בית וגן 6 · ניהול גבייה</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============================ LOGIN ============================ -->
+<section id="login" class="login" hidden>
+  <div class="login-art" aria-hidden="true">
+    <div class="login-art-inner">
+      <svg viewBox="0 0 220 260" class="login-building">
+        <defs>
+          <linearGradient id="lg1" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#2a3d63"/><stop offset="1" stop-color="#16243f"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="190" rx="4" fill="url(#lg1)"/>
+        <rect x="24" y="22" width="172" height="12" rx="3" fill="#c9a96e"/>
+        <g fill="#f3d9a4" opacity=".9">
+          <rect x="48" y="50" width="30" height="26" rx="2"/><rect x="95" y="50" width="30" height="26" rx="2" opacity=".35"/><rect x="142" y="50" width="30" height="26" rx="2"/>
+          <rect x="48" y="92" width="30" height="26" rx="2" opacity=".35"/><rect x="95" y="92" width="30" height="26" rx="2"/><rect x="142" y="92" width="30" height="26" rx="2"/>
+          <rect x="48" y="134" width="30" height="26" rx="2"/><rect x="95" y="134" width="30" height="26" rx="2"/><rect x="142" y="134" width="30" height="26" rx="2" opacity=".35"/>
+        </g>
+        <g fill="#0b1426"><rect x="44" y="176" width="10" height="44"/><rect x="105" y="176" width="10" height="44"/><rect x="166" y="176" width="10" height="44"/></g>
+        <rect x="10" y="220" width="200" height="6" rx="3" fill="#c9a96e" opacity=".6"/>
+      </svg>
+      <p class="login-quote">כל דירה. כל תשלום. כל חתימה.<br><span>במקום אחד, מסודר ומאובטח.</span></p>
+    </div>
+  </div>
+  <div class="login-panel">
+    <form id="loginForm" class="login-card" autocomplete="on">
+      <div class="brand">
+        <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13h-5v-6H9v6H4z"/></svg></span>
+        <div>
+          <div class="brand-title">בית וגן 6</div>
+          <div class="brand-sub">מערכת ניהול גבייה וחתימות</div>
+        </div>
+      </div>
+      <h1>כניסה מאובטחת</h1>
+      <p class="muted">הגישה מותרת למנהל הפרויקט בלבד.</p>
+      <label class="field">
+        <span>סיסמה</span>
+        <div class="pw-wrap">
+          <input id="password" type="password" name="password" autocomplete="current-password" required autofocus>
+          <button type="button" class="pw-toggle" id="pwToggle" aria-label="הצג סיסמה">
+            <svg viewBox="0 0 24 24"><path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 11a4 4 0 110-8 4 4 0 010 8z"/></svg>
+          </button>
+        </div>
+      </label>
+      <div id="loginError" class="form-error" role="alert"></div>
+      <button class="btn btn-primary btn-block" type="submit" id="loginBtn">
+        <svg viewBox="0 0 24 24"><path d="M17 9V7A5 5 0 007 7v2H5v12h14V9h-2zM9 7a3 3 0 016 0v2H9V7z"/></svg>
+        כניסה למערכת
+      </button>
+      <div class="secure-note">
+        <svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z"/></svg>
+        חיבור מוצפן · נעילה אוטומטית לאחר ניסיונות כושלים
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ============================= APP ============================= -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13h-5v-6H9v6H4z"/></svg></span>
+        <div>
+          <div class="brand-title" id="projName">בית וגן 6</div>
+          <div class="brand-sub" id="projAddr">רחוב בית וגן 6, בת ים</div>
+        </div>
+      </div>
+      <nav class="top-actions">
+        <button class="btn btn-ghost" id="btnReport" title="דוח מסירה לקבלן">
+          <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2zm8 1.5V8h4.5M9 12h8M9 16h8M9 8h3"/></svg><span>דוח לקבלן</span>
+        </button>
+        <button class="btn btn-ghost" id="btnExport" title="ייצוא לאקסל">
+          <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 19h16"/></svg><span>ייצוא</span>
+        </button>
+        <button class="btn btn-ghost" id="btnSettings" title="הגדרות">
+          <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6zm7.4-3a7.4 7.4 0 00-.1-1.3l2-1.6-2-3.4-2.4 1a7.5 7.5 0 00-2.2-1.3L14.3 3h-4l-.4 2.4a7.5 7.5 0 00-2.2 1.3l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 000 2.6l-2 1.6 2 3.4 2.4-1a7.5 7.5 0 002.2 1.3l.4 2.4h4l.4-2.4a7.5 7.5 0 002.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3z"/></svg><span>הגדרות</span>
+        </button>
+        <button class="btn btn-ghost" id="btnTheme" title="מצב תצוגה" aria-label="מצב כהה/בהיר">
+          <svg viewBox="0 0 24 24"><path d="M21 13A9 9 0 1111 3a7 7 0 0010 10z"/></svg>
+        </button>
+        <button class="btn btn-ghost" id="btnLogout" title="יציאה" aria-label="יציאה">
+          <svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- hero -->
+    <section class="hero">
+      <div class="hero-building card">
+        <div class="card-head">
+          <div>
+            <div class="eyebrow">מבט על הבניין</div>
+            <h2>בית וגן 6</h2>
+          </div>
+          <div class="legend">
+            <span><i class="dot ok"></i>הושלם</span>
+            <span><i class="dot partial"></i>בתהליך</span>
+            <span><i class="dot none"></i>טרם החל</span>
+          </div>
+        </div>
+        <div id="building" class="building-wrap"></div>
+        <p class="hint">לחיצה על דירה פותחת את הכרטיס שלה</p>
+      </div>
+
+      <div class="hero-stats">
+        <div class="card stat-main">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 120 120" class="ring">
+              <circle cx="60" cy="60" r="52" class="ring-bg"/>
+              <circle cx="60" cy="60" r="52" class="ring-fg" id="ringFg"/>
+            </svg>
+            <div class="ring-label"><strong id="pctPaid">0%</strong><span>נגבה</span></div>
+          </div>
+          <div class="stat-main-body">
+            <div class="eyebrow">סה״כ נגבה</div>
+            <div class="big" id="sumPaid">₪0</div>
+            <div class="muted">מתוך <span id="sumDue">₪0</span></div>
+            <div class="mini-row">
+              <span class="pill" id="sumLeft">יתרה ₪0</span>
+              <span class="pill gold" id="deadlinePill" hidden></span>
+            </div>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="card stat">
+            <div class="stat-icon sign"><svg viewBox="0 0 24 24"><path d="M3 17c3-1 4-6 6-6s1 5 3 5 3-3 4-3 1 2 5 2M3 21h18"/></svg></div>
+            <div><div class="stat-val" id="statSigned">0/12</div><div class="stat-lbl">דפי חתימה</div></div>
+          </div>
+          <div class="card stat">
+            <div class="stat-icon done"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+            <div><div class="stat-val" id="statDone">0/12</div><div class="stat-lbl">דירות הושלמו</div></div>
+          </div>
+          <div class="card stat">
+            <div class="stat-icon cheque"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6 14h5M15 14h3M6 10h12"/></svg></div>
+            <div><div class="stat-val" id="statCheques">0</div><div class="stat-lbl">צ׳קים · <span id="statChequesSum">₪0</span></div></div>
+          </div>
+          <div class="card stat">
+            <div class="stat-icon transfer"><svg viewBox="0 0 24 24"><path d="M4 9h14l-4-4M20 15H6l4 4"/></svg></div>
+            <div><div class="stat-val" id="statTransfers">0</div><div class="stat-lbl">העברות · <span id="statTransfersSum">₪0</span></div></div>
+          </div>
+        </div>
+        <div class="card delivery">
+          <div class="delivery-row">
+            <div>
+              <div class="eyebrow">מסירה לקבלן</div>
+              <div class="delivery-val"><strong id="delivPay">0</strong> תשלומים · <strong id="delivSig">0</strong> דפי חתימה נמסרו</div>
+            </div>
+            <div class="delivery-bar"><span id="delivBar"></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- toolbar -->
+    <section class="toolbar">
+      <div class="chips" id="filters" role="tablist">
+        <button class="chip active" data-f="all">הכל <b id="cAll">12</b></button>
+        <button class="chip" data-f="done">הושלמו <b id="cDone">0</b></button>
+        <button class="chip" data-f="partial">בתהליך <b id="cPartial">0</b></button>
+        <button class="chip" data-f="none">טרם החלו <b id="cNone">0</b></button>
+        <button class="chip" data-f="nosign">חסרה חתימה <b id="cNoSign">0</b></button>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24"><path d="M11 18a7 7 0 110-14 7 7 0 010 14zm10 3l-5-5"/></svg>
+        <input id="search" type="search" placeholder="חיפוש לפי שם, טלפון או מס׳ צ׳ק">
+      </label>
+    </section>
+
+    <section id="grid" class="grid"></section>
+
+    <section class="card activity">
+      <div class="card-head"><div><div class="eyebrow">יומן פעילות</div><h2>עדכונים אחרונים</h2></div></div>
+      <ol id="activity" class="timeline"></ol>
+    </section>
+
+    <footer class="foot">בית וגן 6 · בת ים · מערכת ניהול גבייה פרטית ומאובטחת</footer>
+  </main>
+</div>
+
+<!-- ======================== APARTMENT DRAWER ======================== -->
+<div id="drawer" class="drawer" hidden>
+  <div class="drawer-backdrop" data-close></div>
+  <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <header class="drawer-head">
+      <div class="apt-badge big" id="dBadge">1</div>
+      <div class="drawer-title">
+        <h2 id="dTitle">דירה 1</h2>
+        <div class="muted" id="dSub">קומה 1</div>
+      </div>
+      <button class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="drawer-summary" id="dSummary"></div>
+    <nav class="tabs" id="dTabs">
+      <button class="tab active" data-tab="pay">תשלומים</button>
+      <button class="tab" data-tab="sign">חתימה</button>
+      <button class="tab" data-tab="info">פרטי דייר</button>
+    </nav>
+    <div class="drawer-body">
+      <!-- payments -->
+      <div class="tab-pane" data-pane="pay">
+        <div id="payList" class="pay-list"></div>
+        <button class="btn btn-primary btn-block" id="btnAddPay">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>הוספת תשלום
+        </button>
+      </div>
+
+      <!-- signature -->
+      <div class="tab-pane" data-pane="sign" hidden>
+        <form id="signForm" class="form">
+          <div class="toggle-card">
+            <label class="switch"><input type="checkbox" name="signed"><span></span></label>
+            <div><strong>דף החתימה התקבל</strong><div class="muted small">סמן כאשר הדייר חתם ומסר את הדף</div></div>
+          </div>
+          <label class="field"><span>תאריך קבלה</span><input type="date" name="date"></label>
+          <div class="field">
+            <span>צילום / סריקה של דף החתימה</span>
+            <div class="files" id="signFiles"></div>
+            <label class="upload">
+              <input type="file" accept="image/*,application/pdf" multiple data-target="sign">
+              <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z"/></svg>
+              <span>צלם או העלה קובץ</span>
+            </label>
+          </div>
+          <div class="toggle-card subtle">
+            <label class="switch"><input type="checkbox" name="delivered"><span></span></label>
+            <div><strong>נמסר לקבלן</strong></div>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">שמירה</button>
+        </form>
+      </div>
+
+      <!-- info -->
+      <div class="tab-pane" data-pane="info" hidden>
+        <form id="infoForm" class="form">
+          <label class="field"><span>שם הדייר / בעל הדירה</span><input name="owner" autocomplete="off"></label>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="residentType" value="owner"><span>בעלים</span></label>
+            <label><input type="radio" name="residentType" value="tenant"><span>שוכר</span></label>
+          </div>
+          <div class="row2">
+            <label class="field"><span>טלפון</span><input name="phone" type="tel" inputmode="tel" dir="ltr"></label>
+            <label class="field"><span>טלפון נוסף</span><input name="phone2" type="tel" inputmode="tel" dir="ltr"></label>
+          </div>
+          <label class="field"><span>דוא״ל</span><input name="email" type="email" dir="ltr"></label>
+          <div class="row2">
+            <label class="field"><span>קומה</span><input name="floor" type="number" min="0" max="12"></label>
+            <label class="field"><span>סכום לתשלום (₪)</span><input name="amountDue" type="text" inputmode="decimal" placeholder="ברירת מחדל"></label>
+          </div>
+          <label class="field"><span>הערות</span><textarea name="notes" rows="4"></textarea></label>
+          <button class="btn btn-primary btn-block" type="submit">שמירת פרטים</button>
+        </form>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ========================= PAYMENT MODAL ========================= -->
+<div id="payModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <form class="modal-card" id="payForm">
+    <header class="modal-head">
+      <h2 id="payTitle">תשלום חדש</h2>
+      <button type="button" class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <div class="method-picker" id="methodPicker">
+        <label><input type="radio" name="method" value="cheque" checked><span><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6 14h5M15 14h3M6 10h12"/></svg>צ׳ק</span></label>
+        <label><input type="radio" name="method" value="transfer"><span><svg viewBox="0 0 24 24"><path d="M4 9h14l-4-4M20 15H6l4 4"/></svg>העברה</span></label>
+        <label><input type="radio" name="method" value="cash"><span><svg viewBox="0 0 24 24"><path d="M2 7h20v10H2zM12 15a3 3 0 100-6 3 3 0 000 6z"/></svg>מזומן</span></label>
+        <label><input type="radio" name="method" value="app"><span><svg viewBox="0 0 24 24"><path d="M7 2h10v20H7zM11 18h2"/></svg>ביט/פייבוקס</span></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>סכום (₪)</span><input name="amount" inputmode="decimal" required class="input-lg"></label>
+        <label class="field"><span data-l-date>תאריך קבלה</span><input name="date" type="date"></label>
+      </div>
+      <div data-show="cheque">
+        <div class="row2">
+          <label class="field"><span>מספר צ׳ק</span><input name="chequeNo" inputmode="numeric" dir="ltr"></label>
+          <label class="field"><span>תאריך פירעון</span><input name="dueDate" type="date"></label>
+        </div>
+        <div class="row3">
+          <label class="field"><span>בנק</span><input name="bank" list="banks"></label>
+          <label class="field"><span>סניף</span><input name="branch" inputmode="numeric" dir="ltr"></label>
+          <label class="field"><span>חשבון</span><input name="account" inputmode="numeric" dir="ltr"></label>
+        </div>
+      </div>
+      <div data-show="transfer app">
+        <label class="field"><span>אסמכתא / מספר פעולה</span><input name="reference" dir="ltr"></label>
+      </div>
+      <label class="field"><span>שם המשלם (אם שונה מהדייר)</span><input name="payer"></label>
+      <div class="field">
+        <span data-l-files>צילום הצ׳ק</span>
+        <div class="files" id="payFiles"></div>
+        <label class="upload">
+          <input type="file" accept="image/*,application/pdf" multiple data-target="pay">
+          <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 100-8 4 4 0 000 8z"/></svg>
+          <span>צלם או העלה קובץ</span>
+        </label>
+      </div>
+      <label class="field"><span>הערות</span><textarea name="notes" rows="2"></textarea></label>
+      <div class="toggle-card subtle">
+        <label class="switch"><input type="checkbox" name="delivered"><span></span></label>
+        <div><strong>נמסר לקבלן</strong></div>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button type="button" class="btn btn-danger-ghost" id="btnDelPay" hidden>מחיקה</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-ghost" data-close>ביטול</button>
+      <button type="submit" class="btn btn-primary" id="paySave">שמירת תשלום</button>
+    </footer>
+  </form>
+</div>
+<datalist id="banks">
+  <option value="לאומי (10)"><option value="הפועלים (12)"><option value="דיסקונט (11)"><option value="מזרחי טפחות (20)">
+  <option value="הבינלאומי (31)"><option value="מרכנתיל (17)"><option value="יהב (4)"><option value="ירושלים (54)">
+  <option value="מסד (46)"><option value="אוצר החייל (14)"><option value="דואר (9)"><option value="One Zero (18)">
+</datalist>
+
+<!-- ========================= SETTINGS MODAL ========================= -->
+<div id="setModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2>הגדרות הפרויקט</h2>
+      <button type="button" class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <form id="projForm" class="form">
+        <label class="field"><span>שם הפרויקט</span><input name="name"></label>
+        <label class="field"><span>כתובת</span><input name="address"></label>
+        <div class="row2">
+          <label class="field"><span>שם הקבלן</span><input name="contractor"></label>
+          <label class="field"><span>טלפון הקבלן</span><input name="contractorPhone" type="tel" dir="ltr"></label>
+        </div>
+        <div class="row2">
+          <label class="field"><span>סכום ברירת מחדל לדירה (₪)</span><input name="defaultAmount" inputmode="decimal"></label>
+          <label class="field"><span>מועד יעד למסירה</span><input name="deadline" type="date"></label>
+        </div>
+        <div class="row2">
+          <label class="field"><span>קומות מגורים</span><input name="floors" type="number" min="1" max="12"></label>
+          <label class="field"><span>דירות בקומה</span><input name="perFloor" type="number" min="1" max="12"></label>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">שמירת הגדרות</button>
+      </form>
+      <hr class="sep">
+      <form id="pwForm" class="form">
+        <h3>החלפת סיסמה</h3>
+        <label class="field"><span>סיסמה נוכחית</span><input name="current" type="password" autocomplete="current-password" required></label>
+        <label class="field"><span>סיסמה חדשה (לפחות 8 תווים)</span><input name="next" type="password" autocomplete="new-password" minlength="8" required></label>
+        <button class="btn btn-ghost btn-block" type="submit">עדכון סיסמה</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================== VIEWER ========================== -->
+<div id="viewer" class="viewer" hidden>
+  <div class="viewer-bar">
+    <a id="viewerOpen" class="btn btn-ghost light" target="_blank" rel="noopener">פתיחה בחלון</a>
+    <button class="icon-btn light" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="viewer-stage" data-close><img id="viewerImg" alt=""><iframe id="viewerPdf" title="PDF" hidden></iframe></div>
+</div>
+
+<!-- ========================== CONFIRM ========================== -->
+<div id="confirm" class="modal" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-card narrow">
+    <div class="modal-body">
+      <h3 id="confirmText">בטוח?</h3>
+    </div>
+    <footer class="modal-foot">
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" id="confirmNo">ביטול</button>
+      <button class="btn btn-danger" id="confirmYes">מחיקה</button>
+    </footer>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<div id="report" class="report"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
