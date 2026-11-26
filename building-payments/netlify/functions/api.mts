@@ -54,6 +54,17 @@ interface Apartment {
   signature: { signed: boolean; date: string; files: string[]; delivered: boolean };
   notes: string;
   updatedAt: string;
+  receipt?: Receipt;
+}
+
+interface Receipt {
+  name: string; // שם על הקבלה
+  idNo: string; // ת.ז. / ח.פ.
+  email: string;
+  phone: string;
+  notes: string;
+  updatedAt: string;
+  updatedBy: "tenant" | "admin";
 }
 
 interface Project {
@@ -186,8 +197,9 @@ const log = (s: State, text: string, apt?: number) =>
 
 /* ----------------------------- auth ------------------------------- */
 
-type Role = "admin" | "contractor" | "resident";
+type Role = "admin" | "contractor" | "resident" | "tenant";
 type ViewerRole = "contractor" | "resident";
+interface Session { role: Role; apt?: number }
 
 interface ViewerAccess {
   code: string; // read-only access code, kept retrievable so the manager can re-share it
@@ -200,6 +212,7 @@ interface AuthRecord {
   salt?: string;
   pwVersion: number;
   viewers?: Partial<Record<ViewerRole, ViewerAccess>>;
+  tenants?: Record<string, ViewerAccess>; // personal code per apartment
 }
 
 async function getAuth(): Promise<AuthRecord> {
@@ -245,17 +258,23 @@ function sameCode(auth: AuthRecord, a: string, b: string) {
 }
 
 /** Which role does this password unlock? */
-function roleFor(auth: AuthRecord, password: string): Role | null {
-  if (checkPassword(auth, password)) return "admin";
+function sessionForPassword(auth: AuthRecord, password: string): Session | null {
+  if (checkPassword(auth, password)) return { role: "admin" };
   for (const r of ["contractor", "resident"] as ViewerRole[]) {
     const v = auth.viewers?.[r];
-    if (v?.code && sameCode(auth, password, v.code)) return r;
+    if (v?.code && sameCode(auth, password, v.code)) return { role: r };
+  }
+  for (const [apt, v] of Object.entries(auth.tenants ?? {})) {
+    if (v?.code && sameCode(auth, password, v.code)) return { role: "tenant", apt: Number(apt) };
   }
   return null;
 }
 
-const versionFor = (auth: AuthRecord, role: Role) =>
-  role === "admin" ? auth.pwVersion : auth.viewers?.[role]?.v ?? -1;
+function accessFor(auth: AuthRecord, ses: Session): ViewerAccess | null {
+  if (ses.role === "admin") return { code: "-", v: auth.pwVersion };
+  if (ses.role === "tenant") return auth.tenants?.[String(ses.apt)] ?? null;
+  return auth.viewers?.[ses.role] ?? null;
+}
 
 function sign(auth: AuthRecord, payload: object) {
   const body = b64u(JSON.stringify(payload));
@@ -263,7 +282,7 @@ function sign(auth: AuthRecord, payload: object) {
   return `${body}.${mac}`;
 }
 
-function verify(auth: AuthRecord, token: string | undefined): Role | null {
+function verify(auth: AuthRecord, token: string | undefined): Session | null {
   if (!token) return null;
   const [body, mac] = token.split(".");
   if (!body || !mac) return null;
@@ -271,28 +290,39 @@ function verify(auth: AuthRecord, token: string | undefined): Role | null {
   if (!safeEqual(mac, expected)) return null;
   try {
     const p = JSON.parse(Buffer.from(body, "base64url").toString());
-    const role: Role = p.r === "contractor" || p.r === "resident" ? p.r : "admin";
-    if (p.exp > Date.now() && p.v === versionFor(auth, role) && true) {
-      if (role !== "admin" && !auth.viewers?.[role]?.code) return null;
-      return role;
-    }
-    return null;
+    const role: Role = ["contractor", "resident", "tenant"].includes(p.r) ? p.r : "admin";
+    const ses: Session = role === "tenant" ? { role, apt: Number(p.a) } : { role };
+    const acc = accessFor(auth, ses);
+    if (!acc || !acc.code || p.exp <= Date.now() || p.v !== acc.v) return null;
+    return ses;
   } catch {
     return null;
   }
 }
 
-const sessionFor = (auth: AuthRecord, role: Role) =>
-  sign(auth, { exp: Date.now() + SESSION_DAYS * 864e5, r: role, v: versionFor(auth, role), n: randomBytes(8).toString("hex") });
+const sessionFor = (auth: AuthRecord, ses: Session) =>
+  sign(auth, {
+    exp: Date.now() + SESSION_DAYS * 864e5, r: ses.role, ...(ses.apt ? { a: ses.apt } : {}),
+    v: accessFor(auth, ses)?.v ?? -1, n: randomBytes(8).toString("hex"),
+  });
 
-/** Residents see the whole building's progress, but not bank details, documents or neighbours' contact info. */
-function view(state: State, role: Role) {
-  if (role !== "resident") return { ...state, role };
+/** Residents see the whole building's progress, but not bank details, documents or neighbours' contact info.
+ *  A tenant additionally sees their own apartment in full (minus documents) and can edit their receipt details. */
+function view(state: State, ses: Session) {
+  const { role } = ses;
+  if (role === "admin" || role === "contractor") return { ...state, role };
   return {
     ...state,
     role,
-    apartments: state.apartments.map((a) => ({
+    myApt: role === "tenant" ? ses.apt : undefined,
+    apartments: state.apartments.map((a) => a.id === ses.apt ? {
       ...a,
+      notes: "",
+      payments: a.payments.map((p) => ({ ...p, account: p.account ? "•••" + p.account.slice(-3) : "", files: [] })),
+      signature: { ...a.signature, files: [] },
+    } : {
+      ...a,
+      receipt: undefined,
       phone: "",
       phone2: "",
       email: "",
@@ -301,7 +331,19 @@ function view(state: State, role: Role) {
         id: p.id, method: p.method, amount: p.amount, date: p.date, delivered: p.delivered, createdAt: p.createdAt, files: [],
       })),
       signature: { ...a.signature, files: [] },
-    })),
+    }),
+  };
+}
+
+function readReceipt(b: any, by: "tenant" | "admin"): Receipt {
+  return {
+    name: str(b?.name, 120),
+    idNo: str(b?.idNo, 20).replace(/[^\d-]/g, ""),
+    email: str(b?.email, 120),
+    phone: str(b?.phone, 40),
+    notes: str(b?.notes, 500),
+    updatedAt: new Date().toISOString(),
+    updatedBy: by,
   };
 }
 
@@ -352,10 +394,10 @@ async function route(req: Request, context: Context): Promise<Response> {
     }
     const body = await req.json().catch(() => ({}));
     const password = str(body.password, 200);
-    const role = password ? roleFor(auth, password) : null;
-    if (role) {
+    const ses = password ? sessionForPassword(auth, password) : null;
+    if (ses) {
       await kv().delete(key);
-      return json({ ok: true, role }, 200, { "set-cookie": cookieHeader(sessionFor(auth, role), SESSION_DAYS * 86400) });
+      return json({ ok: true, role: ses.role }, 200, { "set-cookie": cookieHeader(sessionFor(auth, ses), SESSION_DAYS * 86400) });
     }
     rec.n += 1;
     if (rec.n >= LOCK_AFTER) {
@@ -372,19 +414,34 @@ async function route(req: Request, context: Context): Promise<Response> {
   }
 
   /* ---- everything below requires a session ---- */
-  const role = verify(auth, context.cookies.get(COOKIE));
-  if (!role) return err("נדרשת התחברות", 401);
+  const ses = verify(auth, context.cookies.get(COOKIE));
+  if (!ses) return err("נדרשת התחברות", 401);
+  const role = ses.role;
 
   if (path === "session" && method === "GET") return json({ ok: true, role });
 
   if (path === "data" && method === "GET") {
     const { state } = await loadState();
-    return json(view(state, role));
+    return json(view(state, ses));
+  }
+
+  /* ---- receipt details: the tenant for their own apartment ---- */
+  if (path === "my/receipt" && method === "PUT") {
+    if (role !== "tenant" || !ses.apt) return err("אין הרשאה", 403);
+    const b = await req.json();
+    const s = await mutate((s) => {
+      const a = s.apartments.find((x) => x.id === ses.apt);
+      if (!a) return "דירה לא נמצאה";
+      a.receipt = readReceipt(b, "tenant");
+      if (!a.receipt.name) return "יש להזין את השם שיופיע על הקבלה";
+      log(s, `דירה ${a.id}: הדייר עדכן פרטים לקבלה`, a.id);
+    });
+    return json(view(s, ses));
   }
 
   /* ---- documents: manager + contractor only ---- */
   if (parts[0] === "file" && parts[1] && method === "GET") {
-    if (role === "resident") {
+    if (role === "resident" || role === "tenant") {
       // residents may open the building photo and the shared project documents only
       const { state } = await loadState();
       const shared = new Set([state.project.photo, ...(state.docs ?? []).flatMap((d) => d.files)].filter(Boolean));
@@ -398,7 +455,22 @@ async function route(req: Request, context: Context): Promise<Response> {
 
   /* ---- viewer access codes ---- */
   if (path === "access" && method === "GET") {
-    return json({ contractor: auth.viewers?.contractor?.code ?? null, resident: auth.viewers?.resident?.code ?? null });
+    const tenants: Record<string, string> = {};
+    for (const [k, v] of Object.entries(auth.tenants ?? {})) if (v.code) tenants[k] = v.code;
+    return json({ contractor: auth.viewers?.contractor?.code ?? null, resident: auth.viewers?.resident?.code ?? null, tenants });
+  }
+  if (parts[0] === "access" && parts[1] === "apt" && /^\d{1,2}$/.test(parts[2] ?? "")) {
+    const apt = parts[2];
+    const { state } = await loadState();
+    if (!state.apartments.some((a) => String(a.id) === apt)) return err("דירה לא נמצאה", 404);
+    const tenants = { ...(auth.tenants ?? {}) };
+    const prevV = tenants[apt]?.v ?? 0;
+    if (method === "POST") tenants[apt] = { code: newCode(), v: prevV + 1 };
+    else if (method === "DELETE") tenants[apt] = { code: "", v: prevV + 1 };
+    else return err("לא נמצא", 404);
+    await kv().setJSON("auth", { ...auth, tenants });
+    await mutate((s) => log(s, method === "POST" ? `דירה ${apt}: נוצר קישור אישי לדייר` : `דירה ${apt}: בוטל הקישור האישי`, Number(apt)));
+    return json({ code: tenants[apt].code || null });
   }
   if (parts[0] === "access" && (parts[1] === "contractor" || parts[1] === "resident")) {
     const r = parts[1] as ViewerRole;
@@ -422,7 +494,7 @@ async function route(req: Request, context: Context): Promise<Response> {
       s.project.photo = key || undefined;
       log(s, key ? "עודכנה תמונת הבניין" : "הוסרה תמונת הבניין");
     });
-    return json(view(s, "admin"));
+    return json(view(s, { role: "admin" }));
   }
 
   /* ---- project documents (shared with contractor + residents) ---- */
@@ -438,7 +510,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         s.docs.unshift({ id: randomUUID(), title, date: dateStr(b.date), files: fl, createdAt: new Date().toISOString() });
         log(s, `נוסף מסמך: ${title}`);
       });
-      return json(view(s, "admin"));
+      return json(view(s, { role: "admin" }));
     }
     if (parts[1] && method === "DELETE") {
       let removed: string[] = [];
@@ -450,7 +522,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         log(s, `נמחק מסמך: ${d.title}`);
       });
       await Promise.all(removed.map((k) => files().delete(k).catch(() => {})));
-      return json(view(s, "admin"));
+      return json(view(s, { role: "admin" }));
     }
   }
 
@@ -474,7 +546,7 @@ async function route(req: Request, context: Context): Promise<Response> {
       }
       log(s, "עודכנו הגדרות הפרויקט");
     });
-    return json(view(s, "admin"));
+    return json(view(s, { role: "admin" }));
   }
 
   /* ---- password change ---- */
@@ -492,7 +564,7 @@ async function route(req: Request, context: Context): Promise<Response> {
       pwVersion: auth.pwVersion + 1,
     };
     await kv().setJSON("auth", updated);
-    const token = sessionFor(updated, "admin");
+    const token = sessionFor(updated, { role: "admin" });
     return json({ ok: true }, 200, { "set-cookie": cookieHeader(token, SESSION_DAYS * 86400) });
   }
 
@@ -536,6 +608,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         if ("floor" in b) a.floor = Math.min(12, Math.max(0, Math.round(num(b.floor))));
         if ("amountDue" in b) a.amountDue = b.amountDue === null || b.amountDue === "" ? null : num(b.amountDue);
         if ("notes" in b) a.notes = str(b.notes, 4000);
+        if (b.receipt && typeof b.receipt === "object") a.receipt = readReceipt(b.receipt, "admin");
         if (b.signature && typeof b.signature === "object") {
           a.signature = {
             signed: !!b.signature.signed,
@@ -549,7 +622,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         else if (wasSigned && !a.signature.signed) log(s, `דירה ${id}: סימון החתימה בוטל`, id);
         else log(s, `דירה ${id}: עודכנו פרטים`, id);
       });
-      return json(view(s, "admin"));
+      return json(view(s, { role: "admin" }));
     }
 
     const readPayment = (b: any, base?: Payment): Payment => {
@@ -587,7 +660,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         a.updatedAt = new Date().toISOString();
         log(s, `דירה ${id}: נרשם תשלום ${label[p.method]} ${money(p.amount)}`, id);
       });
-      return json(view(s, "admin"));
+      return json(view(s, { role: "admin" }));
     }
 
     if (parts[2] === "payment" && parts[3]) {
@@ -602,7 +675,7 @@ async function route(req: Request, context: Context): Promise<Response> {
           a.updatedAt = new Date().toISOString();
           log(s, `דירה ${id}: עודכן תשלום ${label[a.payments[i].method]} ${money(a.payments[i].amount)}`, id);
         });
-        return json(view(s, "admin"));
+        return json(view(s, { role: "admin" }));
       }
       if (method === "DELETE") {
         let removed: string[] = [];
@@ -616,7 +689,7 @@ async function route(req: Request, context: Context): Promise<Response> {
           log(s, `דירה ${id}: נמחק תשלום ${label[p.method]} ${money(p.amount)}`, id);
         });
         await Promise.all(removed.map((k) => files().delete(k).catch(() => {})));
-        return json(view(s, "admin"));
+        return json(view(s, { role: "admin" }));
       }
     }
   }

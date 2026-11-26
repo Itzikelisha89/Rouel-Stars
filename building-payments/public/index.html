@@ -107,6 +107,7 @@
 
   <main class="container">
     <div class="viewer-banner" id="viewerBanner" hidden></div>
+    <section id="myApt" class="card my-apt" hidden></section>
     <!-- hero -->
     <section class="hero">
       <div class="hero-building card">
@@ -291,6 +292,15 @@
             <label class="field"><span>קומה</span><input name="floor" type="number" min="0" max="12"></label>
             <label class="field"><span>סכום לתשלום (₪)</span><input name="amountDue" type="text" inputmode="decimal" placeholder="ברירת מחדל"></label>
           </div>
+          <fieldset class="receipt-set">
+            <legend>פרטים לקבלה <span class="muted small" id="receiptBy"></span></legend>
+            <label class="field"><span>לטובת מי הקבלה</span><input name="rName" autocomplete="off"></label>
+            <div class="row2">
+              <label class="field"><span>ת.ז. / ח.פ.</span><input name="rId" inputmode="numeric" dir="ltr"></label>
+              <label class="field"><span>טלפון</span><input name="rPhone" type="tel" dir="ltr"></label>
+            </div>
+            <label class="field"><span>דוא״ל לשליחת הקבלה</span><input name="rEmail" type="email" dir="ltr"></label>
+          </fieldset>
           <label class="field"><span>הערות</span><textarea name="notes" rows="4"></textarea></label>
           <button class="btn btn-primary btn-block" type="submit">שמירת פרטים</button>
         </form>
@@ -452,6 +462,13 @@
           <div class="share-title"><strong>הקבלן</strong><span>רואה הכל: דירות, תשלומים, צילומי צ׳קים ודפי חתימה</span></div>
         </div>
         <div class="share-body"></div>
+      </div>
+      <div class="share-card" data-role="tenants">
+        <div class="share-head">
+          <div class="share-ic tenant"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"/></svg></div>
+          <div class="share-title"><strong>קישור אישי לכל דירה</strong><span>הדייר רואה את הבניין, ובנוסף את הדירה שלו, ויכול לעדכן לטובת מי תצא הקבלה</span></div>
+        </div>
+        <div class="share-body"><div class="tenant-list" id="tenantList"></div></div>
       </div>
       <div class="share-card" data-role="resident">
         <div class="share-head">

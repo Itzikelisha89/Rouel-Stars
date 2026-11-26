@@ -124,7 +124,7 @@
   $("#btnLogout").addEventListener("click", async () => {
     await api("POST", "logout").catch(() => {});
     S = null;
-    document.body.classList.remove("role-admin", "role-contractor", "role-resident");
+    document.body.classList.remove("role-admin", "role-contractor", "role-resident", "role-tenant");
     showLogin();
   });
 
@@ -145,12 +145,13 @@
   const ROLE_TXT = { contractor: "צפייה · קבלן", resident: "צפייה · דיירים" };
   function applyRole() {
     const r = S.role || "admin";
-    document.body.classList.remove("role-admin", "role-contractor", "role-resident");
+    document.body.classList.remove("role-admin", "role-contractor", "role-resident", "role-tenant");
     document.body.classList.add("role-" + r);
     const badge = $("#roleBadge"), banner = $("#viewerBanner");
     if (r === "admin") { badge.hidden = true; banner.hidden = true; return; }
     badge.hidden = false;
-    badge.innerHTML = svg('<path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 10a3 3 0 110-6 3 3 0 010 6z"/>') + `<span class="rb-txt">${ROLE_TXT[r]}</span>`;
+    badge.innerHTML = svg('<path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 10a3 3 0 110-6 3 3 0 010 6z"/>') + `<span class="rb-txt">${r === "tenant" ? "דירה " + S.myApt : ROLE_TXT[r]}</span>`;
+    if (r === "tenant") { banner.hidden = true; return; }
     banner.hidden = false;
     banner.innerHTML = svg('<path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z"/>') + (r === "contractor"
       ? `<div><strong>שלום${S.project.contractor ? " " + esc(S.project.contractor) : ""},</strong> כאן מוצג מצב הגבייה והחתימות של כל דירה, כולל צילומי הצ׳קים ודפי החתימה. הגישה היא לצפייה בלבד.</div>`
@@ -228,6 +229,7 @@
     $("#cNone").textContent = counts.none;
     $("#cNoSign").textContent = counts.nosign;
 
+    renderMyApt();
     renderBuilding();
     renderPhoto();
     renderDocs();
@@ -452,14 +454,14 @@
         (remaining > 0 ? ` נותרה יתרה לתשלום של ${ils(remaining)}.` : "") +
         (!a.signature.signed ? " בנוסף, נא להעביר את דף החתימה החתום." : "") + " תודה!"
       );
-      return `<article class="card apt" data-st="${st}" data-apt="${a.id}" tabindex="0">
+      return `<article class="card apt${a.id === S.myApt ? " mine" : ""}" data-st="${st}" data-apt="${a.id}" tabindex="0">
         <div class="apt-top">
           <div class="apt-badge">${a.id}</div>
           <div class="apt-head-txt">
             <div class="apt-name ${a.owner ? "" : "empty"}">${a.owner ? esc(a.owner) : "טרם הוזן שם"}</div>
             <div class="apt-meta">קומה ${a.floor}${a.residentType ? " · " + (a.residentType === "owner" ? "בעלים" : "שוכר") : ""}${a.phone ? ` · <span dir="ltr">${esc(a.phone)}</span>` : ""}</div>
           </div>
-          <span class="status-tag">${ST_LABEL[st]}</span>
+          ${a.id === S.myApt ? '<span class="mine-tag">הדירה שלך</span>' : ""}<span class="status-tag">${ST_LABEL[st]}</span>
         </div>
         <div>
           <div class="apt-money"><strong>${ils(paid)}</strong><span class="muted">${due > 0 ? "מתוך " + ils(due) : "לא הוגדר סכום"}</span></div>
@@ -651,6 +653,7 @@
           ${sig.files.length ? `<div class="files">${sig.files.map((k) => thumbHTML(k)).join("")}</div>` : ""}
         </div>
         ${a.phone ? `<div class="ro-card"><div class="ro-ic info">${svg(ICON.phone)}</div><div class="ro-txt"><strong>${esc(a.owner || "דייר")}</strong><a href="tel:${esc(a.phone.replace(/[^\d+]/g, ""))}" dir="ltr">${esc(a.phone)}</a>${a.phone2 ? ` · <a href="tel:${esc(a.phone2.replace(/[^\d+]/g, ""))}" dir="ltr">${esc(a.phone2)}</a>` : ""}</div></div>` : ""}
+        ${a.receipt && a.receipt.name ? `<div class="ro-card"><div class="ro-ic ok">${svg(ICON.doc)}</div><div class="ro-txt"><strong>קבלה לטובת: ${esc(a.receipt.name)}</strong><span class="muted small">${[a.receipt.idNo && "ת.ז./ח.פ. " + esc(a.receipt.idNo), a.receipt.email && esc(a.receipt.email), a.receipt.phone && esc(a.receipt.phone)].filter(Boolean).join(" · ")}</span></div></div>` : ""}
         ${a.notes ? `<div class="ro-card"><div class="ro-txt"><strong>הערות</strong><span class="small">${esc(a.notes)}</span></div></div>` : ""}`;
     }
 
@@ -702,6 +705,9 @@
       f.amountDue.placeholder = S.project.defaultAmount ? `ברירת מחדל ${ils(S.project.defaultAmount)}` : "ברירת מחדל";
       f.notes.value = a.notes;
       $$("input[name=residentType]", f).forEach((r) => (r.checked = r.value === a.residentType));
+      const rc = a.receipt || {};
+      f.rName.value = rc.name || ""; f.rId.value = rc.idNo || ""; f.rPhone.value = rc.phone || ""; f.rEmail.value = rc.email || "";
+      $("#receiptBy").textContent = rc.updatedAt ? `(עודכן ע״י ${rc.updatedBy === "tenant" ? "הדייר" : "המנהל"} · ${fmtTime(rc.updatedAt)})` : "";
     }
   }
 
@@ -736,6 +742,8 @@
         owner: f.owner.value, phone: f.phone.value, phone2: f.phone2.value, email: f.email.value,
         floor: f.floor.value, amountDue: f.amountDue.value.trim() === "" ? null : f.amountDue.value,
         notes: f.notes.value, residentType: rt ? rt.value : "",
+        ...(f.rName.value.trim() || (apt().receipt && apt().receipt.name)
+          ? { receipt: { name: f.rName.value, idNo: f.rId.value, phone: f.rPhone.value, email: f.rEmail.value } } : {}),
       });
       setState(next);
       toast("פרטי הדייר נשמרו");
@@ -885,11 +893,12 @@
 
   /* ------------------------- export / report ------------------------- */
   $("#btnExport").addEventListener("click", () => {
-    const rows = [["דירה", "קומה", "שם", "טלפון", "סכום לתשלום", "סה״כ שולם", "יתרה", "סטטוס", "חתימה", "תאריך חתימה", "אמצעי תשלום", "סכום", "תאריך", "מס׳ צ׳ק", "בנק", "סניף", "חשבון", "תאריך פירעון", "אסמכתא", "שם משלם", "נמסר לקבלן", "הערות"]];
+    const rows = [["דירה", "קומה", "שם", "טלפון", "סכום לתשלום", "סה״כ שולם", "יתרה", "סטטוס", "חתימה", "תאריך חתימה", "אמצעי תשלום", "סכום", "תאריך", "מס׳ צ׳ק", "בנק", "סניף", "חשבון", "תאריך פירעון", "אסמכתא", "שם משלם", "נמסר לקבלן", "הערות", "קבלה לטובת", "ת.ז./ח.פ. לקבלה", "דוא״ל לקבלה"]];
     for (const a of S.apartments) {
       const base = [a.id, a.floor, a.owner, a.phone, dueOf(a), paidOf(a), Math.max(0, dueOf(a) - paidOf(a)), ST_LABEL[statusOf(a)], a.signature.signed ? "כן" : "לא", a.signature.date];
-      if (!a.payments.length) rows.push([...base, "", "", "", "", "", "", "", "", "", "", "", a.notes]);
-      for (const p of a.payments) rows.push([...base, METHOD[p.method].label, p.amount, p.date, p.chequeNo, p.bank, p.branch, p.account, p.dueDate, p.reference, p.payer, p.delivered ? "כן" : "לא", p.notes]);
+      const rc = a.receipt ? [a.receipt.name, a.receipt.idNo, a.receipt.email] : ["", "", ""];
+      if (!a.payments.length) rows.push([...base, "", "", "", "", "", "", "", "", "", "", "", a.notes, ...rc]);
+      for (const p of a.payments) rows.push([...base, METHOD[p.method].label, p.amount, p.date, p.chequeNo, p.bank, p.branch, p.account, p.dueDate, p.reference, p.payer, p.delivered ? "כן" : "לא", p.notes, ...rc]);
     }
     const csv = "﻿" + rows.map((r) => r.map((v) => {
       let s = String(v ?? "");
@@ -917,7 +926,7 @@
         if (p.method === "transfer" || p.method === "app") d.push(fmtDate(p.date));
         return esc(d.filter(Boolean).join(" · ")) + (p.delivered ? " ✓" : "");
       }).join("<br>") || "—";
-      return `<tr><td><b>${a.id}</b></td><td>${esc(a.owner) || "—"}<br><span dir="ltr">${esc(a.phone)}</span></td><td>${dueOf(a) ? ils(dueOf(a)) : "—"}</td><td><b>${ils(paidOf(a))}</b></td><td>${pays}</td><td>${a.signature.signed ? "✓ " + fmtDate(a.signature.date) : "✗"}</td></tr>`;
+      return `<tr><td><b>${a.id}</b></td><td>${esc(a.owner) || "—"}<br><span dir="ltr">${esc(a.phone)}</span>${a.receipt && a.receipt.name ? `<br><small>קבלה: ${esc(a.receipt.name)}${a.receipt.idNo ? " (" + esc(a.receipt.idNo) + ")" : ""}</small>` : ""}</td><td>${dueOf(a) ? ils(dueOf(a)) : "—"}</td><td><b>${ils(paidOf(a))}</b></td><td>${pays}</td><td>${a.signature.signed ? "✓ " + fmtDate(a.signature.date) : "✗"}</td></tr>`;
     }).join("");
     $("#report").innerHTML = `
       <h1>${esc(P.name)}</h1>
@@ -953,8 +962,63 @@
     else if (!$("#drawer").hidden) closeDrawer();
   });
 
+  /* -------------------------- my apartment -------------------------- */
+  let editingReceipt = false;
+  function renderMyApt() {
+    const box = $("#myApt");
+    if (S.role !== "tenant") { box.hidden = true; return; }
+    const a = S.apartments.find((x) => x.id === S.myApt);
+    if (!a) { box.hidden = true; return; }
+    const due = dueOf(a), paid = paidOf(a), st = statusOf(a), rc = a.receipt || {};
+    const first = a.owner ? a.owner.split(/[\s–-]/)[0] : "";
+    box.hidden = false;
+    box.innerHTML = `
+      <div class="my-head">
+        <div class="apt-badge big">${a.id}</div>
+        <div style="flex:1;min-width:0"><div class="eyebrow">הדירה שלך</div><h2>שלום${first ? " " + esc(first) : ""}</h2></div>
+        <span class="status-tag" style="--st:var(--${st});--st-soft:var(--${st}-soft)">${ST_LABEL[st]}</span>
+      </div>
+      <div class="my-stats">
+        <div><div class="lbl">שולם</div><div class="val" style="color:var(--ok)">${ils(paid)}</div></div>
+        <div><div class="lbl">יתרה</div><div class="val" style="color:${due - paid > 0 ? "var(--none)" : "var(--ok)"}">${ils(Math.max(0, due - paid))}</div></div>
+        <div><div class="lbl">דף חתימה</div><div class="val" style="color:${a.signature.signed ? "var(--ok)" : "var(--none)"}">${a.signature.signed ? "התקבל ✓" : "חסר"}</div></div>
+      </div>
+      ${rc.name && !editingReceipt
+        ? `<div class="my-receipt done"><div class="receipt-view">
+             <div class="ro-ic ok">${svg(ICON.check)}</div>
+             <div class="txt"><span class="muted small">הקבלה תצא לטובת</span><strong>${esc(rc.name)}</strong>
+               <span class="muted small">${[rc.idNo && "ת.ז./ח.פ. " + esc(rc.idNo), rc.email && esc(rc.email), rc.phone && esc(rc.phone)].filter(Boolean).join(" · ")}</span></div>
+             <button class="btn btn-ghost" id="btnEditReceipt">עריכה</button></div></div>`
+        : `<form class="my-receipt" id="receiptForm">
+             <h3>לטובת מי תצא הקבלה?</h3>
+             <div class="muted small">מלא את הפרטים כפי שתרצה שיופיעו על הקבלה מהקבלן. הפרטים יגיעו רק לנציג הבניין ולקבלן.</div>
+             <div class="form">
+               <label class="field"><span>שם מלא / שם החברה</span><input name="name" required value="${esc(rc.name || a.owner || "")}"></label>
+               <div class="row2">
+                 <label class="field"><span>ת.ז. / ח.פ.</span><input name="idNo" inputmode="numeric" dir="ltr" value="${esc(rc.idNo || "")}"></label>
+                 <label class="field"><span>טלפון</span><input name="phone" type="tel" dir="ltr" value="${esc(rc.phone || a.phone || "")}"></label>
+               </div>
+               <label class="field"><span>דוא״ל לשליחת הקבלה</span><input name="email" type="email" dir="ltr" value="${esc(rc.email || "")}"></label>
+               <button class="btn btn-primary btn-block" type="submit">שמירת פרטי הקבלה</button>
+             </div>
+           </form>`}`;
+  }
+  $("#myApt").addEventListener("click", (e) => {
+    if (e.target.closest("#btnEditReceipt")) { editingReceipt = true; renderMyApt(); }
+  });
+  $("#myApt").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    busy($("button[type=submit]", f), async () => {
+      const next = await api("PUT", "my/receipt", { name: f.name.value, idNo: f.idNo.value, phone: f.phone.value, email: f.email.value });
+      editingReceipt = false;
+      setState(next);
+      toast("פרטי הקבלה נשמרו. תודה!");
+    });
+  });
+
   /* ----------------------------- share ----------------------------- */
-  let access = { contractor: null, resident: null };
+  let access = { contractor: null, resident: null, tenants: {} };
   const loginLink = (code) => `${location.origin}/#k=${encodeURIComponent(code)}`;
   function shareMessage(role, code) {
     const P = S.project;
@@ -962,7 +1026,30 @@
       ? `שלום${P.contractor ? " " + P.contractor : ""},\nזו הגישה למערכת המעקב של ${P.name} (${P.address}).\nכאן תוכל לראות את מצב התשלומים, צילומי הצ׳קים ודפי החתימה של כל הדירות.\n\nכניסה בלחיצה: ${loginLink(code)}\nקוד גישה: ${code}`
       : `שלום לדיירי ${P.address},\nהקמנו מערכת מעקב לפרויקט החיזוק. כאן אפשר לראות בכל רגע מי שילם ומי מסר דף חתימה.\n\nכניסה בלחיצה: ${loginLink(code)}\nקוד גישה: ${code}`;
   }
+  function tenantMessage(a, code) {
+    const first = a.owner ? " " + a.owner.split(/[\s–-]/)[0] : "";
+    return `שלום${first},\nזה הקישור האישי שלך לדירה ${a.id} במערכת המעקב של פרויקט החיזוק ב${S.project.address}.\nכאן אפשר לראות את מצב התשלום והחתימה שלך, ולעדכן לטובת מי תצא הקבלה.\n\nכניסה בלחיצה: ${loginLink(code)}\nקוד אישי: ${code}`;
+  }
+  function renderTenants() {
+    const t = access.tenants || {};
+    const missing = S.apartments.filter((a) => !t[a.id]).length;
+    $("#tenantList").innerHTML = S.apartments.map((a) => {
+      const code = t[a.id], wa = waNumber(a.phone);
+      const rc = a.receipt && a.receipt.name;
+      return `<div class="t-row" data-apt="${a.id}">
+        <div class="apt-badge">${a.id}</div>
+        <div class="t-txt"><strong>${esc(a.owner) || "דירה " + a.id}</strong>
+          <span class="${rc ? "ok" : ""}">${rc ? "✓ קבלה: " + esc(a.receipt.name) : code ? "יש קישור · טרם מילא פרטי קבלה" : "אין קישור עדיין"}</span></div>
+        ${code
+          ? `<a class="btn btn-wa" href="https://wa.me/${wa}?text=${encodeURIComponent(tenantMessage(a, code))}" target="_blank" rel="noopener" title="${wa ? "שליחה ל-" + esc(a.phone) : "שליחה בוואטסאפ"}">${svg(ICON.wa)}<span>שליחה</span></a>
+             <button class="icon-btn" data-tcopy="${a.id}" title="העתקת הודעה">${svg('<path d="M8 8h12v12H8zM4 16V4h12"/>')}</button>
+             <button class="icon-btn" data-toff="${a.id}" title="ביטול הקישור">${svg(ICON.x)}</button>`
+          : `<button class="btn btn-ghost" data-tnew="${a.id}">${svg('<path d="M12 5v14M5 12h14"/>')}<span>יצירה</span></button>`}
+      </div>`;
+    }).join("") + (missing ? `<button class="btn btn-primary btn-block t-all" data-tall>יצירת קישורים לכל ${missing} הדירות שחסרות</button>` : "");
+  }
   function renderShare() {
+    renderTenants();
     for (const role of ["contractor", "resident"]) {
       const body = $(`.share-card[data-role=${role}] .share-body`);
       const code = access[role];
@@ -984,6 +1071,30 @@
   $("#shareModal").addEventListener("click", async (e) => {
     if (e.target.closest("[data-close]")) { $("#shareModal").hidden = true; return; }
     const nb = e.target.closest("[data-new]"), off = e.target.closest("[data-off]"), cp = e.target.closest("[data-copy]");
+    const tn = e.target.closest("[data-tnew]"), tOff = e.target.closest("[data-toff]"), tCp = e.target.closest("[data-tcopy]"), tAll = e.target.closest("[data-tall]");
+    if (tn) {
+      busy(tn, async () => { access.tenants[tn.dataset.tnew] = (await api("POST", `access/apt/${tn.dataset.tnew}`)).code; renderTenants(); });
+      return;
+    }
+    if (tAll) {
+      busy(tAll, async () => {
+        for (const a of S.apartments) if (!access.tenants[a.id]) access.tenants[a.id] = (await api("POST", `access/apt/${a.id}`)).code;
+        renderTenants();
+        toast("נוצרו קישורים אישיים לכל הדירות");
+      });
+      return;
+    }
+    if (tOff) {
+      if (!(await confirmBox(`לבטל את הקישור של דירה ${tOff.dataset.toff}? הדייר ינותק מיד.`, "ביטול"))) return;
+      busy(tOff, async () => { await api("DELETE", `access/apt/${tOff.dataset.toff}`); delete access.tenants[tOff.dataset.toff]; renderTenants(); toast("הקישור בוטל"); });
+      return;
+    }
+    if (tCp) {
+      const a = S.apartments.find((x) => x.id === +tCp.dataset.tcopy);
+      try { await navigator.clipboard.writeText(tenantMessage(a, access.tenants[a.id])); toast("ההודעה הועתקה"); }
+      catch { toast("לא ניתן להעתיק בדפדפן זה", true); }
+      return;
+    }
     if (nb) {
       const role = nb.dataset.new;
       if (access[role] && !(await confirmBox("להחליף את הקוד? הקוד הישן יפסיק לעבוד ומי שנכנס איתו ינותק.", "החלפה"))) return;
