@@ -38,6 +38,7 @@ interface Payment {
   notes?: string;
   files: string[];
   delivered: boolean; // נמסר לקבלן
+  pending?: boolean; // דווח אך טרם אושרה קבלה (למשל העברה שעוד לא נראתה בחשבון)
   createdAt: string;
 }
 
@@ -644,6 +645,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         notes: str(b.notes, 1000),
         files: cleanFiles(b.files),
         delivered: !!b.delivered,
+        pending: !!b.pending,
         createdAt: base?.createdAt ?? new Date().toISOString(),
       };
     };
@@ -658,7 +660,7 @@ async function route(req: Request, context: Context): Promise<Response> {
         const p = readPayment(b);
         a.payments.push(p);
         a.updatedAt = new Date().toISOString();
-        log(s, `דירה ${id}: נרשם תשלום ${label[p.method]} ${money(p.amount)}`, id);
+        log(s, `דירה ${id}: נרשם תשלום ${label[p.method]} ${money(p.amount)}${p.pending ? " (ממתין לאישור קבלה)" : ""}`, id);
       });
       return json(view(s, { role: "admin" }));
     }

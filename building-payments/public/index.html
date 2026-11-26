@@ -109,6 +109,7 @@
     <div class="viewer-banner" id="viewerBanner" hidden></div>
     <section id="myApt" class="card my-apt" hidden></section>
     <!-- hero -->
+    <section class="card glance" id="glance"></section>
     <section class="hero">
       <div class="hero-building card">
         <div class="card-head">
@@ -124,6 +125,7 @@
         <div class="b-pane" data-v="plan">
           <div class="legend">
             <span><i class="dot ok"></i>הושלם</span>
+            <span><i class="dot wait"></i>ממתין לאישור</span>
             <span><i class="dot partial"></i>בתהליך</span>
             <span><i class="dot none"></i>טרם החל</span>
           </div>
@@ -353,6 +355,10 @@
         </label>
       </div>
       <label class="field"><span>הערות</span><textarea name="notes" rows="2"></textarea></label>
+      <div class="toggle-card subtle">
+        <label class="switch"><input type="checkbox" name="pending"><span></span></label>
+        <div><strong>ממתין לאישור קבלה</strong><div class="muted small">דווח ששולם, אבל עוד לא ראית שהכסף התקבל. לא נספר עד לאישור</div></div>
+      </div>
       <div class="toggle-card subtle">
         <label class="switch"><input type="checkbox" name="delivered"><span></span></label>
         <div><strong>נמסר לקבלן</strong></div>

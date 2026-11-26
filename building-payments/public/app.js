@@ -160,15 +160,18 @@
 
   /* ---------------------------- compute ---------------------------- */
   const dueOf = (a) => (a.amountDue === null || a.amountDue === undefined ? Number(S.project.defaultAmount) || 0 : Number(a.amountDue) || 0);
-  const paidOf = (a) => a.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  // only confirmed payments count; "pending" = reported but not yet seen in the account
+  const paidOf = (a) => a.payments.reduce((s, p) => s + (p.pending ? 0 : Number(p.amount) || 0), 0);
+  const pendingOf = (a) => a.payments.reduce((s, p) => s + (p.pending ? Number(p.amount) || 0 : 0), 0);
   function statusOf(a) {
     const due = dueOf(a), paid = paidOf(a);
     const payDone = due > 0 ? paid >= due : paid > 0;
     if (payDone) return "ok"; // דף החתימה לתיעוד בלבד, תשלום מלא = הושלם
+    if (pendingOf(a) > 0) return "wait";
     if (paid === 0 && !a.signature.signed) return "none";
     return "partial";
   }
-  const ST_LABEL = { ok: "הושלם", partial: "בתהליך", none: "טרם החל" };
+  const ST_LABEL = { ok: "הושלם", wait: "ממתין לאישור", partial: "בתהליך", none: "טרם החל" };
 
   function setState(next) {
     S = next;
@@ -184,7 +187,7 @@
     document.title = (P.name || "בית וגן 6") + " · ניהול גבייה";
 
     let due = 0, paid = 0, signed = 0, done = 0, chq = 0, chqSum = 0, trf = 0, trfSum = 0, payCount = 0, delivered = 0, sigDelivered = 0;
-    const counts = { ok: 0, partial: 0, none: 0, nosign: 0 };
+    const counts = { ok: 0, wait: 0, partial: 0, none: 0, nosign: 0 };
     for (const a of A) {
       due += dueOf(a);
       paid += paidOf(a);
@@ -225,11 +228,12 @@
 
     $("#cAll").textContent = A.length;
     $("#cDone").textContent = counts.ok;
-    $("#cPartial").textContent = counts.partial;
+    $("#cPartial").textContent = counts.partial + counts.wait;
     $("#cNone").textContent = counts.none;
     $("#cNoSign").textContent = counts.nosign;
 
     renderMyApt();
+    renderGlance();
     renderBuilding();
     renderPhoto();
     renderDocs();
@@ -343,7 +347,7 @@
     const roofY = 30, top = roofY + 22;
     const groundH = hasGround ? floorH : 70;
     const H = top + maxFloor * floorH + groundH + 26;
-    const C = { ok: "var(--ok)", partial: "var(--partial)", none: "var(--none)" };
+    const C = { ok: "var(--ok)", wait: "var(--blue)", partial: "var(--partial)", none: "var(--none)" };
 
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="תרשים הבניין">
       <defs>
@@ -427,7 +431,7 @@
   function matches(a) {
     const st = statusOf(a);
     if (filter === "done" && st !== "ok") return false;
-    if (filter === "partial" && st !== "partial") return false;
+    if (filter === "partial" && st !== "partial" && st !== "wait") return false;
     if (filter === "none" && st !== "none") return false;
     if (filter === "nosign" && (a.signature.signed || statusOf(a) === "ok")) return false;
     if (!query) return true;
@@ -678,6 +682,7 @@
               <div class="pay-amt">${ils(p.amount)} <span class="muted small" style="font-weight:500">${METHOD[p.method].label}</span></div>
               <div class="pay-sub">${sub}</div>
             </div>
+            ${p.pending ? `<span class="tag wait">⏳ ממתין לאישור</span>${isAdmin() ? `<button class="btn btn-ok-mini" data-confirm="${p.id}">אישור קבלה</button>` : ""}` : ""}
             ${p.delivered ? `<span class="tag ok">${svg(ICON.truck)}נמסר</span>` : ""}
           </div>
           ${p.files.length ? `<div class="files">${p.files.map((k) => thumbHTML(k)).join("")}</div>` : ""}
@@ -799,6 +804,7 @@
       for (const k of ["amount", "date", "dueDate", "chequeNo", "bank", "branch", "account", "reference", "payer", "notes"]) f[k].value = p[k] ?? "";
       $$("input[name=method]", f).forEach((r) => (r.checked = r.value === p.method));
       f.delivered.checked = p.delivered;
+      f.pending.checked = !!p.pending;
       payFiles = [...p.files];
     } else {
       f.date.value = today();
@@ -821,6 +827,15 @@
   $("#btnAddPay").addEventListener("click", () => openPay(null));
   $("#payList").addEventListener("click", (e) => {
     if (e.target.closest(".thumb") || !isAdmin()) return;
+    const cf = e.target.closest("[data-confirm]");
+    if (cf) {
+      const p = apt().payments.find((x) => x.id === cf.dataset.confirm);
+      busy(cf, async () => {
+        setState(await api("PUT", `apartment/${currentApt}/payment/${p.id}`, { ...p, pending: false }));
+        toast("הקבלה אושרה, התשלום נספר");
+      });
+      return;
+    }
     const el = e.target.closest(".pay");
     if (el) openPay(apt().payments.find((p) => p.id === el.dataset.pid));
   });
@@ -829,7 +844,7 @@
   $("#payForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const f = e.target;
-    const body = { method: f.method.value, files: payFiles, delivered: f.delivered.checked };
+    const body = { method: f.method.value, files: payFiles, delivered: f.delivered.checked, pending: f.pending.checked };
     for (const k of ["amount", "date", "dueDate", "chequeNo", "bank", "branch", "account", "reference", "payer", "notes"]) body[k] = f[k].value;
     if (!(parseFloat(String(body.amount).replace(/[,₪\s]/g, "")) > 0)) { toast("יש להזין סכום", true); return; }
     busy($("#paySave"), async () => {
@@ -960,6 +975,38 @@
     else if (!$("#shareModal").hidden) $("#shareModal").hidden = true;
     else if (!$("#docModal").hidden) $("#docModal").hidden = true;
     else if (!$("#drawer").hidden) closeDrawer();
+  });
+
+  /* ------------------------ status at a glance ------------------------ */
+  function renderGlance() {
+    const A = S.apartments;
+    const groups = { ok: [], wait: [], todo: [] };
+    for (const a of A) {
+      const st = statusOf(a);
+      (st === "ok" ? groups.ok : st === "wait" ? groups.wait : groups.todo).push(a);
+    }
+    const paid = A.reduce((t, a) => t + paidOf(a), 0), pend = A.reduce((t, a) => t + pendingOf(a), 0);
+    const due = A.reduce((t, a) => t + dueOf(a), 0), left = Math.max(0, due - paid - pend);
+    const chip = (a) => `<button class="g-chip" data-apt="${a.id}" title="${esc(a.owner || "")}"><b>${a.id}</b><span>${esc((a.owner || "").split(/[\s–-]/)[0])}</span></button>`;
+    const row = (cls, icon, title, list, sub) => `<div class="g-row ${cls}">
+        <div class="g-head"><span class="g-ic">${icon}</span><strong>${title}</strong><span class="g-count">${list.length}</span>${sub ? `<span class="g-sub">${sub}</span>` : ""}</div>
+        <div class="g-chips">${list.length ? list.map(chip).join("") : '<span class="muted small">אין</span>'}</div></div>`;
+    $("#glance").innerHTML = `
+      <div class="g-top">
+        <div><div class="eyebrow">סטטוס במבט אחד</div>
+          <div class="g-title">${groups.ok.length === A.length ? "כל הדירות שילמו 🎉" : `<b>${groups.ok.length}</b> מתוך ${A.length} דירות שילמו`}</div></div>
+        <div class="g-money"><span>נגבה <b>${ils(paid)}</b></span>${pend ? `<span class="w">ממתין <b>${ils(pend)}</b></span>` : ""}<span class="n">חסר <b>${ils(left)}</b></span></div>
+      </div>
+      <div class="g-bar"><span class="ok" style="width:${due ? (paid / due) * 100 : 0}%"></span><span class="w" style="width:${due ? (pend / due) * 100 : 0}%"></span></div>
+      <div class="g-rows">
+        ${row("ok", "✓", "שילמו", groups.ok)}
+        ${row("wait", "⏳", "ממתין לאישור קבלה", groups.wait, groups.wait.length ? "דווח ששולם, לבדוק שהכסף התקבל" : "")}
+        ${row("todo", "!", "טרם שילמו", groups.todo)}
+      </div>`;
+  }
+  $("#glance").addEventListener("click", (e) => {
+    const c = e.target.closest("[data-apt]");
+    if (c) openApt(+c.dataset.apt);
   });
 
   /* -------------------------- my apartment -------------------------- */
