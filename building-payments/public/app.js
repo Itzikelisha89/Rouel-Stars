@@ -234,6 +234,7 @@
 
     renderMyApt();
     renderGlance();
+    refreshEngagement();
     renderBuilding();
     renderPhoto();
     renderDocs();
@@ -998,13 +999,24 @@
         <div class="g-money"><span>נגבה <b>${ils(paid)}</b></span>${pend ? `<span class="w">ממתין <b>${ils(pend)}</b></span>` : ""}<span class="n">חסר <b>${ils(left)}</b></span></div>
       </div>
       <div class="g-bar"><span class="ok" style="width:${due ? (paid / due) * 100 : 0}%"></span><span class="w" style="width:${due ? (pend / due) * 100 : 0}%"></span></div>
+      ${isAdmin() ? `<button class="g-engage" id="gEngage">🔗 <span id="gEntered">…</span> · 🧾 מילאו פרטי קבלה: <b>${A.filter((a) => a.receipt && a.receipt.name).length}</b>/12</button>` : ""}
       <div class="g-rows">
         ${row("ok", "✓", "שילמו", groups.ok)}
         ${row("wait", "⏳", "ממתין לאישור קבלה", groups.wait, groups.wait.length ? "דווח ששולם, לבדוק שהכסף התקבל" : "")}
         ${row("todo", "!", "טרם שילמו", groups.todo)}
       </div>`;
   }
+  async function refreshEngagement() {
+    if (!isAdmin() || !$("#gEntered")) return;
+    try {
+      access = await api("GET", "access");
+      const n = S.apartments.filter((a) => (access.visits || {})["apt-" + a.id]).length;
+      const c = (access.visits || {}).contractor;
+      $("#gEntered").innerHTML = `דיירים שנכנסו: <b>${n}</b>/12${c ? " · הקבלן נכנס" : access.contractor ? " · הקבלן טרם נכנס" : ""}`;
+    } catch {}
+  }
   $("#glance").addEventListener("click", (e) => {
+    if (e.target.closest("#gEngage")) { $("#btnShare").click(); return; }
     const c = e.target.closest("[data-apt]");
     if (c) openApt(+c.dataset.apt);
   });
@@ -1080,13 +1092,18 @@
   function renderTenants() {
     const t = access.tenants || {};
     const missing = S.apartments.filter((a) => !t[a.id]).length;
+    const entered = S.apartments.filter((a) => (access.visits || {})["apt-" + a.id]).length;
+    const filled = S.apartments.filter((a) => a.receipt && a.receipt.name).length;
+    $("#tenantSummary").innerHTML = `<span><b>${entered}</b>/12 נכנסו</span><span><b>${filled}</b>/12 מילאו פרטי קבלה</span>`;
     $("#tenantList").innerHTML = S.apartments.map((a) => {
       const code = t[a.id], wa = waNumber(a.phone);
       const rc = a.receipt && a.receipt.name;
+      const vis = (access.visits || {})["apt-" + a.id];
       return `<div class="t-row" data-apt="${a.id}">
         <div class="apt-badge">${a.id}</div>
         <div class="t-txt"><strong>${esc(a.owner) || "דירה " + a.id}</strong>
-          <span class="${rc ? "ok" : ""}">${rc ? "✓ קבלה: " + esc(a.receipt.name) : code ? "יש קישור · טרם מילא פרטי קבלה" : "אין קישור עדיין"}</span></div>
+          <span class="${rc ? "ok" : ""}">${rc ? "✓ קבלה: " + esc(a.receipt.name) : !code ? "אין קישור עדיין" : vis ? "נכנס · טרם מילא פרטי קבלה" : "טרם נכנס"}</span>
+          ${vis ? `<span class="t-seen">👁 נכנס לאחרונה ${fmtTime(vis.last)}</span>` : ""}</div>
         ${code
           ? `<a class="btn btn-wa" href="https://wa.me/${wa}?text=${encodeURIComponent(tenantMessage(a, code))}" target="_blank" rel="noopener" title="${wa ? "שליחה ל-" + esc(a.phone) : "שליחה בוואטסאפ"}">${svg(ICON.wa)}<span>שליחה</span></a>
              <button class="icon-btn" data-tcopy="${a.id}" title="העתקת הודעה">${svg('<path d="M8 8h12v12H8zM4 16V4h12"/>')}</button>
@@ -1100,8 +1117,10 @@
     for (const role of ["contractor", "resident"]) {
       const body = $(`.share-card[data-role=${role}] .share-body`);
       const code = access[role];
+      const vis = (access.visits || {})[role];
       body.innerHTML = code
-        ? `<div class="code-box"><span class="muted small">קוד גישה</span><code>${esc(code)}</code></div>
+        ? `<div class="seen-line ${vis ? "yes" : ""}">${vis ? `👁 נכנס ${vis.logins} פעמים · לאחרונה ${fmtTime(vis.last)}` : "טרם נכנס למערכת"}</div>
+           <div class="code-box"><span class="muted small">קוד גישה</span><code>${esc(code)}</code></div>
            <div class="share-actions">
              <a class="btn btn-wa" href="https://wa.me/?text=${encodeURIComponent(shareMessage(role, code))}" target="_blank" rel="noopener">${svg(ICON.wa)}שליחה בוואטסאפ</a>
              <button class="btn btn-ghost" data-copy="${role}">${svg('<path d="M8 8h12v12H8zM4 16V4h12"/>')}העתקת הודעה</button>

@@ -348,6 +348,27 @@ function readReceipt(b: any, by: "tenant" | "admin"): Receipt {
   };
 }
 
+/* ------------------------- visit tracking ------------------------- */
+type Visits = Record<string, { first: string; last: string; logins: number }>;
+const visitKey = (ses: Session) => (ses.role === "tenant" ? `apt-${ses.apt}` : ses.role);
+
+/** Remembers when each viewer (contractor, residents' code, each apartment) last opened the system. */
+async function recordVisit(ses: Session, isLogin: boolean) {
+  if (ses.role === "admin") return;
+  try {
+    const store = kv();
+    const v = ((await store.get("visits", { type: "json" })) as Visits | null) ?? {};
+    const k = visitKey(ses), now = new Date().toISOString();
+    const cur = v[k];
+    // page refreshes within 10 minutes don't need a write
+    if (!isLogin && cur && Date.now() - Date.parse(cur.last) < 10 * 60000) return;
+    v[k] = { first: cur?.first ?? now, last: now, logins: (cur?.logins ?? 0) + (isLogin || !cur ? 1 : 0) };
+    await store.setJSON("visits", v);
+  } catch (e) {
+    console.error("visit tracking failed", e);
+  }
+}
+
 function newCode() {
   const abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   const pick = () => Array.from(randomBytes(4), (b) => abc[b % abc.length]).join("");
@@ -398,6 +419,7 @@ async function route(req: Request, context: Context): Promise<Response> {
     const ses = password ? sessionForPassword(auth, password) : null;
     if (ses) {
       await kv().delete(key);
+      await recordVisit(ses, true);
       return json({ ok: true, role: ses.role }, 200, { "set-cookie": cookieHeader(sessionFor(auth, ses), SESSION_DAYS * 86400) });
     }
     rec.n += 1;
@@ -422,6 +444,7 @@ async function route(req: Request, context: Context): Promise<Response> {
   if (path === "session" && method === "GET") return json({ ok: true, role });
 
   if (path === "data" && method === "GET") {
+    await recordVisit(ses, false);
     const { state } = await loadState();
     return json(view(state, ses));
   }
@@ -458,7 +481,8 @@ async function route(req: Request, context: Context): Promise<Response> {
   if (path === "access" && method === "GET") {
     const tenants: Record<string, string> = {};
     for (const [k, v] of Object.entries(auth.tenants ?? {})) if (v.code) tenants[k] = v.code;
-    return json({ contractor: auth.viewers?.contractor?.code ?? null, resident: auth.viewers?.resident?.code ?? null, tenants });
+    const visits = ((await kv().get("visits", { type: "json" })) as Visits | null) ?? {};
+    return json({ contractor: auth.viewers?.contractor?.code ?? null, resident: auth.viewers?.resident?.code ?? null, tenants, visits });
   }
   if (parts[0] === "access" && parts[1] === "apt" && /^\d{1,2}$/.test(parts[2] ?? "")) {
     const apt = parts[2];
