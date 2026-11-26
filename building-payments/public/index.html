@@ -452,6 +452,27 @@
   </form>
 </div>
 
+<!-- ========================= EXPORT MODAL ========================= -->
+<div id="exportModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card narrow">
+    <header class="modal-head">
+      <h2>ייצוא לאקסל</h2>
+      <button type="button" class="icon-btn" data-close aria-label="סגור"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="modal-body">
+      <button class="export-opt" data-export="receipts">
+        <span class="share-ic tenant"><svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2zM9 7h6M9 11h6M9 15h4"/></svg></span>
+        <span><strong>פרטי קבלות לקבלן</strong><small>שורה לכל דירה: לטובת מי הקבלה, ת.ז./ח.פ., מייל, כמה שולם ובאיזה אמצעי</small></span>
+      </button>
+      <button class="export-opt" data-export="all">
+        <span class="share-ic contractor"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></span>
+        <span><strong>כל הנתונים</strong><small>כל התשלומים בפירוט: צ׳קים, בנקים, תאריכי פירעון, חתימות והערות</small></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ========================= SHARE MODAL ========================= -->
 <div id="shareModal" class="modal" hidden>
   <div class="modal-backdrop" data-close></div>
@@ -519,6 +540,7 @@
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <div id="report" class="report"></div>
 
+<script src="xlsx.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

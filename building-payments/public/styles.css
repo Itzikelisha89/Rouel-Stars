@@ -564,3 +564,9 @@ body.role-tenant .no-resident { display: none !important; }
 .g-engage { display: block; width: 100%; text-align: right; border: 1px dashed var(--line); background: var(--surface-2); border-radius: 12px; padding: 9px 12px; margin: -4px 0 14px; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
 .g-engage:hover { border-color: var(--gold-2); }
 .g-engage b { color: var(--ink); }
+
+/* export modal */
+.export-opt { display: flex; align-items: center; gap: 14px; width: 100%; text-align: right; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: pointer; transition: .15s; }
+.export-opt:hover { border-color: var(--gold-2); transform: translateY(-1px); }
+.export-opt strong { display: block; font-size: 15.5px; }
+.export-opt small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }

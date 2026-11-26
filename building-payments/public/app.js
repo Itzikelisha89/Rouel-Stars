@@ -908,7 +908,66 @@
   });
 
   /* ------------------------- export / report ------------------------- */
-  $("#btnExport").addEventListener("click", () => {
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  const H = (v) => ({ v, s: 1 });
+
+  /** One row per apartment with everything the contractor needs to issue the receipt. */
+  function exportReceipts() {
+    const P = S.project, A = S.apartments;
+    const payText = (a) => a.payments.map((p) => {
+      const parts = [METHOD[p.method].label, ils(p.amount)];
+      if (p.method === "cheque") parts.push([p.chequeNo && "מס׳ " + p.chequeNo, p.bank, p.dueDate && "פירעון " + fmtDate(p.dueDate)].filter(Boolean).join(" "));
+      if ((p.method === "transfer" || p.method === "app") && p.reference) parts.push("אסמכתא " + p.reference);
+      if (p.pending) parts.push("(ממתין לאישור)");
+      return parts.join(" · ");
+    }).join("\n");
+    const methods = (a) => {
+      const c = a.payments.filter((p) => p.method === "cheque").length;
+      const others = [...new Set(a.payments.filter((p) => p.method !== "cheque").map((p) => METHOD[p.method].label))];
+      return [c ? (c === 1 ? "צ׳ק" : `${c} צ׳קים`) : "", ...others].filter(Boolean).join(" + ");
+    };
+    const header = ["דירה", "שם הדייר", "קבלה לטובת", "ת.ז. / ח.פ.", "דוא״ל לשליחת הקבלה", "טלפון", "סכום ששולם", "אמצעי תשלום", "פירוט התשלומים", "סטטוס תשלום"];
+    const rows = [
+      [{ v: `פרטים להוצאת קבלות · ${P.name}`, s: 6 }],
+      [{ v: `${P.address}${P.contractor ? " · לכבוד " + P.contractor : ""} · הופק ${fmtDate(today())}`, s: 7 }],
+      [],
+      header.map(H),
+    ];
+    let filled = 0, totalPaid = 0;
+    for (const a of A) {
+      const rc = a.receipt && a.receipt.name ? a.receipt : null;
+      if (rc) filled++;
+      const paid = paidOf(a);
+      totalPaid += paid;
+      const miss = { v: "טרם מולא", s: 3 };
+      const st = statusOf(a);
+      rows.push([
+        a.id, a.owner || "",
+        rc ? rc.name : miss, rc ? rc.idNo || "" : { v: "", s: 3 }, rc ? rc.email || "" : { v: "", s: 3 },
+        (rc && rc.phone) || a.phone || "",
+        { v: paid, s: 2 }, methods(a), { v: payText(a), s: 8 },
+        st === "ok" ? "שולם במלואו" : st === "wait" ? "ממתין לאישור קבלה" : paid ? "שולם חלקית" : "טרם שולם",
+      ]);
+    }
+    rows.push([{ v: "סה״כ", s: 4 }, { v: `${filled}/${A.length} מילאו פרטים`, s: 4 }, { v: "", s: 4 }, { v: "", s: 4 }, { v: "", s: 4 }, { v: "", s: 4 }, { v: totalPaid, s: 5 }, { v: "", s: 4 }, { v: "", s: 4 }, { v: "", s: 4 }]);
+    const blob = makeXlsx([{
+      name: "פרטי קבלות", rows, freezeRow: 4, merges: ["A1:J1", "A2:J2"],
+      widths: [7, 22, 26, 14, 30, 14, 13, 16, 46, 18], heights: { 0: 26, 3: 30 },
+    }]);
+    download(blob, `בית-וגן-6-פרטי-קבלות-${today()}.xlsx`);
+    toast(filled < A.length ? `הקובץ ירד · ${A.length - filled} דירות עוד לא מילאו פרטים (מסומנות באדום)` : "הקובץ ירד · כל הדירות מילאו פרטים");
+  }
+
+  function exportAll() {
     const rows = [["דירה", "קומה", "שם", "טלפון", "סכום לתשלום", "סה״כ שולם", "יתרה", "סטטוס", "חתימה", "תאריך חתימה", "אמצעי תשלום", "סכום", "תאריך", "מס׳ צ׳ק", "בנק", "סניף", "חשבון", "תאריך פירעון", "אסמכתא", "שם משלם", "נמסר לקבלן", "הערות", "קבלה לטובת", "ת.ז./ח.פ. לקבלה", "דוא״ל לקבלה"]];
     for (const a of S.apartments) {
       const base = [a.id, a.floor, a.owner, a.phone, dueOf(a), paidOf(a), Math.max(0, dueOf(a) - paidOf(a)), ST_LABEL[statusOf(a)], a.signature.signed ? "כן" : "לא", a.signature.date];
@@ -916,18 +975,20 @@
       if (!a.payments.length) rows.push([...base, "", "", "", "", "", "", "", "", "", "", "", a.notes, ...rc]);
       for (const p of a.payments) rows.push([...base, METHOD[p.method].label, p.amount, p.date, p.chequeNo, p.bank, p.branch, p.account, p.dueDate, p.reference, p.payer, p.delivered ? "כן" : "לא", p.notes, ...rc]);
     }
-    const csv = "﻿" + rows.map((r) => r.map((v) => {
-      let s = String(v ?? "");
-      if (/^[=+\-@]/.test(s)) s = "'" + s; // prevent spreadsheet formula injection
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    }).join(",")).join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `בית-וגן-6-גבייה-${today()}.csv`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast("הקובץ ירד – ניתן לפתוח באקסל");
+    const money = new Set([4, 5, 6, 11]);
+    const sheetRows = rows.map((r, i) => i === 0 ? r.map(H) : r.map((v, ci) => money.has(ci) && typeof v === "number" ? { v, s: 2 } : v ?? ""));
+    const blob = makeXlsx([{ name: "כל הנתונים", rows: sheetRows, freezeRow: 1, widths: [6, 6, 20, 13, 12, 12, 11, 14, 7, 11, 13, 11, 11, 11, 14, 7, 11, 12, 14, 20, 9, 26, 22, 13, 26], heights: { 0: 30 } }]);
+    download(blob, `בית-וגן-6-כל-הנתונים-${today()}.xlsx`);
+    toast("הקובץ ירד");
+  }
+
+  $("#btnExport").addEventListener("click", () => { $("#exportModal").hidden = false; });
+  $("#exportModal").addEventListener("click", (e) => {
+    if (e.target.closest("[data-close]")) { $("#exportModal").hidden = true; return; }
+    const o = e.target.closest("[data-export]");
+    if (!o) return;
+    try { o.dataset.export === "receipts" ? exportReceipts() : exportAll(); $("#exportModal").hidden = true; }
+    catch (err) { console.error(err); toast("הייצוא נכשל", true); }
   });
 
   $("#btnReport").addEventListener("click", () => {
